@@ -1,1 +1,1 @@
-#CS482 Software Engineering Team
+CS482 Software Engineering Team
