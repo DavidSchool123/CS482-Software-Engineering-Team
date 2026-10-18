@@ -1,0 +1,35 @@
+{
+  "name": "cs482-software-engineering-team",
+  "version": "1.0.0",
+  "description": "1. Dr Hoang Bui",
+  "main": "index.js",
+  "scripts": {
+    "start": "node Server.js",
+    "dev": "nodemon Server.js",
+    "test": "jest",
+    "coverage": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DavidSchool123/CS482-Software-Engineering-Team.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DavidSchool123/CS482-Software-Engineering-Team/issues"
+  },
+  "homepage": "https://github.com/DavidSchool123/CS482-Software-Engineering-Team#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "mongoose": "^9.11.2"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.1"
+  }
+}
