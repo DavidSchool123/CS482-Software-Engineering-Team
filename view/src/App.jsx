@@ -1,21 +1,56 @@
 
-import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Placeholder from "./pages/Placeholder";
+
+import "./App.css";
 
 function App() {
-  const [message, setMessage] = useState("Connecting to backend...");
-
-  useEffect(() => {
-    fetch("http://localhost:5000/api/health")
-      .then((response) => response.json())
-      .then((data) => setMessage(data.message))
-      .catch(() => setMessage("Could not connect to backend"));
-  }, []);
-
   return (
-    <div>
-      <h1>Poker Face</h1>
-      <p>{message}</p>
-    </div>
+    <BrowserRouter>
+      <Navbar />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+
+        <Route
+          path="/login"
+          element={<Placeholder title="Login" />}
+        />
+
+        <Route
+          path="/register"
+          element={<Placeholder title="Register" />}
+        />
+
+        <Route
+          path="/lobby"
+          element={<Placeholder title="Game Lobby" />}
+        />
+
+        <Route
+          path="/tutorial"
+          element={<Placeholder title="How to Play" />}
+        />
+
+        <Route
+          path="/about"
+          element={<Placeholder title="About Poker Face" />}
+        />
+
+        <Route
+          path="/contact"
+          element={<Placeholder title="Contact Us" />}
+        />
+
+        <Route
+          path="*"
+          element={<Placeholder title="Page Not Found" />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
