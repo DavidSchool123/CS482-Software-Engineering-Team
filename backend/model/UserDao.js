@@ -1,9 +1,3 @@
-const userModel = require('./UserModel');
-
-exports.readAll = async function() {
-  return await userModel.find().select('username');
-}
-
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -32,5 +26,11 @@ const userSchema = new mongoose.Schema({
     },
   ],
 });
+
+const userModel = mongoose.model('user', userSchema);
+
+exports.readAll = async function () {
+  return await userModel.find().select('username');
+};
 
 module.exports = mongoose.model('User', userSchema);

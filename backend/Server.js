@@ -1,8 +1,7 @@
+require('dotenv').config();
 
-require("dotenv").config();
-
-const app = require("./app");
-const connectDB = require("./util/DbConnection");
+const app = require('./app');
+const connectDB = require('./model/DbConnection');
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,7 +13,7 @@ async function startServer() {
       console.log(`Poker Face server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Could not start Poker Face server.");
+    console.error('Could not start Poker Face server.');
     process.exit(1);
   }
 }
