@@ -27,4 +27,10 @@ const userSchema = new mongoose.Schema({
   ],
 });
 
+const userModel = mongoose.model('user', userSchema);
+
+exports.readAll = async function () {
+  return await userModel.find().select('username');
+};
+
 module.exports = mongoose.model('User', userSchema);
