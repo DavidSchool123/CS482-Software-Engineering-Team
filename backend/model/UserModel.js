@@ -1,3 +1,9 @@
+const userModel = require('../model/UserModel');
+
+exports.readAll = async function() {
+  return await userModel.find().select('username');
+}
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
