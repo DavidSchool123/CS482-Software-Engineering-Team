@@ -1,4 +1,4 @@
-const userModel = require('../model/UserModel');
+const userModel = require('./UserModel');
 
 exports.readAll = async function() {
   return await userModel.find().select('username');
