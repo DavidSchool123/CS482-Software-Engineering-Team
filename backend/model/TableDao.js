@@ -28,12 +28,12 @@ const tableSchema = new mongoose.Schema({
     IsPublic: {
         type: Boolean,
         required: true,
-    }
+    },
 
     MaxBet: {
         type: Number,
         required: true,
-    }
+    },
 
     CurrentGameID: {
         type: mongoose.Schema.Types.ObjectId,
