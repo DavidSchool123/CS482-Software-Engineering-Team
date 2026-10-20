@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // Test endpoint
-app.get("/api/health", (req, res) => {
+app.get("/", (req, res) => {
   res.status(200).json({
     message: "Poker Face API is running!"
   });
