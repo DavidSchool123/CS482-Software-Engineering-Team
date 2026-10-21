@@ -41,7 +41,7 @@ function Home() {
             </a>
 
             <div className="hero-secondary-links">
-              <a href="/register">Create an Account</a>
+              <a href="/account">Create an Account</a>
               <span>or</span>
               <a href="/lobby?guest=true">Play as Guest</a>
             </div>

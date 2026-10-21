@@ -4,26 +4,21 @@ import { useState } from 'react';
 import AppNavbar from './components/AppNavbar';
 import Home from './pages/Home';
 import Placeholder from './pages/Placeholder';
-import Login from './pages/Login';
+import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
 
 import './App.css';
 
 function App() {
-  const[tableSearch, setTableSearch] = useState('');
+  const [tableSearch, setTableSearch] = useState('');
   return (
     <BrowserRouter>
-      <AppNavbar 
-        tableSearch={tableSearch}
-        setTableSearch={setTableSearch}
-      />
+      <AppNavbar tableSearch={tableSearch} setTableSearch={setTableSearch} />
 
       <Routes>
         <Route path='/' element={<Home />} />
 
-        <Route path='/login' element={<Login />} />
-
-        <Route path='/register' element={<Placeholder title='Register' />} />
+        <Route path='/account' element={<AccountCreation />} />
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
