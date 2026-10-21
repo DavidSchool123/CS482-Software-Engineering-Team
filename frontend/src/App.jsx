@@ -1,16 +1,22 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
 
-import Navbar from './components/Navbar';
+import AppNavbar from './components/AppNavbar';
 import Home from './pages/Home';
 import Placeholder from './pages/Placeholder';
 import Login from './pages/Login';
+import Lobby from './pages/Lobby';
 
 import './App.css';
 
 function App() {
+  const[tableSearch, setTableSearch] = useState('');
   return (
     <BrowserRouter>
-      <Navbar />
+      <AppNavbar 
+        tableSearch={tableSearch}
+        setTableSearch={setTableSearch}
+      />
 
       <Routes>
         <Route path='/' element={<Home />} />
@@ -19,7 +25,7 @@ function App() {
 
         <Route path='/register' element={<Placeholder title='Register' />} />
 
-        <Route path='/lobby' element={<Placeholder title='Game Lobby' />} />
+        <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
         <Route path='/tutorial' element={<Placeholder title='How to Play' />} />
 
