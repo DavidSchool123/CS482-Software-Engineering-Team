@@ -1,6 +1,13 @@
+
 const mongoose = require('mongoose');
 
 const tableSchema = new mongoose.Schema({
+
+    Name: {
+        type: String,
+        required: true,
+        trim: true,
+    },
 
     JoinCode: {
         type: String,
@@ -14,10 +21,10 @@ const tableSchema = new mongoose.Schema({
     },
 
     UserIds: [
-           {
-                 type: mongoose.Schema.Types.ObjectId,
-                 ref: 'User',
-           },
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
     ],
 
     BotCount: {
@@ -35,29 +42,31 @@ const tableSchema = new mongoose.Schema({
         required: true,
     },
 
+    Status: {
+        type: String,
+        enum: ['Waiting', 'In Progress', 'Closed'],
+        default: 'Waiting',
+    },
+
     CurrentGameID: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Game',
-        //not required
+        // not required
     },
-
-
 
 });
 
 const TableModel = mongoose.model('Table', tableSchema);
 
-
+// Create a table
 exports.create = async function(TableData) {
     let newTable = new TableModel(TableData);
-    await newTable.save;
+    await newTable.save();
     return newTable;
-}
+};
 
-
-
-
-
-
-
-
+// Retrieve all tables for the Lobby
+exports.findAll = async function() {
+    return await TableModel.find()
+        .select('Name Capacity UserIds BotCount IsPublic MaxBet Status');
+};

@@ -1,51 +1,87 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Lobby.css';
 
-const sampleTables = [
-  {
-    id: 1,
-    name: 'High Rollers',
-    level: 'High',
-    players: 4,
-    maxPlayers: 6,
-    type: 'Public',
-    status: 'In Progress',
-  },
-  {
-    id: 2,
-    name: 'Ravens Table',
-    level: 'Medium',
-    players: 3,
-    maxPlayers: 6,
-    type: 'Private',
-    status: 'Waiting',
-  },
-  {
-    id: 3,
-    name: 'Chill Game',
-    level: 'Low',
-    players: 2,
-    maxPlayers: 6,
-    type: 'Public',
-    status: 'Waiting',
-  },
-  {
-    id: 4,
-    name: 'Study Break',
-    level: 'Low',
-    players: 6,
-    maxPlayers: 6,
-    type: 'Public',
-    status: 'Full',
-  },
-];
-
-function Lobby({ tableSearch }) {
+function Lobby({ tableSearch = '' }) {
   // Store the selected filter options
   const [selectedLevels, setSelectedLevels] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
+
+  // Store tables retrieved from the backend
+  const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch tables from the backend when the Lobby loads
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchTables() {
+      try {
+        setLoading(true);
+        setError('');
+
+        const response = await fetch(
+          'http://localhost:5000/api/tables',
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to retrieve tables.');
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid table data received.');
+        }
+
+        // Convert MongoDB fields to the format used by the Lobby
+        const formattedTables = data.map((table) => {
+          const players =
+            (table.UserIds?.length ?? 0) +
+            (table.BotCount ?? 0);
+
+          // Temporary betting level thresholds
+          let level = 'High';
+
+          if (table.MaxBet <= 100) {
+            level = 'Low';
+          } else if (table.MaxBet <= 500) {
+            level = 'Medium';
+          }
+
+          const isFull = players >= table.Capacity;
+
+          return {
+            id: table._id,
+            name: table.Name || 'Unnamed Table',
+            level,
+            players,
+            maxPlayers: table.Capacity,
+            type: table.IsPublic ? 'Public' : 'Private',
+            status: table.Status || 'Waiting',
+            isFull,
+          };
+        });
+
+        setTables(formattedTables);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchTables();
+
+    return () => controller.abort();
+  }, []);
 
   // Add or remove a checkbox selection
   function toggleFilter(value, selected, setSelected) {
@@ -57,7 +93,7 @@ function Lobby({ tableSearch }) {
   }
 
   // Filter the available tables based on selections
-  const filteredTables = sampleTables.filter((table) => {
+  const filteredTables = tables.filter((table) => {
     const matchesSearch = table.name
       .toLowerCase()
       .includes(tableSearch.trim().toLowerCase());
@@ -74,7 +110,12 @@ function Lobby({ tableSearch }) {
       selectedPlayers.length === 0 ||
       selectedPlayers.includes(table.maxPlayers);
 
-    return matchesSearch && matchesLevel && matchesType && matchesPlayers;
+    return (
+      matchesSearch &&
+      matchesLevel &&
+      matchesType &&
+      matchesPlayers
+    );
   });
 
   return (
@@ -143,6 +184,7 @@ function Lobby({ tableSearch }) {
               </label>
             ))}
           </div>
+
           <button
             type='button'
             className='clear-filters-btn'
@@ -154,13 +196,15 @@ function Lobby({ tableSearch }) {
           >
             Clear Filters
           </button>
-        </aside> {/* End of filter sidebar */}
+        </aside>
 
         {/* Available tables */}
         <section className='lobby-tables'>
           <div className='lobby-heading'>
             <h1>Available Tables</h1>
-            <button type='button'>+ Create Table</button>
+            <button type='button'>
+              + Create Table
+            </button>
           </div>
 
           <div className='table-list-wrapper'>
@@ -177,42 +221,63 @@ function Lobby({ tableSearch }) {
               </thead>
 
               <tbody>
-                {filteredTables.map((table) => (
-                  <tr key={table.id}>
-                    <td>{table.name}</td>
-                    <td>{table.level}</td>
-                    <td>
-                      {table.players}/{table.maxPlayers}
-                    </td>
-                    <td>{table.type}</td>
-                    <td>{table.status}</td>
-                    <td>
-                      <div className='table-actions'>
-                        <button
-                          type='button'
-                          className='join-btn'
-                          disabled={table.status !== 'Waiting'}
-                        >
-                          Join
-                        </button>
-
-                        <button
-                          type='button'
-                          className='observe-btn'
-                        >
-                          Observe
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredTables.length === 0 && (
+                {loading ? (
                   <tr>
                     <td colSpan={6} className='no-tables'>
-                      No tables match your selected filters.
+                      Loading tables...
                     </td>
                   </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className='no-tables'>
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredTables.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className='no-tables'>
+                      {tables.length === 0
+                        ? 'No tables available yet.'
+                        : 'No tables match your selected filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTables.map((table) => (
+                    <tr key={table.id}>
+                      <td>{table.name}</td>
+                      <td>{table.level}</td>
+                      <td>
+                        {table.players}/{table.maxPlayers}
+                      </td>
+                      <td>{table.type}</td>
+                      <td>
+                        {table.status === 'Waiting' && table.isFull
+                          ? 'Full'
+                          : table.status}
+                      </td>
+                      <td>
+                        <div className='table-actions'>
+                          <button
+                            type='button'
+                            className='join-btn'
+                            disabled={
+                              table.status !== 'Waiting' ||
+                              table.isFull
+                            }
+                          >
+                            Join
+                          </button>
+
+                          <button
+                            type='button'
+                            className='observe-btn'
+                          >
+                            Observe
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

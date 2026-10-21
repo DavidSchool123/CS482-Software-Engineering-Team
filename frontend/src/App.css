@@ -95,7 +95,8 @@ main {
   text-align: center;
 }
 
-.hero-crown {60px
+.hero-crown {
+  width: 60px;
   font-size: 58px;
   color: #c99aff;
   margin-bottom: 10px;
