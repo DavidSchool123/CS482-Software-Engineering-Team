@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -6,11 +7,13 @@ import Home from './pages/Home';
 import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
+import Friends from './pages/Friends';
 
 import './App.css';
 
 function App() {
   const [tableSearch, setTableSearch] = useState('');
+
   return (
     <BrowserRouter>
       <AppNavbar tableSearch={tableSearch} setTableSearch={setTableSearch} />
@@ -22,6 +25,8 @@ function App() {
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
+        <Route path='/friends' element={<Friends />} />
+
         <Route path='/tutorial' element={<Placeholder title='How to Play' />} />
 
         <Route
@@ -32,6 +37,9 @@ function App() {
         <Route path='/contact' element={<Placeholder title='Contact Us' />} />
 
         <Route path='*' element={<Placeholder title='Page Not Found' />} />
+
+        <Route path="/messages" element={<Placeholder title="Messages Coming Soon" />}
+        />
       </Routes>
     </BrowserRouter>
   );
