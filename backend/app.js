@@ -46,4 +46,5 @@ app.get(
   '/api/friends/sent/:userId',
   UserController.getSentFriendRequests
 );
+
 module.exports = app;
