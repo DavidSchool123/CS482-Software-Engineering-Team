@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-function Navbar() {
+function Navbar({ setAccountCreate }) {
+  const navigate = useNavigate();
   return (
     <nav className='navbar'>
       <Link href='/' className='navbar-logo'>
@@ -15,12 +17,27 @@ function Navbar() {
       </div>
 
       <div className='navbar-auth'>
-        <Link to={'/login'} className='login-btn'>
+        <button
+          className='login-btn'
+          onClick={() =>
+            navigate('/account', {
+              state: { accountView: 'login' },
+            })
+          }
+        >
           Login
-        </Link>
-        <Link to={'/register'} className='register-btn'>
+        </button>
+
+        <button
+          className='register-btn'
+          onClick={() =>
+            navigate('/account', {
+              state: { accountView: 'register' },
+            })
+          }
+        >
           Register
-        </Link>
+        </button>
       </div>
     </nav>
   );

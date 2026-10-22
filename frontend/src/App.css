@@ -1,4 +1,3 @@
-
 /* Navigation bar */
 .navbar {
   display: flex;
@@ -43,13 +42,21 @@
   padding: 10px 22px;
   border: 2px solid #b67aff;
   border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 /* Register button */
 .navbar-auth .register-btn {
   padding: 12px 22px;
+  border: none;
   background-color: #8b36e9;
+  color: white;
   border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
 }
 
 /* Temporary homepage content */
@@ -72,7 +79,6 @@ main {
   }
 }
 
-
 /* Homepage hero section */
 .hero-section {
   position: relative;
@@ -81,12 +87,7 @@ main {
   justify-content: center;
   min-height: 520px;
   padding: 80px 220px;
-  background: linear-gradient(
-    135deg,
-    #21183e 0%,
-    #35205c 55%,
-    #4d2380 100%
-  );
+  background: linear-gradient(135deg, #21183e 0%, #35205c 55%, #4d2380 100%);
   color: white;
 }
 
@@ -141,7 +142,9 @@ main {
   font-size: 20px;
   font-weight: 700;
   text-decoration: none;
-  transition: background-color 0.2s, transform 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
 }
 
 .play-button:hover {
@@ -204,7 +207,6 @@ main {
     writing-mode: horizontal-tb;
   }
 }
-
 
 /* Decorative cards and chips */
 
@@ -317,7 +319,6 @@ main {
   }
 }
 
-
 /* Features section */
 
 .features-section {
@@ -345,7 +346,9 @@ main {
   border-radius: 14px;
   background: #f8f6fc;
   border: 1px solid #e8ddf5;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .feature-card:hover {
