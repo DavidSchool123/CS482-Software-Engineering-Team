@@ -11,7 +11,10 @@ function Login() {
         />
 
         <label>Email: </label>
-        <input name='email' id='email' type='text' placeholder='Email' />
+        <input name='email'
+          id='email' type='text'
+          placeholder='Email' 
+        />
 
         <label>Password: </label>
         <input
