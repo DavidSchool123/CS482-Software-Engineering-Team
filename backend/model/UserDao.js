@@ -23,23 +23,20 @@ const userSchema = new mongoose.Schema({
       ref: 'User',
     },
   ],
-
   friendRequests: [
-  {
-    from: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
+    {
+      from: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'accepted', 'declined'],
+        default: 'pending',
+      },
     },
-    status: {
-      type: String,
-      enum: ['pending', 'accepted', 'declined'],
-      default: 'pending',
-    },
-  },
-],
-
-
+  ],
 });
 
 // Create a model for the user schema
@@ -50,16 +47,16 @@ async function readAll() {
   return await User.find().select('_id username');
 }
 
-exports.create = async function (userData) {
+User.create = async function (userData) {
   const user = new User(userData);
   return await user.save();
 };
 
-exports.findByEmail = async function (email) {
+User.findByEmail = async function (email) {
   return await User.findOne({ email: email.toLowerCase().trim() });
 };
 
-exports.findByUsername = async function (username) {
+User.findByUsername = async function (username) {
   return await User.findOne({ username: username.trim() });
 };
 
@@ -96,8 +93,7 @@ async function sendFriendRequest(senderId, receiverId) {
 
   const existingRequest = receiver.friendRequests.some(
     (request) =>
-      request.from.equals(sender._id) &&
-      request.status === 'pending'
+      request.from.equals(sender._id) && request.status === 'pending',
   );
 
   if (existingRequest) {
@@ -106,8 +102,7 @@ async function sendFriendRequest(senderId, receiverId) {
 
   const reverseRequest = sender.friendRequests.some(
     (request) =>
-      request.from.equals(receiver._id) &&
-      request.status === 'pending'
+      request.from.equals(receiver._id) && request.status === 'pending',
   );
 
   if (reverseRequest) {
@@ -123,7 +118,6 @@ async function sendFriendRequest(senderId, receiverId) {
 
   return { message: 'Friend request sent successfully' };
 }
-
 
 async function getFriendRequests(userId) {
   const user = await User.findById(userId)
@@ -143,7 +137,6 @@ async function getFriendRequests(userId) {
       status: request.status,
     }));
 }
-
 
 async function respondToFriendRequest(userId, requestId, action) {
   if (!['accept', 'decline'].includes(action)) {
@@ -192,7 +185,6 @@ async function respondToFriendRequest(userId, requestId, action) {
   return { message: 'Friend request declined' };
 }
 
-
 async function getFriends(userId) {
   const user = await User.findById(userId)
     .populate('friends', '_id username')
@@ -204,7 +196,6 @@ async function getFriends(userId) {
 
   return user.friends;
 }
-
 
 async function getSentFriendRequests(userId) {
   const user = await User.findById(userId);
@@ -224,7 +215,6 @@ async function getSentFriendRequests(userId) {
 
   return receivers;
 }
-
 
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
