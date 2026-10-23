@@ -10,14 +10,12 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    unique: true,
-    minLength: 6,
-    maxLength: 30,
   },
   email: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   friends: [
     {
@@ -29,8 +27,19 @@ const userSchema = new mongoose.Schema({
 
 const userModel = mongoose.model('user', userSchema);
 
+exports.create = async function (userData) {
+  const user = new userModel(userData);
+  return await user.save();
+};
+
+exports.findByEmail = async function (email) {
+  return await userModel.findOne({ email: email.toLowerCase().trim() });
+};
+
+exports.findByUsername = async function (username) {
+  return await userModel.findOne({ username: username.trim() });
+};
+
 exports.readAll = async function () {
   return await userModel.find().select('username');
 };
-
-module.exports = mongoose.model('User', userSchema);

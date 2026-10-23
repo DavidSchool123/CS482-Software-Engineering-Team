@@ -8,9 +8,40 @@ function AccountCreation() {
   const location = useLocation();
   const accountView = location.state?.accountView || 'register';
 
-  function handleSubmit(event, setMessage, message) {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  async function handleSubmit(event) {
     event.preventDefault();
-    setMessage(message);
+    setMessage('');
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/accounts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, email, password, confirmPassword }),
+        },
+      );
+
+      const data = await response.json();
+      setMessage(data.message);
+
+      if (response.ok) {
+        setUsername('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }
+    } catch (error) {
+      setMessage('Unable to connect to the server.');
+    }
   }
 
   return (
@@ -29,7 +60,18 @@ function AccountCreation() {
           {accountView === 'login' ? (
             <Login handleSubmit={handleSubmit} />
           ) : (
-            <Register handleSubmit={handleSubmit} />
+            <Register
+              handleSubmit={handleSubmit}
+              message={message}
+              username={username}
+              setUsername={setUsername}
+              email={email}
+              setEmail={setEmail}
+              password={password}
+              setPassword={setPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
+            />
           )}
         </div>
 

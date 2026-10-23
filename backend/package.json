@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/DavidSchool123/CS482-Software-Engineering-Team#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "^5.3.0",

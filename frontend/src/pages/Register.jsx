@@ -2,23 +2,25 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './AccountCreation.css';
 
-function Register({ handleSubmit }) {
+function Register({
+  handleSubmit,
+  message,
+  username,
+  setUsername,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword,
+}) {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [registerMessage, setRegisterMessage] = useState('');
 
   return (
     <section className='auth-card' aria-labelledby='register-title'>
       <h2 id='register-title'>Register</h2>
-      <form
-        onSubmit={(event) =>
-          handleSubmit(
-            event,
-            setRegisterMessage,
-            'Account creation is not connected yet. Please check back soon.',
-          )
-        }
-      >
+      <form onSubmit={handleSubmit}>
         <div className='auth-field'>
           <label htmlFor='register-username'>Username</label>
           <input
@@ -28,6 +30,8 @@ function Register({ handleSubmit }) {
             placeholder='Choose a username'
             autoComplete='username'
             required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
         </div>
 
@@ -40,6 +44,8 @@ function Register({ handleSubmit }) {
             placeholder='Enter your email'
             autoComplete='email'
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -53,6 +59,8 @@ function Register({ handleSubmit }) {
               placeholder='Create a password'
               autoComplete='new-password'
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
             <button
               className='password-toggle'
@@ -77,11 +85,15 @@ function Register({ handleSubmit }) {
               placeholder='Confirm your password'
               autoComplete='new-password'
               required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
             <button
               className='password-toggle'
               type='button'
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              aria-label={
+                showConfirmPassword ? 'Hide password' : 'Show password'
+              }
               onClick={() => setShowConfirmPassword((visible) => !visible)}
             >
               {showConfirmPassword ? 'Hide' : 'Show'}
@@ -92,11 +104,7 @@ function Register({ handleSubmit }) {
         <button className='auth-submit' type='submit'>
           Create Account
         </button>
-        {registerMessage && (
-          <p className='auth-message' role='status'>
-            {registerMessage}
-          </p>
-        )}
+        <p>{message}</p>
       </form>
     </section>
   );
