@@ -52,6 +52,12 @@ function Login({ handleSubmit }) {
           </div>
         </div>
 
+        <label>Email: </label>
+        <input name='email'
+          id='email' type='text'
+          placeholder='Email' 
+        />
+            
         <div className='auth-options'>
           <label className='remember-option' htmlFor='remember-me'>
             <input id='remember-me' name='remember-me' type='checkbox' />
