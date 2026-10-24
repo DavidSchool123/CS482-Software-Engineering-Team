@@ -1,19 +1,25 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './Lobby.css';
 
 function Lobby({ tableSearch = '' }) {
-  // Store the selected filter options
   const [selectedLevels, setSelectedLevels] = useState([]);
-  const [selectedTypes, setSelectedTypes] = useState([]);
-  const [selectedPlayers, setSelectedPlayers] = useState([]);
-
-  // Store tables retrieved from the backend
+  const [selectedSizes, setSelectedSizes] = useState([]);
+  const [availability, setAvailability] = useState('all');
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch tables from the backend when the Lobby loads
+  const [showPrivateModal, setShowPrivateModal] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+
+  const [showBuyInModal, setShowBuyInModal] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [buyIn, setBuyIn] = useState(0);
+
+  // Temporary balance until the account/chip system is connected.
+  const demoBalance = 1000;
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -28,48 +34,14 @@ function Lobby({ tableSearch = '' }) {
         );
 
         if (!response.ok) {
-          throw new Error('Failed to retrieve tables.');
+          throw new Error('Failed to load tables.');
         }
 
         const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid table data received.');
-        }
-
-        // Convert MongoDB fields to the format used by the Lobby
-        const formattedTables = data.map((table) => {
-          const players =
-            (table.UserIds?.length ?? 0) +
-            (table.BotCount ?? 0);
-
-          // Temporary betting level thresholds
-          let level = 'High';
-
-          if (table.MaxBet <= 100) {
-            level = 'Low';
-          } else if (table.MaxBet <= 500) {
-            level = 'Medium';
-          }
-
-          const isFull = players >= table.Capacity;
-
-          return {
-            id: table._id,
-            name: table.Name || 'Unnamed Table',
-            level,
-            players,
-            maxPlayers: table.Capacity,
-            type: table.IsPublic ? 'Public' : 'Private',
-            status: table.Status || 'Waiting',
-            isFull,
-          };
-        });
-
-        setTables(formattedTables);
+        setTables(data);
       } catch (err) {
         if (err.name !== 'AbortError') {
-          setError(err.message);
+          setError('Unable to load tables. Please try again later.');
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -83,218 +55,499 @@ function Lobby({ tableSearch = '' }) {
     return () => controller.abort();
   }, []);
 
-  // Add or remove a checkbox selection
-  function toggleFilter(value, selected, setSelected) {
-    if (selected.includes(value)) {
-      setSelected(selected.filter((item) => item !== value));
-    } else {
-      setSelected([...selected, value]);
-    }
+  function toggleLevel(level) {
+    setSelectedLevels((previous) =>
+      previous.includes(level)
+        ? previous.filter((item) => item !== level)
+        : [...previous, level]
+    );
   }
 
-  // Filter the available tables based on selections
-  const filteredTables = tables.filter((table) => {
-    const matchesSearch = table.name
-      .toLowerCase()
-      .includes(tableSearch.trim().toLowerCase());
+  function toggleSize(size) {
+    setSelectedSizes((previous) =>
+      previous.includes(size)
+        ? previous.filter((item) => item !== size)
+        : [...previous, size]
+    );
+  }
 
-    const matchesLevel =
-      selectedLevels.length === 0 ||
-      selectedLevels.includes(table.level);
+  function clearFilters() {
+    setSelectedLevels([]);
+    setSelectedSizes([]);
+    setAvailability('all');
+  }
 
-    const matchesType =
-      selectedTypes.length === 0 ||
-      selectedTypes.includes(table.type);
+  function isTableFull(table) {
+    return table.playerCount >= table.capacity;
+  }
 
-    const matchesPlayers =
-      selectedPlayers.length === 0 ||
-      selectedPlayers.includes(table.maxPlayers);
+  function canJoinTable(table) {
+    return (
+      table.status !== 'Closed' &&
+      !isTableFull(table) &&
+      Boolean(table.stakes)
+    );
+  }
+
+  const filteredTables = tables
+    .filter((table) => {
+      const matchesSearch = table.name
+        .toLowerCase()
+        .includes(tableSearch.trim().toLowerCase());
+
+      const matchesLevel =
+        selectedLevels.length === 0 ||
+        selectedLevels.includes(table.level);
+
+      const matchesSize =
+        selectedSizes.length === 0 ||
+        selectedSizes.includes(table.capacity);
+
+      const matchesAvailability =
+        availability === 'all' ||
+        (availability === 'available' && canJoinTable(table)) ||
+        (availability === 'inProgress' &&
+          table.status === 'In Progress');
+
+      return (
+        matchesSearch &&
+        matchesLevel &&
+        matchesSize &&
+        matchesAvailability
+      );
+    })
+    .sort((a, b) => {
+      // Show joinable tables before full tables.
+      return Number(canJoinTable(b)) - Number(canJoinTable(a));
+    });
+
+  function openJoinModal(table) {
+    if (!canJoinTable(table)) return;
+
+    setSelectedTable(table);
+    setBuyIn(table.stakes.minBuyIn);
+    setShowBuyInModal(true);
+  }
+
+  function closeJoinModal() {
+    setShowBuyInModal(false);
+    setSelectedTable(null);
+    setBuyIn(0);
+  }
+
+  function handlePrivateJoin(event) {
+    event.preventDefault();
+
+    if (!joinCode.trim()) return;
+
+    // Private-table lookup belongs to the Join Table feature.
+    alert('Private table lookup is not available yet.');
+  }
+
+  function renderTableCard(table) {
+    const isFull = isTableFull(table);
+    const isInProgress = table.status === 'In Progress';
+    const joinable = canJoinTable(table);
+
+    const displayStatus =
+      isInProgress
+        ? 'In Progress'
+        : isFull
+          ? 'Full'
+          : table.status;
 
     return (
-      matchesSearch &&
-      matchesLevel &&
-      matchesType &&
-      matchesPlayers
+      <article className="table-card" key={table.id}>
+        <div className="table-card-header">
+          <div>
+            <h3>{table.name}</h3>
+            <p className="table-card-subtitle">
+              {table.level} Stakes · {table.playerCount}/
+              {table.capacity} Players
+            </p>
+          </div>
+
+          <span
+            className={`table-status ${
+              isInProgress ? 'status-progress' : ''
+            }`}
+          >
+            {displayStatus}
+          </span>
+        </div>
+
+        <div className="table-card-details">
+          <div className="table-detail">
+            <span className="detail-label">
+              Buy-In Range
+              <span
+                className="info-icon"
+                title="The minimum and maximum number of chips you can bring to this table."
+                tabIndex={0}
+                aria-label="Buy-in range is the minimum and maximum number of chips you can bring to this table."
+              >
+                ⓘ
+              </span>
+            </span>
+
+            <strong>
+              {table.stakes
+                ? `${table.stakes.minBuyIn.toLocaleString()}–${table.stakes.maxBuyIn.toLocaleString()} chips`
+                : 'Unavailable'}
+            </strong>
+          </div>
+
+          <div className="table-detail">
+            <span className="detail-label">
+              Bet Amounts
+              <span
+                className="info-icon"
+                title="The fixed betting increments used during the game. Early rounds use the smaller amount; later rounds use the larger amount."
+                tabIndex={0}
+                aria-label="Bet amounts are the fixed betting increments. Early rounds use the smaller amount and later rounds use the larger amount."
+              >
+                ⓘ
+              </span>
+            </span>
+
+            <strong>
+              {table.stakes
+                ? `${table.stakes.smallBet} / ${table.stakes.bigBet} chips`
+                : 'Unavailable'}
+            </strong>
+          </div>
+        </div>
+
+        <div className="table-card-footer">
+          {isInProgress && joinable && (
+            <span className="join-next-hand-note">
+              Join now, play next hand
+            </span>
+          )}
+
+          <div className="table-actions">
+            {isInProgress && (
+              <button
+                type="button"
+                className="observe-btn"
+                disabled
+                title="Spectator functionality is coming soon."
+              >
+                Observe
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="join-btn"
+              disabled={!joinable}
+              onClick={() => openJoinModal(table)}
+            >
+              {isFull ? 'Table Full' : 'Join Table'}
+            </button>
+          </div>
+        </div>
+      </article>
     );
-  });
+  }
+
+  const maxAffordableBuyIn = selectedTable
+    ? Math.min(selectedTable.stakes.maxBuyIn, demoBalance)
+    : 0;
+
+  const canAffordTable = selectedTable
+    ? demoBalance >= selectedTable.stakes.minBuyIn
+    : false;
 
   return (
-    <main className='lobby-page'>
-      <div className='lobby-layout'>
-        {/* Filter sidebar */}
-        <aside className='lobby-filters'>
+    <div className="lobby-page">
+      <div className="lobby-layout">
+        {/* LEFT: FILTERS */}
+        <aside className="lobby-filters">
           <h2>Filters</h2>
 
-          <div className='filter-group'>
+          <div className="filter-group">
             <h3>Table Level</h3>
+
             {['Low', 'Medium', 'High'].map((level) => (
-              <label key={level}>
+              <label className="filter-option" key={level}>
                 <input
-                  type='checkbox'
+                  type="checkbox"
                   checked={selectedLevels.includes(level)}
-                  onChange={() =>
-                    toggleFilter(
-                      level,
-                      selectedLevels,
-                      setSelectedLevels
-                    )
-                  }
+                  onChange={() => toggleLevel(level)}
                 />
-                {level}
+                <span>{level} Stakes</span>
               </label>
             ))}
           </div>
 
-          <div className='filter-group'>
-            <h3>Table Type</h3>
-            {['Public', 'Private'].map((type) => (
-              <label key={type}>
+          <div className="filter-group">
+            <h3>Table Size</h3>
+
+            {[2, 3, 4, 5, 6].map((size) => (
+              <label className="filter-option" key={size}>
                 <input
-                  type='checkbox'
-                  checked={selectedTypes.includes(type)}
-                  onChange={() =>
-                    toggleFilter(
-                      type,
-                      selectedTypes,
-                      setSelectedTypes
-                    )
-                  }
+                  type="checkbox"
+                  checked={selectedSizes.includes(size)}
+                  onChange={() => toggleSize(size)}
                 />
-                {type}
+                <span>{size} Players</span>
               </label>
             ))}
           </div>
 
-          <div className='filter-group'>
-            <h3>Players</h3>
-            {[2, 3, 4, 5, 6].map((count) => (
-              <label key={count}>
-                <input
-                  type='checkbox'
-                  checked={selectedPlayers.includes(count)}
-                  onChange={() =>
-                    toggleFilter(
-                      count,
-                      selectedPlayers,
-                      setSelectedPlayers
-                    )
-                  }
-                />
-                {count}
-              </label>
-            ))}
+          <div className="filter-group">
+            <h3>Availability</h3>
+
+            <label className="filter-option">
+              <input
+                type="radio"
+                name="availability"
+                value="all"
+                checked={availability === 'all'}
+                onChange={() => setAvailability('all')}
+              />
+              <span>All Tables</span>
+            </label>
+
+            <label className="filter-option">
+              <input
+                type="radio"
+                name="availability"
+                value="available"
+                checked={availability === 'available'}
+                onChange={() => setAvailability('available')}
+              />
+              <span>Available Seats</span>
+            </label>
+
+            <label className="filter-option">
+              <input
+                type="radio"
+                name="availability"
+                value="inProgress"
+                checked={availability === 'inProgress'}
+                onChange={() => setAvailability('inProgress')}
+              />
+              <span>In Progress</span>
+            </label>
           </div>
 
           <button
-            type='button'
-            className='clear-filters-btn'
-            onClick={() => {
-              setSelectedLevels([]);
-              setSelectedTypes([]);
-              setSelectedPlayers([]);
-            }}
+            type="button"
+            className="clear-filters-btn"
+            onClick={clearFilters}
           >
             Clear Filters
           </button>
         </aside>
 
-        {/* Available tables */}
-        <section className='lobby-tables'>
-          <div className='lobby-heading'>
-            <h1>Available Tables</h1>
-            <button type='button'>
-              + Create Table
-            </button>
+        {/* CENTER: PUBLIC TABLES */}
+        <main className="lobby-tables">
+          <div className="lobby-heading">
+            <div>
+              <h1>Public Tables</h1>
+              <p>Find a table to play or watch a game.</p>
+            </div>
+
+            <div className="lobby-heading-actions">
+              <button
+                type="button"
+                className="create-table-btn"
+                disabled
+                title="Create Table functionality is coming soon."
+              >
+                + Create Table
+              </button>
+
+              <button
+                type="button"
+                className="private-table-btn"
+                onClick={() => setShowPrivateModal(true)}
+              >
+                Join Private Table
+              </button>
+            </div>
           </div>
 
-          <div className='table-list-wrapper'>
-            <table className='table-list'>
-              <thead>
-                <tr>
-                  <th>Table Name</th>
-                  <th>Level</th>
-                  <th>Players</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
+          {loading ? (
+            <p className="no-tables">Loading tables...</p>
+          ) : error ? (
+            <p className="no-tables" role="alert">{error}</p>
+          ) : filteredTables.length === 0 ? (
+            <p className="no-tables">
+              No tables match your filters.
+            </p>
+          ) : (
+            <div className="table-card-list">
+              {filteredTables.map(renderTableCard)}
+            </div>
+          )}
+        </main>
 
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className='no-tables'>
-                      Loading tables...
-                    </td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan={6} className='no-tables'>
-                      {error}
-                    </td>
-                  </tr>
-                ) : filteredTables.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className='no-tables'>
-                      {tables.length === 0
-                        ? 'No tables available yet.'
-                        : 'No tables match your selected filters.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTables.map((table) => (
-                    <tr key={table.id}>
-                      <td>{table.name}</td>
-                      <td>{table.level}</td>
-                      <td>
-                        {table.players}/{table.maxPlayers}
-                      </td>
-                      <td>{table.type}</td>
-                      <td>
-                        {table.status === 'Waiting' && table.isFull
-                          ? 'Full'
-                          : table.status}
-                      </td>
-                      <td>
-                        <div className='table-actions'>
-                          <button
-                            type='button'
-                            className='join-btn'
-                            disabled={
-                              table.status !== 'Waiting' ||
-                              table.isFull
-                            }
-                          >
-                            Join
-                          </button>
-
-                          <button
-                            type='button'
-                            className='observe-btn'
-                          >
-                            Observe
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Right advertisement */}
-        <aside className='lobby-ad'>
-          <p>ADVERTISEMENT</p>
+        {/* RIGHT: ADVERTISEMENT PLACEHOLDER */}
+        <aside className="lobby-ad">
+          <span>Advertisement</span>
         </aside>
       </div>
 
-      {/* Bottom advertisement */}
-      <div className='lobby-bottom-ad'>
-        ADVERTISEMENT
+      <div className="lobby-bottom-ad">
+        Advertisement
       </div>
-    </main>
+
+      {/* PRIVATE TABLE MODAL */}
+      {showPrivateModal && (
+        <div
+          className="lobby-modal-overlay"
+          onClick={() => setShowPrivateModal(false)}
+        >
+          <div
+            className="lobby-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="private-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="private-modal-title">Join Private Table</h2>
+            <p>Enter the code shared by the table creator.</p>
+
+            <form onSubmit={handlePrivateJoin}>
+              <label htmlFor="private-join-code">
+                Table Code
+              </label>
+
+              <input
+                id="private-join-code"
+                type="text"
+                value={joinCode}
+                onChange={(event) =>
+                  setJoinCode(event.target.value)
+                }
+                placeholder="Enter table code"
+                required
+              />
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => setShowPrivateModal(false)}
+                >
+                  Cancel
+                </button>
+
+                <button type="submit" className="join-btn">
+                  Find Table
+                </button>
+              </div>
+            </form>
+
+            <p className="modal-note">
+              Private table lookup will be connected later.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* BUY-IN MODAL */}
+      {showBuyInModal && selectedTable && (
+        <div
+          className="lobby-modal-overlay"
+          onClick={closeJoinModal}
+        >
+          <div
+            className="lobby-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="buy-in-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="buy-in-modal-title">
+              Join {selectedTable.name}
+            </h2>
+
+            {selectedTable.status === 'In Progress' && (
+              <p className="modal-note">
+                This game is already in progress. You can
+                take an available seat and play starting
+                with the next hand.
+              </p>
+            )}
+
+            <p>
+              Your Balance:{' '}
+              <strong>
+                {demoBalance.toLocaleString()} chips
+              </strong>
+            </p>
+
+            <p>
+              Buy-In Range:{' '}
+              <strong>
+                {selectedTable.stakes.minBuyIn.toLocaleString()}
+                {' – '}
+                {selectedTable.stakes.maxBuyIn.toLocaleString()}
+                {' chips'}
+              </strong>
+            </p>
+
+            {canAffordTable ? (
+              <>
+                <label htmlFor="buy-in-slider">
+                  Your Buy-In:{' '}
+                  <strong>{buyIn.toLocaleString()} chips</strong>
+                </label>
+
+                <input
+                  id="buy-in-slider"
+                  type="range"
+                  min={selectedTable.stakes.minBuyIn}
+                  max={maxAffordableBuyIn}
+                  step={1}
+                  value={buyIn}
+                  onChange={(event) =>
+                    setBuyIn(Number(event.target.value))
+                  }
+                />
+
+                <p className="modal-note">
+                  Choose how many chips to bring to the table.
+                </p>
+              </>
+            ) : (
+              <p className="modal-note" role="alert">
+                You don't have enough chips to meet this
+                table's minimum buy-in.
+              </p>
+            )}
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={closeJoinModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="join-btn"
+                disabled
+                title="Joining a table will be connected later."
+              >
+                Confirm Buy-In
+              </button>
+            </div>
+
+            <p className="modal-note">
+              Chip transfers and joining will be connected
+              when the account and gameplay features are ready.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

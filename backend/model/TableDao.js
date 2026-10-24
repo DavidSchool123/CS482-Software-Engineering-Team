@@ -37,8 +37,9 @@ const tableSchema = new mongoose.Schema({
         required: true,
     },
 
-    MaxBet: {
-        type: Number,
+    Level: { 
+        type: String,
+        enum: ['Low', 'Medium', 'High'],
         required: true,
     },
 
@@ -65,8 +66,18 @@ exports.create = async function(TableData) {
     return newTable;
 };
 
-// Retrieve all tables for the Lobby
+// Retrieve all tables
 exports.findAll = async function() {
     return await TableModel.find()
-        .select('Name Capacity UserIds BotCount IsPublic MaxBet Status');
+        .select('Name Capacity UserIds BotCount IsPublic Level Status');
+};
+
+// Retrieve public tables for the Lobby
+exports.findPublicTables = async function () {
+  return await TableModel.find({
+    IsPublic: true,
+    Status: { $ne: 'Closed' },
+  }).select(
+    'Name Capacity UserIds BotCount Level Status'
+  );
 };
