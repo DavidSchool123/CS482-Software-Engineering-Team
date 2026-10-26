@@ -34,22 +34,22 @@ app.post('/api/friends/request', UserController.sendFriendRequest);
 app.get('/api/friends/requests/:userId', UserController.getFriendRequests);
 
 // Respond to a friend request
-app.post('/api/friends/requests/:userId/:requestId', UserController.respondToFriendRequest);
+app.post(
+  '/api/friends/requests/:userId/:requestId',
+  UserController.respondToFriendRequest,
+);
 
 // PATCH endpoint for responding to a friend request
 app.patch(
   '/api/friends/requests/:userId/:requestId',
-  UserController.respondToFriendRequest
+  UserController.respondToFriendRequest,
 );
 
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
 
 // Get sent friend requests for a user
-app.get(
-  '/api/friends/sent/:userId',
-  UserController.getSentFriendRequests
-);
+app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
 
 app.post('/api/accounts', UserController.userCreateUpdate);
 
