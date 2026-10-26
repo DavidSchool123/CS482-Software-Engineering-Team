@@ -9,6 +9,7 @@ import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
 import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
+import PokerTable from './pages/PokerTable';
 
 import './App.css';
 
@@ -25,6 +26,8 @@ function App() {
         <Route path='/account' element={<AccountCreation />} />
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
+
+        <Route path='/table/:tableId' element={<PokerTable />} />
 
         <Route path='/profile' element={<Profile />} />
 

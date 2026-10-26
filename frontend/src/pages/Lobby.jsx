@@ -1,6 +1,8 @@
-
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Lobby.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';;
 
 function Lobby({ tableSearch = '' }) {
   const [selectedLevels, setSelectedLevels] = useState([]);
@@ -14,7 +16,9 @@ function Lobby({ tableSearch = '' }) {
   const [joinCode, setJoinCode] = useState('');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-
+  const navigate = useNavigate();
+  const [creatingTable, setCreatingTable] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [createTableData, setCreateTableData] = useState({
     Name: '',
     Capacity: 6,
@@ -22,6 +26,7 @@ function Lobby({ tableSearch = '' }) {
     IsPublic: true,
     Level: 'Medium',
   });
+
 
   const [showBuyInModal, setShowBuyInModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
@@ -39,7 +44,7 @@ function Lobby({ tableSearch = '' }) {
         setError('');
 
         const response = await fetch(
-          'http://localhost:5000/api/tables',
+          `${API_URL}/api/tables`,
           { signal: controller.signal }
         );
 
@@ -153,6 +158,43 @@ function Lobby({ tableSearch = '' }) {
     // Private-table lookup belongs to the Join Table feature.
     alert('Private table lookup is not available yet.');
   }
+
+  async function handleCreateTable(event) {
+    event.preventDefault();
+
+    setCreatingTable(true);
+    setCreateError('');
+
+    try {
+      const response = await fetch(`${API_URL}/api/tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createTableData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to create table.');
+      }
+
+      if (!result.id) {
+        throw new Error('The server did not return a table ID.');
+      }
+
+      setShowCreateModal(false);
+      navigate(`/table/${result.id}`);
+    } catch (error) {
+          console.error('Create table failed:', error);
+
+      setCreateError(error.message || 'Unable to create table.');
+    } finally {
+      setCreatingTable(false);
+    }
+  }
+
 
   function renderTableCard(table) {
     const isFull = isTableFull(table);
@@ -268,6 +310,8 @@ function Lobby({ tableSearch = '' }) {
   const canAffordTable = selectedTable
     ? demoBalance >= selectedTable.stakes.minBuyIn
     : false;
+
+
 
   return (
     <div className="lobby-page">
@@ -421,12 +465,7 @@ function Lobby({ tableSearch = '' }) {
             <h2 id="create-modal-title">Create Table</h2>
             <p>Configure your new table.</p>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                alert('Table creation is not connected yet.');
-              }}
-            >
+            <form onSubmit={handleCreateTable}>
               <label htmlFor="create-table-name">Table Name</label>
               <input
                 id="create-table-name"
@@ -506,6 +545,11 @@ function Lobby({ tableSearch = '' }) {
                 <option value="false">Private</option>
               </select>
 
+              {createError && (
+                <p className="modal-note" role="alert">
+                  {createError}
+                </p>
+              )}
               <div className="modal-actions">
                 <button
                   type="button"
@@ -515,8 +559,12 @@ function Lobby({ tableSearch = '' }) {
                   Cancel
                 </button>
 
-                <button type="submit" className="join-btn">
-                  Create Table
+                <button
+                  type="submit"
+                  className="join-btn"
+                  disabled={creatingTable}
+                >
+                  {creatingTable ? 'Creating...' : 'Create Table'}
                 </button>
               </div>
             </form>

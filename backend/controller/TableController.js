@@ -66,8 +66,12 @@ exports.createTable = async function(req, res){
             const table = await TableDao.create(tableData);
 
             //send the user to a page with the appropriate table info
-            res.redirect('')//replace with correct link
-
+            // Return the new table ID so the frontend can navigate to it.
+            return res.status(201).json({
+                id: table._id.toString(),
+                name: table.Name,
+                joinCode: table.JoinCode,
+            });
         } catch (error) {
             console.error('Error creating table:', error);
 

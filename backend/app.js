@@ -20,6 +20,9 @@ app.get('/', (req, res) => {
 // Lobby endpoint
 app.get('/api/tables', TableController.getAllTables);
 
+//create table
+app.post('/api/tables', TableController.createTable);
+
 // Submit a message to the admin
 app.post('/api/contact', ContactController.submitContact);
 
