@@ -11,7 +11,7 @@ app.use(express.json({ limit: '2.1mb' }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'default-secret',
     resave: false,
     saveUninitialized: false,
     store: mongoStore.create({
