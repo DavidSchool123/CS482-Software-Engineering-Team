@@ -13,6 +13,16 @@ function Lobby({ tableSearch = '' }) {
   const [showPrivateModal, setShowPrivateModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const [createTableData, setCreateTableData] = useState({
+    Name: '',
+    Capacity: 6,
+    BotCount: 0,
+    IsPublic: true,
+    Level: 'Medium',
+  });
+
   const [showBuyInModal, setShowBuyInModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [buyIn, setBuyIn] = useState(0);
@@ -354,8 +364,7 @@ function Lobby({ tableSearch = '' }) {
               <button
                 type="button"
                 className="create-table-btn"
-                disabled
-                title="Create Table functionality is coming soon."
+                onClick={() => setShowCreateModal(true)}
               >
                 + Create Table
               </button>
@@ -394,6 +403,126 @@ function Lobby({ tableSearch = '' }) {
       <div className="lobby-bottom-ad">
         Advertisement
       </div>
+
+
+      {/* CREATE TABLE MODAL */}
+      {showCreateModal && (
+        <div
+          className="lobby-modal-overlay"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="lobby-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="create-modal-title">Create Table</h2>
+            <p>Configure your new table.</p>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                alert('Table creation is not connected yet.');
+              }}
+            >
+              <label htmlFor="create-table-name">Table Name</label>
+              <input
+                id="create-table-name"
+                type="text"
+                value={createTableData.Name}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Name: event.target.value,
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-capacity">Capacity</label>
+              <input
+                id="create-table-capacity"
+                type="number"
+                min="2"
+                max="6"
+                value={createTableData.Capacity}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Capacity: Number(event.target.value),
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-bots">Bot Count</label>
+              <input
+                id="create-table-bots"
+                type="number"
+                min="0"
+                max="5"
+                value={createTableData.BotCount}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    BotCount: Number(event.target.value),
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-level">Level</label>
+              <select
+                id="create-table-level"
+                value={createTableData.Level}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Level: event.target.value,
+                  })
+                }
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+
+              <label htmlFor="create-table-visibility">
+                Visibility
+              </label>
+              <select
+                id="create-table-visibility"
+                value={String(createTableData.IsPublic)}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    IsPublic: event.target.value === 'true',
+                  })
+                }
+              >
+                <option value="true">Public</option>
+                <option value="false">Private</option>
+              </select>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </button>
+
+                <button type="submit" className="join-btn">
+                  Create Table
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* PRIVATE TABLE MODAL */}
       {showPrivateModal && (

@@ -1,6 +1,8 @@
 
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
+const UserDao  = require('../model/UserDao');
+const crypto = require('crypto');
 
 // Get public tables and their betting information for the Lobby
 exports.getAllTables = async function(req, res) {
@@ -37,3 +39,40 @@ exports.getAllTables = async function(req, res) {
         });
     }
 };
+
+//Create a new table
+exports.createTable = async function(req, res){
+    try {
+
+            //random join code -- currently no duplicate protection - will need eventually
+            const generatedJoinCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+            //get host ID -- update when have persistent user ID
+            const hostId =  (await UserDao.readAll())[0];
+
+            const tableData = {
+                Name: req.body.Name,
+                JoinCode: generatedJoinCode,
+                Capacity: req.body.Capacity,
+                UserIds: [hostId],
+                BotCount: req.body.BotCount,
+                IsPublic: req.body.IsPublic,
+                Level: req.body.Level,
+            }
+
+            //handle buy-in
+
+            //create the table
+            const table = await TableDao.create(tableData);
+
+            //send the user to a page with the appropriate table info
+            res.redirect('')//replace with correct link
+
+        } catch (error) {
+            console.error('Error creating table:', error);
+
+            res.status(500).json({
+                message: 'Unable to create table',
+            });
+        }
+}
