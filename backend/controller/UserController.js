@@ -177,8 +177,13 @@ function adminCheck(req) {
 
 async function getUsers(req, res) {
   try {
-    const users = await UserDao.readAll();
-    return res.status(200).json(users);
+    if (exports.adminCheck(req) === true) {
+      const users = await UserDao.readAll();
+      return res.status(200).json(users);
+    } else {
+      res.status(403);
+      res.end();
+    }
   } catch (error) {
     return res.status(500).json({
       message: 'Failed to retrieve users.',
