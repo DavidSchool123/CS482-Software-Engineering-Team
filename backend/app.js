@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');
+const ContactController = require('./controller/ContactController');
 
 const app = express();
 
@@ -19,6 +20,9 @@ app.get('/', (req, res) => {
 // Lobby endpoint
 app.get('/api/tables', TableController.getAllTables);
 
+// Submit a message to the admin
+app.post('/api/contact', ContactController.submitContact);
+
 // Search users by username
 app.get('/api/users/search', UserController.searchUsers);
 app.get('/api/users', UserController.getUsers);
@@ -30,22 +34,22 @@ app.post('/api/friends/request', UserController.sendFriendRequest);
 app.get('/api/friends/requests/:userId', UserController.getFriendRequests);
 
 // Respond to a friend request
-app.post('/api/friends/requests/:userId/:requestId', UserController.respondToFriendRequest);
+app.post(
+  '/api/friends/requests/:userId/:requestId',
+  UserController.respondToFriendRequest,
+);
 
 // PATCH endpoint for responding to a friend request
 app.patch(
   '/api/friends/requests/:userId/:requestId',
-  UserController.respondToFriendRequest
+  UserController.respondToFriendRequest,
 );
 
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
 
 // Get sent friend requests for a user
-app.get(
-  '/api/friends/sent/:userId',
-  UserController.getSentFriendRequests
-);
+app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
 
 app.post('/api/accounts', UserController.userCreateUpdate);
 
