@@ -54,7 +54,7 @@ async function readAll() {
 
 async function getProfile(userId) {
   const user = await User.findById(userId).select(
-    '_id username email friends',
+    '_id username email friends avatar',
   );
 
   if (!user) {
@@ -232,6 +232,25 @@ async function getFriends(userId) {
   return user.friends;
 }
 
+async function removeFriend(userId, friendId) {
+  const user = await User.findById(userId);
+  const friend = await User.findById(friendId);
+
+  if (!user || !friend) {
+    throw new Error('User not found');
+  }
+
+  if (!user.friends.some((id) => id.equals(friend._id))) {
+    throw new Error('This player is not on your friends list');
+  }
+
+  user.friends.pull(friend._id);
+  friend.friends.pull(user._id);
+  await Promise.all([user.save(), friend.save()]);
+
+  return { message: 'Friend removed successfully' };
+}
+
 async function getSentFriendRequests(userId) {
   const user = await User.findById(userId);
 
@@ -260,6 +279,7 @@ User.sendFriendRequest = sendFriendRequest;
 User.getFriendRequests = getFriendRequests;
 User.respondToFriendRequest = respondToFriendRequest;
 User.getFriends = getFriends;
+User.removeFriend = removeFriend;
 User.getSentFriendRequests = getSentFriendRequests;
 
 module.exports = User;
