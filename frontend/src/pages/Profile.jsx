@@ -153,6 +153,32 @@ function ProfileSidebar({ pathname }) {
 
 function Profile() {
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/accounts/me`,
+          {
+            credentials: 'include',
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
   const avatarInputRef = useRef(null);
   const [userId] = useState(() => localStorage.getItem(USER_ID_KEY) || '');
   const [avatar, setAvatar] = useState('');
@@ -334,7 +360,13 @@ function Profile() {
 
             <div className='profile-overview'>
               <div className='profile-name-row'>
-                <h2>PokerQueen</h2>
+                <h2>
+                  {loading
+                    ? 'Loading...'
+                    : user
+                      ? user.username
+                      : 'Not logged in'}
+                </h2>
               </div>
 
               <p className='profile-meta'>Player since Oct 2026</p>
