@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');
+const ContactController = require('./controller/ContactController');
 
 const app = express();
 
@@ -18,6 +19,9 @@ app.get('/', (req, res) => {
 
 // Lobby endpoint
 app.get('/api/tables', TableController.getAllTables);
+
+// Submit a message to the admin
+app.post('/api/contact', ContactController.submitContact);
 
 // Search users by username
 app.get('/api/users/search', UserController.searchUsers);
