@@ -94,7 +94,7 @@ async function searchUsers(req, res) {
       });
     }
 
-    const users = await dao.searchByUsername(username);
+    const users = await UserDao.searchByUsername(username);
 
     res.status(200).json(users);
   } catch (error) {
@@ -115,7 +115,7 @@ async function sendFriendRequest(req, res) {
       });
     }
 
-    const result = await dao.sendFriendRequest(senderId, receiverId);
+    const result = await UserDao.sendFriendRequest(senderId, receiverId);
 
     res.status(201).json(result);
   } catch (error) {
@@ -130,7 +130,7 @@ async function getFriendRequests(req, res) {
   try {
     const { userId } = req.params;
 
-    const requests = await dao.getFriendRequests(userId);
+    const requests = await UserDao.getFriendRequests(userId);
 
     res.status(200).json(requests);
   } catch (error) {
@@ -152,7 +152,7 @@ async function respondToFriendRequest(req, res) {
       });
     }
 
-    const result = await dao.respondToFriendRequest(
+    const result = await UserDao.respondToFriendRequest(
       userId,
       requestId,
       action
@@ -171,7 +171,7 @@ async function getFriends(req, res) {
   try {
     const { userId } = req.params;
 
-    const friends = await dao.getFriends(userId);
+    const friends = await UserDao.getFriends(userId);
 
     res.status(200).json(friends);
   } catch (error) {
@@ -186,7 +186,7 @@ async function getSentFriendRequests(req, res) {
   try {
     const { userId } = req.params;
 
-    const requests = await dao.getSentFriendRequests(userId);
+    const requests = await UserDao.getSentFriendRequests(userId);
 
     res.status(200).json(requests);
   } catch (error) {
