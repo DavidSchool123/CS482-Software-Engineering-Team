@@ -22,6 +22,12 @@ const userSchema = new mongoose.Schema({
     default: '',
     maxlength: 2_100_000,
   },
+  chips: {
+    type: Number,
+    default: 1000,
+    required:true,
+  };
+
   friends: [
     {
       type: mongoose.Schema.Types.ObjectId,
