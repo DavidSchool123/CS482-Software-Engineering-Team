@@ -50,7 +50,6 @@ const achievements = [
 ];
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const USER_ID_KEY = 'pokerFaceUserId';
 
 function StatIcon({ type }) {
   const commonProps = {
@@ -155,23 +154,30 @@ function Profile() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const avatarInputRef = useRef(null);
+  const [avatar, setAvatar] = useState('');
+  const [avatarMessage, setAvatarMessage] = useState('');
 
   useEffect(() => {
     async function fetchUser() {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/accounts/me`,
+          `${API_URL}/api/accounts/me`,
           {
             credentials: 'include',
           },
         );
 
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Could not load your profile.');
         }
+
+        setUser(data);
+        setAvatar(data.avatar || '');
       } catch (error) {
-        console.error('Error fetching user:', error);
+        setAvatarMessage(error.message);
       } finally {
         setLoading(false);
       }
@@ -179,54 +185,18 @@ function Profile() {
 
     fetchUser();
   }, []);
-  const avatarInputRef = useRef(null);
-  const [userId] = useState(() => localStorage.getItem(USER_ID_KEY) || '');
-  const [avatar, setAvatar] = useState('');
-  const [avatarMessage, setAvatarMessage] = useState(() =>
-    userId ? '' : 'Log in to save a profile avatar.',
-  );
-
-  useEffect(() => {
-    if (!userId) {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    async function loadAvatar() {
-      try {
-        const response = await fetch(
-          `${API_URL}/api/users/${encodeURIComponent(userId)}`,
-          { signal: controller.signal },
-        );
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Could not load your profile avatar.');
-        }
-
-        setAvatar(data.avatar || '');
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          setAvatarMessage(error.message);
-        }
-      }
-    }
-
-    loadAvatar();
-    return () => controller.abort();
-  }, [userId]);
 
   async function saveAvatar(dataUrl) {
-    if (!userId) {
+    if (!user?._id) {
       setAvatarMessage('Log in to save a profile avatar.');
       return;
     }
 
     const response = await fetch(
-      `${API_URL}/api/users/${encodeURIComponent(userId)}/avatar`,
+      `${API_URL}/api/users/${encodeURIComponent(user._id)}/avatar`,
       {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatar: dataUrl }),
       },
@@ -238,6 +208,10 @@ function Profile() {
     }
 
     setAvatar(data.avatar || '');
+    setUser((currentUser) => ({
+      ...currentUser,
+      avatar: data.avatar || '',
+    }));
     setAvatarMessage(data.message);
   }
 
