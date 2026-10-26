@@ -67,10 +67,7 @@ app.patch(
 
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
-app.delete(
-  '/api/friends/:userId/:friendId',
-  UserController.removeFriend,
-);
+app.delete('/api/friends/:userId/:friendId', UserController.removeFriend);
 
 // Get sent friend requests for a user
 app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
@@ -79,5 +76,6 @@ app.post('/api/accounts', UserController.userCreateUpdate);
 app.post('/api/accounts/login', UserController.login);
 app.get('/api/accounts/me', UserController.loggedUser);
 app.post('/api/accounts/logout', UserController.logout);
+app.delete('/api/accounts/me', UserController.userDelete);
 
 module.exports = app;

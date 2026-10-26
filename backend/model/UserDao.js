@@ -83,31 +83,36 @@ async function updateAvatar(userId, avatar) {
   );
 }
 
-User.create = async function (userData) {
+async function createUser(userData) {
   const user = new User(userData);
   return await user.save();
-};
+}
 
-User.update = async function (userId, updatedUser) {
+async function updateUser(userId, updatedUser) {
   const user = await User.findByIdAndUpdate(userId, updatedUser);
   return user;
-};
+}
 
-User.findLogin = async function (login) {
+async function deleteUser(userId) {
+  const user = await User.findByIdAndDelete(userId);
+  return user;
+}
+
+async function findUserByLogin(login) {
   const value = login.trim();
 
   return await User.findOne({
     $or: [{ username: value }, { email: value.toLowerCase() }],
   });
-};
+}
 
-User.findByEmail = async function (email) {
+async function findUserByEmail(email) {
   return await User.findOne({ email: email.toLowerCase().trim() });
-};
+}
 
-User.findByUsername = async function (username) {
+async function findUserByUsername(username) {
   return await User.findOne({ username: username.trim() });
-};
+}
 
 // Search users by username
 async function searchByUsername(username) {
@@ -295,5 +300,11 @@ User.respondToFriendRequest = respondToFriendRequest;
 User.getFriends = getFriends;
 User.removeFriend = removeFriend;
 User.getSentFriendRequests = getSentFriendRequests;
+User.createUser = createUser;
+User.updateUser = updateUser;
+User.deleteUser = deleteUser;
+User.findUserByLogin = findUserByLogin;
+User.findUserByEmail = findUserByEmail;
+User.findUserByUsername = findUserByUsername;
 
 module.exports = User;
