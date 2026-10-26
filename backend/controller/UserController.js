@@ -84,6 +84,63 @@ async function getUsers(req, res) {
   }
 }
 
+async function getProfile(req, res) {
+  try {
+    const user = await UserDao.getProfile(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    return res.status(400).json({ message: 'Invalid user ID.' });
+  }
+}
+
+async function updateAvatar(req, res) {
+  const { avatar } = req.body;
+
+  if (
+    typeof avatar !== 'string' ||
+    (avatar !== '' &&
+      !/^data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(
+        avatar,
+      ))
+  ) {
+    return res.status(400).json({
+      message: 'Avatar must be a PNG, JPEG, GIF, or WebP image.',
+    });
+  }
+
+  if (avatar.length > 2_100_000) {
+    return res.status(413).json({
+      message: 'Avatar image is too large.',
+    });
+  }
+
+  try {
+    const user = await UserDao.updateAvatar(req.params.userId, avatar);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Profile avatar saved.',
+      avatar: user.avatar || '',
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    return res.status(500).json({
+      message: 'Could not save the profile avatar.',
+    });
+  }
+}
+
 async function searchUsers(req, res) {
   try {
     const username = req.query.username?.trim();
@@ -197,7 +254,7 @@ async function getSentFriendRequests(req, res) {
 }
 
 
-module.exports = { userCreateUpdate, getUsers, 
+module.exports = { userCreateUpdate, getUsers, getProfile, updateAvatar,
                   searchUsers, 
                   sendFriendRequest, 
                   getFriendRequests, 

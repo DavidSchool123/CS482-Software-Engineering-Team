@@ -8,7 +8,7 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2.1mb' }));
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -26,6 +26,8 @@ app.post('/api/contact', ContactController.submitContact);
 // Search users by username
 app.get('/api/users/search', UserController.searchUsers);
 app.get('/api/users', UserController.getUsers);
+app.get('/api/users/:userId', UserController.getProfile);
+app.put('/api/users/:userId/avatar', UserController.updateAvatar);
 
 // Send a friend request
 app.post('/api/friends/request', UserController.sendFriendRequest);
