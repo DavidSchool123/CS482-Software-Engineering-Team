@@ -71,7 +71,7 @@ async function userCreateUpdate(req, res) {
     };
 
     req.session.userId = id;
-    res.json(await UserDao.update(id, updatedUser));
+    res.json(await UserDao.updateUser(id, updatedUser));
   }
 }
 
