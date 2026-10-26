@@ -47,6 +47,23 @@ async function readAll() {
   return await User.find().select('_id username');
 }
 
+async function getProfile(userId) {
+  const user = await User.findById(userId).select(
+    '_id username email friends',
+  );
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    friendCount: user.friends.length,
+  };
+}
+
 User.create = async function (userData) {
   const user = new User(userData);
   return await user.save();
@@ -218,6 +235,7 @@ async function getSentFriendRequests(userId) {
 
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
+User.getProfile = getProfile;
 User.searchByUsername = searchByUsername;
 User.sendFriendRequest = sendFriendRequest;
 User.getFriendRequests = getFriendRequests;
