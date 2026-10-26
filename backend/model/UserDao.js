@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  avatar: {
+    type: String,
+    default: '',
+    maxlength: 2_100_000,
+  },
   friends: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -61,7 +66,16 @@ async function getProfile(userId) {
     username: user.username,
     email: user.email,
     friendCount: user.friends.length,
+    avatar: user.avatar || '',
   };
+}
+
+async function updateAvatar(userId, avatar) {
+  return User.findByIdAndUpdate(
+    userId,
+    { avatar },
+    { new: true, runValidators: true, select: '_id avatar' },
+  );
 }
 
 User.create = async function (userData) {
@@ -236,6 +250,7 @@ async function getSentFriendRequests(userId) {
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
 User.getProfile = getProfile;
+User.updateAvatar = updateAvatar;
 User.searchByUsername = searchByUsername;
 User.sendFriendRequest = sendFriendRequest;
 User.getFriendRequests = getFriendRequests;
