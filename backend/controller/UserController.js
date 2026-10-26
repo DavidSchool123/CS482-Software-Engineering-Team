@@ -315,7 +315,9 @@ async function getSentFriendRequests(req, res) {
 
 module.exports = {
   userCreateUpdate,
-  getUsers,getProfile, updateAvatar,
+  getUsers,
+  getProfile,
+  updateAvatar,
   searchUsers,
   sendFriendRequest,
   getFriendRequests,
