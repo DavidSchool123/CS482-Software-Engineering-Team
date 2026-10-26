@@ -238,6 +238,24 @@ async function getFriends(req, res) {
   }
 }
 
+async function removeFriend(req, res) {
+  try {
+    const result = await UserDao.removeFriend(
+      req.params.userId,
+      req.params.friendId,
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const status = error.message === 'User not found' ? 404 : 400;
+    return res.status(status).json({ message: error.message });
+  }
+}
+
 
 async function getSentFriendRequests(req, res) {
   try {
@@ -260,4 +278,5 @@ module.exports = { userCreateUpdate, getUsers, getProfile, updateAvatar,
                   getFriendRequests, 
                   respondToFriendRequest,
                   getFriends,
+                  removeFriend,
                   getSentFriendRequests };
