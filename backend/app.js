@@ -49,6 +49,10 @@ app.patch(
 
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
+app.delete(
+  '/api/friends/:userId/:friendId',
+  UserController.removeFriend,
+);
 
 // Get sent friend requests for a user
 app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
