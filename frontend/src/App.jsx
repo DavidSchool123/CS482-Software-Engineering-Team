@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -8,6 +7,7 @@ import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
+import Profile from './pages/Profile';
 
 import './App.css';
 
@@ -25,6 +25,8 @@ function App() {
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
+        <Route path='/profile' element={<Profile />} />
+
         <Route path='/friends' element={<Friends />} />
 
         <Route path='/tutorial' element={<Placeholder title='How to Play' />} />
@@ -38,7 +40,9 @@ function App() {
 
         <Route path='*' element={<Placeholder title='Page Not Found' />} />
 
-        <Route path="/messages" element={<Placeholder title="Messages Coming Soon" />}
+        <Route
+          path='/messages'
+          element={<Placeholder title='Messages Coming Soon' />}
         />
       </Routes>
     </BrowserRouter>
