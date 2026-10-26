@@ -54,6 +54,7 @@ async function userCreateUpdate(req, res) {
     };
 
     const user = await UserDao.create(newUser);
+    req.session.userId = user._id.toString();
     return res.status(201).json({
       message: 'User created successfully.',
       user,
@@ -69,8 +70,71 @@ async function userCreateUpdate(req, res) {
       friends: req.body.friends,
     };
 
+    req.session.userId = id;
     res.json(await UserDao.update(id, updatedUser));
   }
+}
+
+async function login(req, res) {
+  let plogin = req.body.txt_login;
+  let user = await UserDao.findLogin(plogin);
+
+  if (user == null) {
+    return res.status(401).json({
+      message: 'Invalid username/email or password.',
+    });
+  }
+
+  if (passUtil.comparePassword(req.body.txt_pass, user.password)) {
+    console.log('Login successful');
+
+    req.session.userId = user._id.toString();
+
+    return res.status(200).json({
+      message: 'Login successful.',
+    });
+  }
+
+  return res.status(401).json({
+    message: 'Invalid username/email or password.',
+  });
+}
+
+async function loggedUser(req, res) {
+  if (!req.session.userId) {
+    return res.status(401).json({
+      message: 'You are not logged in.',
+    });
+  }
+
+  const user = await UserDao.getProfile(req.session.userId);
+
+  if (!user) {
+    return res.status(404).json({
+      message: 'User not found.',
+    });
+  }
+
+  return res.status(200).json(user);
+}
+
+async function logout(req, res) {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({
+        message: 'Unable to log out.',
+      });
+    }
+
+    res.clearCookie('connect.sid');
+    return res.status(200).json({
+      message: 'Logged out successfully.',
+    });
+  });
+}
+
+function adminCheck(req) {
+  return req.session.user && req.session.user.permission == 1;
 }
 
 async function getUsers(req, res) {
@@ -125,7 +189,6 @@ async function sendFriendRequest(req, res) {
   }
 }
 
-
 async function getFriendRequests(req, res) {
   try {
     const { userId } = req.params;
@@ -139,7 +202,6 @@ async function getFriendRequests(req, res) {
     });
   }
 }
-
 
 async function respondToFriendRequest(req, res) {
   try {
@@ -155,7 +217,7 @@ async function respondToFriendRequest(req, res) {
     const result = await UserDao.respondToFriendRequest(
       userId,
       requestId,
-      action
+      action,
     );
 
     res.status(200).json(result);
@@ -165,7 +227,6 @@ async function respondToFriendRequest(req, res) {
     });
   }
 }
-
 
 async function getFriends(req, res) {
   try {
@@ -181,7 +242,6 @@ async function getFriends(req, res) {
   }
 }
 
-
 async function getSentFriendRequests(req, res) {
   try {
     const { userId } = req.params;
@@ -196,11 +256,17 @@ async function getSentFriendRequests(req, res) {
   }
 }
 
-
-module.exports = { userCreateUpdate, getUsers, 
-                  searchUsers, 
-                  sendFriendRequest, 
-                  getFriendRequests, 
-                  respondToFriendRequest,
-                  getFriends,
-                  getSentFriendRequests };
+module.exports = {
+  userCreateUpdate,
+  getUsers,
+  searchUsers,
+  sendFriendRequest,
+  getFriendRequests,
+  respondToFriendRequest,
+  getFriends,
+  getSentFriendRequests,
+  login,
+  loggedUser,
+  logout,
+  adminCheck,
+};

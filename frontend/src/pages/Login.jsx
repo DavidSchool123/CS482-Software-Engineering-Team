@@ -8,15 +8,7 @@ function Login({ handleSubmit }) {
   return (
     <section className='auth-card' aria-labelledby='sign-in-title'>
       <h2 id='sign-in-title'>Login</h2>
-      <form
-        onSubmit={(event) =>
-          handleSubmit(
-            event,
-            setLoginMessage,
-            'Sign in is not connected yet. Please check back soon.',
-          )
-        }
-      >
+      <form onSubmit={handleSubmit}>
         <div className='auth-field'>
           <label htmlFor='login-username'>Username or Email</label>
           <input
@@ -51,12 +43,6 @@ function Login({ handleSubmit }) {
           </div>
         </div>
 
-        <label>Email: </label>
-        <input name='email'
-          id='email' type='text'
-          placeholder='Email' 
-        />
-            
         <div className='auth-options'>
           <label className='remember-option' htmlFor='remember-me'>
             <input id='remember-me' name='remember-me' type='checkbox' />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Profile.css';
 
@@ -150,6 +150,32 @@ function ProfileSidebar({ pathname }) {
 
 function Profile() {
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/accounts/me`,
+          {
+            credentials: 'include',
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
 
   return (
     <div className='profile-page'>
@@ -181,7 +207,13 @@ function Profile() {
 
             <div className='profile-overview'>
               <div className='profile-name-row'>
-                <h2>PokerQueen</h2>
+                <h2>
+                  {loading
+                    ? 'Loading...'
+                    : user
+                      ? user.username
+                      : 'Not logged in'}
+                </h2>
               </div>
 
               <p className='profile-meta'>Player since Oct 2026</p>
