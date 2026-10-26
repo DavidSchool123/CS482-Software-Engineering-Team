@@ -54,7 +54,9 @@ async function readAll() {
 
 async function getProfile(userId) {
 
-  const user = await User.findById(userId).select('_id username email friends');
+  const user = await User.findById(userId).select(
+    '_id username email friends avatar',
+  );
 
   if (!user) {
     return null;
