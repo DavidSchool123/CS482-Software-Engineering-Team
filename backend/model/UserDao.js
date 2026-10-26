@@ -74,7 +74,11 @@ async function updateAvatar(userId, avatar) {
   return User.findByIdAndUpdate(
     userId,
     { avatar },
-    { new: true, runValidators: true, select: '_id avatar' },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+      select: '_id avatar',
+    },
   );
 }
 
