@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Profile.css';
 
 const sidebarItems = [
@@ -202,7 +202,9 @@ function Profile() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || 'Could not load your profile avatar.');
+          throw new Error(
+            data.message || 'Could not load your profile avatar.',
+          );
         }
 
         setAvatar(data.avatar || '');
@@ -308,11 +310,7 @@ function Profile() {
                 aria-label='Profile avatar'
               >
                 {avatar ? (
-                  <img
-                    src={avatar}
-                    alt=''
-                    className='profile-avatar-image'
-                  />
+                  <img src={avatar} alt='' className='profile-avatar-image' />
                 ) : (
                   <svg
                     viewBox='0 0 100 100'
@@ -439,6 +437,7 @@ function Profile() {
 
 function EditProfile() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [confirmation, setConfirmation] = useState(null);
   const [feedback, setFeedback] = useState('');
 
@@ -462,11 +461,34 @@ function EditProfile() {
     setConfirmation(null);
   }
 
-  function confirmAction() {
-    setFeedback(
-      'Confirmation received. Account changes are not connected to a service yet.',
-    );
-    setConfirmation(null);
+  async function confirmAction() {
+    if (confirmation.type !== 'delete') {
+      setFeedback('Account changes are not connected to a service yet.');
+      setConfirmation(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/accounts/me`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFeedback(data.message || 'Failed to delete account.');
+        setConfirmation(null);
+        return;
+      }
+
+      navigate('/', {
+        state: { accountView: 'login' },
+      });
+    } catch (error) {
+      setFeedback('Unable to connect to the server.');
+      setConfirmation(null);
+    }
   }
 
   return (
@@ -619,7 +641,9 @@ function EditProfile() {
             </h2>
             <p>Are you sure you want to {confirmation.description}?</p>
             <p className='confirmation-note'>
-              Account changes are not connected to a service yet.
+              {confirmation.type === 'delete'
+                ? 'Your account will be permanently deleted.'
+                : 'Account changes are not connected to a service yet.'}
             </p>
             <div className='profile-confirmation-actions'>
               <button

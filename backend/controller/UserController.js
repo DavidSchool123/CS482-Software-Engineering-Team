@@ -28,7 +28,7 @@ async function userCreateUpdate(req, res) {
       });
     }
 
-    const existingEmail = await UserDao.findByEmail(email);
+    const existingEmail = await UserDao.findUserByEmail(email);
 
     if (existingEmail) {
       return res.status(409).json({
@@ -36,7 +36,7 @@ async function userCreateUpdate(req, res) {
       });
     }
 
-    const existingUsername = await UserDao.findByUsername(username);
+    const existingUsername = await UserDao.findUserByUsername(username);
 
     if (existingUsername) {
       return res.status(409).json({
@@ -53,7 +53,7 @@ async function userCreateUpdate(req, res) {
       friends: [],
     };
 
-    const user = await UserDao.create(newUser);
+    const user = await UserDao.createUser(newUser);
     req.session.userId = user._id.toString();
     return res.status(201).json({
       message: 'User created successfully.',
@@ -75,9 +75,47 @@ async function userCreateUpdate(req, res) {
   }
 }
 
+async function userDelete(req, res) {
+  const userId = req.session.userId;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: 'You must be logged in to delete your account.',
+    });
+  }
+
+  try {
+    const user = await UserDao.deleteUser(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    req.session.destroy((error) => {
+      if (error) {
+        return res.status(500).json({
+          message: 'Account deleted, but failed to end the session.',
+        });
+      }
+
+      res.clearCookie('connect.sid');
+
+      return res.status(200).json({
+        message: 'Account deleted successfully.',
+      });
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to delete user.',
+    });
+  }
+}
+
 async function login(req, res) {
   let plogin = req.body.txt_login;
-  let user = await UserDao.findLogin(plogin);
+  let user = await UserDao.findUserByLogin(plogin);
 
   if (user == null) {
     return res.status(401).json({
@@ -333,6 +371,7 @@ async function getSentFriendRequests(req, res) {
 
 module.exports = {
   userCreateUpdate,
+  userDelete,
   getUsers,
   getProfile,
   updateAvatar,
@@ -346,4 +385,5 @@ module.exports = {
   loggedUser,
   logout,
   adminCheck,
+  removeFriend,
 };
