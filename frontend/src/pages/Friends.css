@@ -415,6 +415,16 @@
   background: #e0d3ee;
 }
 
+.friends-player-actions .friends-remove-button {
+  border: 1px solid #e1b8c0;
+  background: #fff5f6;
+  color: #9b283d;
+}
+
+.friends-player-actions .friends-remove-button:hover:not(:disabled) {
+  background: #fce5e8;
+}
+
 .friends-status {
   margin-left: auto;
   color: #7130b4;

@@ -284,6 +284,36 @@ function Friends() {
     }
   }
 
+  async function removeFriend(friend) {
+    if (!window.confirm(`Remove ${friend.username} from your friends list?`)) {
+      return;
+    }
+
+    setBusyId(friend._id);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/friends/${currentUserId}/${friend._id}`,
+        { method: 'DELETE' },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Could not remove friend.');
+      }
+
+      await refreshFriendData();
+      setMessage(`${friend.username} was removed from your friends list.`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setBusyId('');
+    }
+  }
+
   function openSearch() {
     setShowSearch(true);
     setActiveTab('friends');
@@ -612,6 +642,14 @@ function Friends() {
                       <span aria-hidden="true">✉</span>
                       Message
                     </Link>
+                    <button
+                      type="button"
+                      className="friends-remove-button"
+                      disabled={busyId === friend._id}
+                      onClick={() => removeFriend(friend)}
+                    >
+                      {busyId === friend._id ? 'Removing...' : 'Remove'}
+                    </button>
                   </div>
                 </div>
               ))}
