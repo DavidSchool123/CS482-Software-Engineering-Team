@@ -7,6 +7,7 @@ import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
+import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
 
 import './App.css';
@@ -38,7 +39,7 @@ function App() {
           element={<Placeholder title='About Poker Face' />}
         />
 
-        <Route path='/contact' element={<Placeholder title='Contact Us' />} />
+        <Route path='/contact' element={<Contact />} />
 
         <Route path='*' element={<Placeholder title='Page Not Found' />} />
 
