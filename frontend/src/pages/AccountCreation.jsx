@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './AccountCreation.css';
 import Login from './Login';
 import Register from './Register';
@@ -7,6 +7,7 @@ import Register from './Register';
 function AccountCreation() {
   const location = useLocation();
   const accountView = location.state?.accountView || 'register';
+  const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -14,7 +15,7 @@ function AccountCreation() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  async function handleSubmit(event) {
+  async function handleRegisterSubmit(event) {
     event.preventDefault();
     setMessage('');
 
@@ -23,6 +24,7 @@ function AccountCreation() {
         `${import.meta.env.VITE_API_URL}/api/accounts`,
         {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -38,6 +40,39 @@ function AccountCreation() {
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+
+        navigate('/lobby');
+      }
+    } catch (error) {
+      setMessage('Unable to connect to the server.');
+    }
+  }
+
+  async function handleLoginSubmit(event) {
+    event.preventDefault();
+    setMessage('');
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/accounts/login`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            txt_login: formData.get('username'),
+            txt_pass: formData.get('password'),
+          }),
+        },
+      );
+
+      const data = await response.json();
+      setMessage(data.message);
+
+      if (response.ok) {
+        navigate('/lobby');
       }
     } catch (error) {
       setMessage('Unable to connect to the server.');
@@ -58,10 +93,10 @@ function AccountCreation() {
 
         <div className='login-panels'>
           {accountView === 'login' ? (
-            <Login handleSubmit={handleSubmit} />
+            <Login handleSubmit={handleLoginSubmit} />
           ) : (
             <Register
-              handleSubmit={handleSubmit}
+              handleSubmit={handleRegisterSubmit}
               message={message}
               username={username}
               setUsername={setUsername}

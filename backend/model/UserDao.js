@@ -53,9 +53,7 @@ async function readAll() {
 }
 
 async function getProfile(userId) {
-  const user = await User.findById(userId).select(
-    '_id username email friends',
-  );
+  const user = await User.findById(userId).select('_id username email friends');
 
   if (!user) {
     return null;
@@ -85,6 +83,19 @@ async function updateAvatar(userId, avatar) {
 User.create = async function (userData) {
   const user = new User(userData);
   return await user.save();
+};
+
+User.update = async function (userId, updatedUser) {
+  const user = await User.findByIdAndUpdate(userId, updatedUser);
+  return user;
+};
+
+User.findLogin = async function (login) {
+  const value = login.trim();
+
+  return await User.findOne({
+    $or: [{ username: value }, { email: value.toLowerCase() }],
+  });
 };
 
 User.findByEmail = async function (email) {
