@@ -341,6 +341,7 @@ module.exports = {
   getFriendRequests,
   respondToFriendRequest,
   getFriends,
+  removeFriend,
   getSentFriendRequests,
   login,
   loggedUser,
