@@ -7,7 +7,7 @@ import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
-import Profile from './pages/Profile';
+import Profile, { EditProfile } from './pages/Profile';
 
 import './App.css';
 
@@ -26,6 +26,8 @@ function App() {
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
         <Route path='/profile' element={<Profile />} />
+
+        <Route path='/profile/edit' element={<EditProfile />} />
 
         <Route path='/friends' element={<Friends />} />
 
