@@ -185,7 +185,7 @@ function Lobby({ tableSearch = '' }) {
       }
 
       setShowCreateModal(false);
-      navigate(`/table/${result.id}`);
+      navigate(`/table/${result.joinCode}`); //theoretically, this should also use the same buy in as the join table -- i need to talk with the team about how the buy-ins should work...
     } catch (error) {
           console.error('Create table failed:', error);
 

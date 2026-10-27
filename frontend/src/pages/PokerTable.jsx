@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import './PokerTable.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const currentPlayer = { name: 'You (Host)', chips: null, position: 'bottom', you: true };
 
@@ -29,12 +31,47 @@ function HostSeat() {
 }
 
 function Table() {
-  const { tableId } = useParams();
+  const { tableId: joinCode } = useParams();
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [table, setTable] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [gameNotice, setGameNotice] = useState(
-    'Waiting for other players. The game will be available when gameplay is implemented.'
+  'Waiting for other players. The game will be available when gameplay is implemented.'
   );
+
+  useEffect(() => {
+  async function fetchTable() {
+  try {
+  setLoading(true);
+  setError(null);
+
+      const response = await fetch(
+        `${API_URL}/api/tables/${encodeURIComponent(joinCode)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          response.status === 404
+            ? 'Table not found. Check the join code.'
+            : 'Unable to load table information.'
+        );
+      }
+
+      const data = await response.json();
+      setTable(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchTable();
+
+  }, [joinCode]);
+
 
   function showNotImplemented(feature) {
     setGameNotice(`${feature} is not available yet. The game has not started.`);
@@ -47,6 +84,25 @@ function Table() {
     setChatMessages((current) => [...current, { name: 'You', message }]);
     setChatMessage('');
     setGameNotice('Chat is a local preview only; messages are not sent to other players.');
+  }
+
+  if (loading) {
+    return (
+      <main className="stud-page">
+        <p role="status">Loading table...</p>
+      </main>
+    );
+  }
+
+  if (error || !table) {
+    return (
+      <main className="stud-page">
+        <p role="alert">{error || 'Table not found.'}</p>
+        <Link to="/lobby" className="stud-back-link">
+          ← Back to Lobby
+        </Link>
+      </main>
+    );
   }
 
   return (
@@ -71,13 +127,12 @@ function Table() {
       <div className="stud-layout">
         <aside className="stud-left-column">
           <section className="stud-panel stud-table-info">
-            <h2>Table: Waiting Room</h2>
+            <h2>Table: {table.name}</h2>
             <dl>
-              <div><dt>Level</dt><dd>—</dd></div>
-              <div><dt>Type</dt><dd>—</dd></div>
-              <div><dt>Players</dt><dd>1/6</dd></div>
-              <div><dt>Bots</dt><dd>0</dd></div>
-              {tableId && <div><dt>Table ID</dt><dd className="stud-table-id">{tableId}</dd></div>}
+              <div><dt>Join Code</dt><dd className="stud-table-id">{table.joinCode || joinCode}</dd></div>
+              <div><dt>Level</dt><dd>{table.level}</dd></div>
+              <div><dt>Players</dt><dd>{table.filledSeats}/{table.capacity}</dd></div>
+              <div><dt>Bots</dt><dd>{table.botCount}</dd></div>
             </dl>
             <button type="button" className="stud-secondary-button" onClick={() => showNotImplemented('Leaving the table')}>Leave Table</button>
           </section>

@@ -80,3 +80,38 @@ exports.createTable = async function(req, res){
             });
         }
 }
+
+
+//find a table using its join code
+exports.findTableByCode = async function(req, res){
+    try {
+
+            //create the table
+            const table = await TableDao.findTableByCode(req);
+
+            //error, couldn't find table
+            if (!table) {
+                return res.status(404).json({
+                    message: 'Table not found',
+                });
+            }
+
+            //send the user to a page with the appropriate table info
+            // Return the new table ID so the frontend can navigate to it.
+            return res.status(200).json({
+                id: table._id.toString(),
+                filledSeats: (table.UserIds.length + table.BotCount),
+                capacity: table.Capacity,
+                botCount: table.BotCount,
+                level: table.Level,
+                name: table.Name,
+                joinCode: table.JoinCode,
+            });
+        } catch (error) {
+            console.error('Error finding table:', error);
+
+            res.status(500).json({
+                message: 'Unable to find table',
+            });
+        }
+}
