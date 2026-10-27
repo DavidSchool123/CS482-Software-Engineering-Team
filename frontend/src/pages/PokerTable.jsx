@@ -165,13 +165,13 @@ function Table() {
             <EmptySeat position="right-upper" />
             <HostSeat />
             <div className="stud-board stud-board-waiting">
-              <div className="stud-community-cards stud-community-cards-empty" aria-label="No cards dealt yet">
+              {/*}<div className="stud-community-cards stud-community-cards-empty" aria-label="No cards dealt yet">
                 <span className="stud-empty-card" />
                 <span className="stud-empty-card" />
                 <span className="stud-empty-card" />
                 <span className="stud-empty-card" />
                 <span className="stud-empty-card" />
-              </div>
+              </div>*/}
               <div className="stud-pot">
                 <span className="stud-pot-chips" aria-hidden="true">▤</span>
                 <span>Pot: $0</span>
