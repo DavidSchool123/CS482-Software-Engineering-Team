@@ -1,14 +1,55 @@
+const path = require('path');
+require('dotenv').config({
+  path: path.join(__dirname, '.env'),
+});
 const express = require('express');
 const cors = require('cors');
-const TableController = require('./controller/TableController');
-const UserController = require('./controller/UserController');
-const ContactController = require('./controller/ContactController');
+const session = require('express-session');
+const mongoStore = require('connect-mongo').default;
 
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(express.json({ limit: '2.1mb' }));
+
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET || 'default-secret',
+//     resave: false,
+//     saveUninitialized: false,
+//     store: mongoStore.create({
+//       mongoUrl: process.env.MONGODB_URI,
+//       ttl: 60 * 60 * 24 * 7,
+//     }),
+//     cookie: {
+//       maxAge: 1000 * 60 * 60 * 24,
+//     },
+//   }),
+// );
+
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'default-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24,
+  },
+};
+
+// MongoDB sessions outside of tests
+if (process.env.NODE_ENV !== 'test') {
+  sessionConfig.store = mongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 60 * 60 * 24 * 7,
+  });
+}
+
+app.use(session(sessionConfig));
+
+const TableController = require('./controller/TableController');
+const UserController = require('./controller/UserController');
+const ContactController = require('./controller/ContactController');
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -29,6 +70,8 @@ app.post('/api/contact', ContactController.submitContact);
 // Search users by username
 app.get('/api/users/search', UserController.searchUsers);
 app.get('/api/users', UserController.getUsers);
+app.get('/api/users/:userId', UserController.getProfile);
+app.put('/api/users/:userId/avatar', UserController.updateAvatar);
 
 // Send a friend request
 app.post('/api/friends/request', UserController.sendFriendRequest);
@@ -50,10 +93,15 @@ app.patch(
 
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
+app.delete('/api/friends/:userId/:friendId', UserController.removeFriend);
 
 // Get sent friend requests for a user
 app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
 
 app.post('/api/accounts', UserController.userCreateUpdate);
+app.post('/api/accounts/login', UserController.login);
+app.get('/api/accounts/me', UserController.loggedUser);
+app.post('/api/accounts/logout', UserController.logout);
+app.delete('/api/accounts/me', UserController.userDelete);
 
 module.exports = app;

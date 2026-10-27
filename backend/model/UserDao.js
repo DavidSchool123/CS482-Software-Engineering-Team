@@ -53,8 +53,9 @@ async function readAll() {
 }
 
 async function getProfile(userId) {
+
   const user = await User.findById(userId).select(
-    '_id username email friends',
+    '_id username email friends avatar',
   );
 
   if (!user) {
@@ -74,22 +75,44 @@ async function updateAvatar(userId, avatar) {
   return User.findByIdAndUpdate(
     userId,
     { avatar },
-    { new: true, runValidators: true, select: '_id avatar' },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+      select: '_id avatar',
+    },
   );
 }
 
-User.create = async function (userData) {
+async function createUser(userData) {
   const user = new User(userData);
   return await user.save();
-};
+}
 
-User.findByEmail = async function (email) {
+async function updateUser(userId, updatedUser) {
+  const user = await User.findByIdAndUpdate(userId, updatedUser);
+  return user;
+}
+
+async function deleteUser(userId) {
+  const user = await User.findByIdAndDelete(userId);
+  return user;
+}
+
+async function findUserByLogin(login) {
+  const value = login.trim();
+
+  return await User.findOne({
+    $or: [{ username: value }, { email: value.toLowerCase() }],
+  });
+}
+
+async function findUserByEmail(email) {
   return await User.findOne({ email: email.toLowerCase().trim() });
-};
+}
 
-User.findByUsername = async function (username) {
+async function findUserByUsername(username) {
   return await User.findOne({ username: username.trim() });
-};
+}
 
 // Search users by username
 async function searchByUsername(username) {
@@ -228,6 +251,25 @@ async function getFriends(userId) {
   return user.friends;
 }
 
+async function removeFriend(userId, friendId) {
+  const user = await User.findById(userId);
+  const friend = await User.findById(friendId);
+
+  if (!user || !friend) {
+    throw new Error('User not found');
+  }
+
+  if (!user.friends.some((id) => id.equals(friend._id))) {
+    throw new Error('This player is not on your friends list');
+  }
+
+  user.friends.pull(friend._id);
+  friend.friends.pull(user._id);
+  await Promise.all([user.save(), friend.save()]);
+
+  return { message: 'Friend removed successfully' };
+}
+
 async function getSentFriendRequests(userId) {
   const user = await User.findById(userId);
 
@@ -256,6 +298,13 @@ User.sendFriendRequest = sendFriendRequest;
 User.getFriendRequests = getFriendRequests;
 User.respondToFriendRequest = respondToFriendRequest;
 User.getFriends = getFriends;
+User.removeFriend = removeFriend;
 User.getSentFriendRequests = getSentFriendRequests;
+User.createUser = createUser;
+User.updateUser = updateUser;
+User.deleteUser = deleteUser;
+User.findUserByLogin = findUserByLogin;
+User.findUserByEmail = findUserByEmail;
+User.findUserByUsername = findUserByUsername;
 
 module.exports = User;

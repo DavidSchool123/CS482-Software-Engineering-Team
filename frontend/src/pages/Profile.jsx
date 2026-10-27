@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Profile.css';
 
 const sidebarItems = [
@@ -48,6 +48,8 @@ const achievements = [
     text: 'Win 50 games total.',
   },
 ];
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function StatIcon({ type }) {
   const commonProps = {
@@ -150,6 +152,119 @@ function ProfileSidebar({ pathname }) {
 
 function Profile() {
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const avatarInputRef = useRef(null);
+  const [avatar, setAvatar] = useState('');
+  const [avatarMessage, setAvatarMessage] = useState('');
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/accounts/me`,
+          {
+            credentials: 'include',
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Could not load your profile.');
+        }
+
+        setUser(data);
+        setAvatar(data.avatar || '');
+      } catch (error) {
+        setAvatarMessage(error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
+
+  async function saveAvatar(dataUrl) {
+    if (!user?._id) {
+      setAvatarMessage('Log in to save a profile avatar.');
+      return;
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/users/${encodeURIComponent(user._id)}/avatar`,
+      {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: dataUrl }),
+      },
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Could not save your profile avatar.');
+    }
+
+    setAvatar(data.avatar || '');
+    setUser((currentUser) => ({
+      ...currentUser,
+      avatar: data.avatar || '',
+    }));
+    setAvatarMessage(data.message);
+  }
+
+  function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (
+      !['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(
+        file.type,
+      )
+    ) {
+      setAvatarMessage('Choose a PNG, JPEG, GIF, or WebP image.');
+      return;
+    }
+
+    if (file.size > 1.5 * 1024 * 1024) {
+      setAvatarMessage('Choose an image smaller than 1.5 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') {
+        setAvatarMessage('Could not read that image. Try another file.');
+        return;
+      }
+
+      try {
+        setAvatarMessage('Saving profile avatar...');
+        await saveAvatar(reader.result);
+      } catch (error) {
+        setAvatarMessage(error.message);
+      }
+    };
+    reader.onerror = () => {
+      setAvatarMessage('Could not read that image. Try another file.');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function removeAvatar() {
+    try {
+      setAvatarMessage('Removing profile avatar...');
+      await saveAvatar('');
+    } catch (error) {
+      setAvatarMessage(error.message);
+    }
+  }
 
   return (
     <div className='profile-page'>
@@ -163,25 +278,65 @@ function Profile() {
             <div className='profile-avatar-box'>
               <div
                 className='profile-avatar-circle'
+                role='img'
                 aria-label='Profile avatar'
               >
-                <svg
-                  viewBox='0 0 100 100'
-                  className='profile-avatar-svg'
-                  aria-hidden='true'
-                >
-                  <circle cx='50' cy='38' r='23' />
-                  <path d='M24 82c3-16 13-24 26-24s23 8 26 24' />
-                </svg>
+                {avatar ? (
+                  <img src={avatar} alt='' className='profile-avatar-image' />
+                ) : (
+                  <svg
+                    viewBox='0 0 100 100'
+                    className='profile-avatar-svg'
+                    aria-hidden='true'
+                  >
+                    <circle cx='50' cy='38' r='23' />
+                    <path d='M24 82c3-16 13-24 26-24s23 8 26 24' />
+                  </svg>
+                )}
               </div>
-              <button type='button' className='profile-change-button'>
-                Change Avatar
+              <input
+                ref={avatarInputRef}
+                type='file'
+                accept='image/png,image/jpeg,image/gif,image/webp'
+                className='profile-avatar-input'
+                aria-label='Choose a profile avatar image'
+                onChange={handleAvatarChange}
+              />
+              <button
+                type='button'
+                className='profile-change-button'
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                Choose Image
               </button>
+              {avatar && (
+                <button
+                  type='button'
+                  className='profile-remove-avatar-button'
+                  onClick={removeAvatar}
+                >
+                  Remove Image
+                </button>
+              )}
+              {avatarMessage && (
+                <p className='profile-avatar-message' role='status'>
+                  {avatarMessage}
+                </p>
+              )}
+              <p className='profile-avatar-hint'>
+                PNG, JPEG, GIF, or WebP up to 1.5 MB. Saved to your account.
+              </p>
             </div>
 
             <div className='profile-overview'>
               <div className='profile-name-row'>
-                <h2>PokerQueen</h2>
+                <h2>
+                  {loading
+                    ? 'Loading...'
+                    : user
+                      ? user.username
+                      : 'Not logged in'}
+                </h2>
               </div>
 
               <p className='profile-meta'>Player since Oct 2026</p>
@@ -254,6 +409,7 @@ function Profile() {
 
 function EditProfile() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [confirmation, setConfirmation] = useState(null);
   const [feedback, setFeedback] = useState('');
 
@@ -277,11 +433,34 @@ function EditProfile() {
     setConfirmation(null);
   }
 
-  function confirmAction() {
-    setFeedback(
-      'Confirmation received. Account changes are not connected to a service yet.',
-    );
-    setConfirmation(null);
+  async function confirmAction() {
+    if (confirmation.type !== 'delete') {
+      setFeedback('Account changes are not connected to a service yet.');
+      setConfirmation(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/accounts/me`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFeedback(data.message || 'Failed to delete account.');
+        setConfirmation(null);
+        return;
+      }
+
+      navigate('/', {
+        state: { accountView: 'login' },
+      });
+    } catch (error) {
+      setFeedback('Unable to connect to the server.');
+      setConfirmation(null);
+    }
   }
 
   return (
@@ -434,7 +613,9 @@ function EditProfile() {
             </h2>
             <p>Are you sure you want to {confirmation.description}?</p>
             <p className='confirmation-note'>
-              Account changes are not connected to a service yet.
+              {confirmation.type === 'delete'
+                ? 'Your account will be permanently deleted.'
+                : 'Account changes are not connected to a service yet.'}
             </p>
             <div className='profile-confirmation-actions'>
               <button

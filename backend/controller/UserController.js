@@ -28,7 +28,7 @@ async function userCreateUpdate(req, res) {
       });
     }
 
-    const existingEmail = await UserDao.findByEmail(email);
+    const existingEmail = await UserDao.findUserByEmail(email);
 
     if (existingEmail) {
       return res.status(409).json({
@@ -36,7 +36,7 @@ async function userCreateUpdate(req, res) {
       });
     }
 
-    const existingUsername = await UserDao.findByUsername(username);
+    const existingUsername = await UserDao.findUserByUsername(username);
 
     if (existingUsername) {
       return res.status(409).json({
@@ -53,7 +53,8 @@ async function userCreateUpdate(req, res) {
       friends: [],
     };
 
-    const user = await UserDao.create(newUser);
+    const user = await UserDao.createUser(newUser);
+    req.session.userId = user._id.toString();
     return res.status(201).json({
       message: 'User created successfully.',
       user,
@@ -69,17 +70,180 @@ async function userCreateUpdate(req, res) {
       friends: req.body.friends,
     };
 
-    res.json(await UserDao.update(id, updatedUser));
+    req.session.userId = id;
+    res.json(await UserDao.updateUser(id, updatedUser));
   }
+}
+
+async function userDelete(req, res) {
+  const userId = req.session.userId;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: 'You must be logged in to delete your account.',
+    });
+  }
+
+  try {
+    const user = await UserDao.deleteUser(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    req.session.destroy((error) => {
+      if (error) {
+        return res.status(500).json({
+          message: 'Account deleted, but failed to end the session.',
+        });
+      }
+
+      res.clearCookie('connect.sid');
+
+      return res.status(200).json({
+        message: 'Account deleted successfully.',
+      });
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to delete user.',
+    });
+  }
+}
+
+async function login(req, res) {
+  let plogin = req.body.txt_login;
+  let user = await UserDao.findUserByLogin(plogin);
+
+  if (user == null) {
+    return res.status(401).json({
+      message: 'Invalid username/email or password.',
+    });
+  }
+
+  if (passUtil.comparePassword(req.body.txt_pass, user.password)) {
+    console.log('Login successful');
+
+    req.session.userId = user._id.toString();
+
+    return res.status(200).json({
+      message: 'Login successful.',
+    });
+  }
+
+  return res.status(401).json({
+    message: 'Invalid username/email or password.',
+  });
+}
+
+async function loggedUser(req, res) {
+  if (!req.session.userId) {
+    return res.status(401).json({
+      message: 'You are not logged in.',
+    });
+  }
+
+  const user = await UserDao.getProfile(req.session.userId);
+
+  if (!user) {
+    return res.status(404).json({
+      message: 'User not found.',
+    });
+  }
+
+  return res.status(200).json(user);
+}
+
+async function logout(req, res) {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({
+        message: 'Unable to log out.',
+      });
+    }
+
+    res.clearCookie('connect.sid');
+    return res.status(200).json({
+      message: 'Logged out successfully.',
+    });
+  });
+}
+
+function adminCheck(req) {
+  return req.session.user && req.session.user.permission == 1;
 }
 
 async function getUsers(req, res) {
   try {
-    const users = await UserDao.readAll();
-    return res.status(200).json(users);
+    if (exports.adminCheck(req) === true) {
+      const users = await UserDao.readAll();
+      return res.status(200).json(users);
+    } else {
+      res.status(403);
+      res.end();
+    }
   } catch (error) {
     return res.status(500).json({
       message: 'Failed to retrieve users.',
+    });
+  }
+}
+
+async function getProfile(req, res) {
+  try {
+    const user = await UserDao.getProfile(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    return res.status(400).json({ message: 'Invalid user ID.' });
+  }
+}
+
+async function updateAvatar(req, res) {
+  const { avatar } = req.body;
+
+  if (
+    typeof avatar !== 'string' ||
+    (avatar !== '' &&
+      !/^data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(
+        avatar,
+      ))
+  ) {
+    return res.status(400).json({
+      message: 'Avatar must be a PNG, JPEG, GIF, or WebP image.',
+    });
+  }
+
+  if (avatar.length > 2_100_000) {
+    return res.status(413).json({
+      message: 'Avatar image is too large.',
+    });
+  }
+
+  try {
+    const user = await UserDao.updateAvatar(req.params.userId, avatar);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Profile avatar saved.',
+      avatar: user.avatar || '',
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    return res.status(500).json({
+      message: 'Could not save the profile avatar.',
     });
   }
 }
@@ -125,7 +289,6 @@ async function sendFriendRequest(req, res) {
   }
 }
 
-
 async function getFriendRequests(req, res) {
   try {
     const { userId } = req.params;
@@ -139,7 +302,6 @@ async function getFriendRequests(req, res) {
     });
   }
 }
-
 
 async function respondToFriendRequest(req, res) {
   try {
@@ -155,7 +317,7 @@ async function respondToFriendRequest(req, res) {
     const result = await UserDao.respondToFriendRequest(
       userId,
       requestId,
-      action
+      action,
     );
 
     res.status(200).json(result);
@@ -165,7 +327,6 @@ async function respondToFriendRequest(req, res) {
     });
   }
 }
-
 
 async function getFriends(req, res) {
   try {
@@ -181,6 +342,23 @@ async function getFriends(req, res) {
   }
 }
 
+async function removeFriend(req, res) {
+  try {
+    const result = await UserDao.removeFriend(
+      req.params.userId,
+      req.params.friendId,
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const status = error.message === 'User not found' ? 404 : 400;
+    return res.status(status).json({ message: error.message });
+  }
+}
 
 async function getSentFriendRequests(req, res) {
   try {
@@ -196,11 +374,22 @@ async function getSentFriendRequests(req, res) {
   }
 }
 
-
-module.exports = { userCreateUpdate, getUsers, 
-                  searchUsers, 
-                  sendFriendRequest, 
-                  getFriendRequests, 
-                  respondToFriendRequest,
-                  getFriends,
-                  getSentFriendRequests };
+module.exports = {
+  userCreateUpdate,
+  userDelete,
+  getUsers,
+  getProfile,
+  updateAvatar,
+  searchUsers,
+  sendFriendRequest,
+  getFriendRequests,
+  respondToFriendRequest,
+  getFriends,
+  removeFriend,
+  getSentFriendRequests,
+  login,
+  loggedUser,
+  logout,
+  adminCheck,
+  removeFriend,
+};
