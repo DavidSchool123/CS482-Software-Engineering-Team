@@ -84,7 +84,7 @@ exports.findPublicTables = async function () {
 };
 
 exports.findTableByCode = async function (req) { //needs test
-    let code = req.params.joinCode;
+    const code = req.params.joinCode;
     return await TableModel.findOne({
       JoinCode: code,
     }).select(
@@ -92,13 +92,25 @@ exports.findTableByCode = async function (req) { //needs test
     )
 }
 
-exports.deleteTableByCode = async function (req) { //needs test
-    let tableId = TableModel.findOne({
-      JoinCode:code,
-    }).select(
-      '_ID'
-    )
+exports.UpdateRemovePlayer = async function (req){ //needs test
+    const joinCode = req.params.joinCode;
+    const userId = req.body.userId;
 
-    const table  = TableModel.findByIdAndDelete(tableId);
-    return table;
+    return await TableModel.findOneAndUpdate(
+        { JoinCode: joinCode },
+        { $pull: { UserIds: userId } },
+        { new: true }
+    );
+}
+
+exports.deleteTableByCode = async function (req) { //needs test
+    const joinCode = req.params.joinCode;
+
+    return await TableModel.findOneAndDelete({
+        JoinCode: joinCode,
+    });
+}
+
+exports.deleteAll = async function () { //needs test
+    return await TableModel.deleteMany({});
 }
