@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const tableSchema = new mongoose.Schema({
 
+
     Name: {
         type: String,
         required: true,
@@ -81,3 +82,23 @@ exports.findPublicTables = async function () {
     'Name Capacity UserIds BotCount Level Status'
   );
 };
+
+exports.findTableByCode = async function (req) { //needs test
+    let code = req.params.joinCode;
+    return await TableModel.findOne({
+      JoinCode: code,
+    }).select(
+      'Name Capacity UserIds BotCount Level Status JoinCode'
+    )
+}
+
+exports.deleteTableByCode = async function (req) { //needs test
+    let tableId = TableModel.findOne({
+      JoinCode:code,
+    }).select(
+      '_ID'
+    )
+
+    const table  = TableModel.findByIdAndDelete(tableId);
+    return table;
+}

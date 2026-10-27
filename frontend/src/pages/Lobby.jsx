@@ -1,6 +1,8 @@
-
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Lobby.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';;
 
 function Lobby({ tableSearch = '' }) {
   const [selectedLevels, setSelectedLevels] = useState([]);
@@ -12,6 +14,19 @@ function Lobby({ tableSearch = '' }) {
 
   const [showPrivateModal, setShowPrivateModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const navigate = useNavigate();
+  const [creatingTable, setCreatingTable] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createTableData, setCreateTableData] = useState({
+    Name: '',
+    Capacity: 6,
+    BotCount: 0,
+    IsPublic: true,
+    Level: 'Medium',
+  });
+
 
   const [showBuyInModal, setShowBuyInModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
@@ -29,7 +44,7 @@ function Lobby({ tableSearch = '' }) {
         setError('');
 
         const response = await fetch(
-          'http://localhost:5000/api/tables',
+          `${API_URL}/api/tables`,
           { signal: controller.signal }
         );
 
@@ -143,6 +158,43 @@ function Lobby({ tableSearch = '' }) {
     // Private-table lookup belongs to the Join Table feature.
     alert('Private table lookup is not available yet.');
   }
+
+  async function handleCreateTable(event) {
+    event.preventDefault();
+
+    setCreatingTable(true);
+    setCreateError('');
+
+    try {
+      const response = await fetch(`${API_URL}/api/tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createTableData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to create table.');
+      }
+
+      if (!result.id) {
+        throw new Error('The server did not return a table ID.');
+      }
+
+      setShowCreateModal(false);
+      navigate(`/table/${result.joinCode}`); //theoretically, this should also use the same buy in as the join table -- i need to talk with the team about how the buy-ins should work...
+    } catch (error) {
+          console.error('Create table failed:', error);
+
+      setCreateError(error.message || 'Unable to create table.');
+    } finally {
+      setCreatingTable(false);
+    }
+  }
+
 
   function renderTableCard(table) {
     const isFull = isTableFull(table);
@@ -259,6 +311,8 @@ function Lobby({ tableSearch = '' }) {
     ? demoBalance >= selectedTable.stakes.minBuyIn
     : false;
 
+
+
   return (
     <div className="lobby-page">
       <div className="lobby-layout">
@@ -354,8 +408,7 @@ function Lobby({ tableSearch = '' }) {
               <button
                 type="button"
                 className="create-table-btn"
-                disabled
-                title="Create Table functionality is coming soon."
+                onClick={() => setShowCreateModal(true)}
               >
                 + Create Table
               </button>
@@ -394,6 +447,130 @@ function Lobby({ tableSearch = '' }) {
       <div className="lobby-bottom-ad">
         Advertisement
       </div>
+
+
+      {/* CREATE TABLE MODAL */}
+      {showCreateModal && (
+        <div
+          className="lobby-modal-overlay"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="lobby-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="create-modal-title">Create Table</h2>
+            <p>Configure your new table.</p>
+
+            <form onSubmit={handleCreateTable}>
+              <label htmlFor="create-table-name">Table Name</label>
+              <input
+                id="create-table-name"
+                type="text"
+                value={createTableData.Name}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Name: event.target.value,
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-capacity">Capacity</label>
+              <input
+                id="create-table-capacity"
+                type="number"
+                min="2"
+                max="6"
+                value={createTableData.Capacity}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Capacity: Number(event.target.value),
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-bots">Bot Count</label>
+              <input
+                id="create-table-bots"
+                type="number"
+                min="0"
+                max="5"
+                value={createTableData.BotCount}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    BotCount: Number(event.target.value),
+                  })
+                }
+                required
+              />
+
+              <label htmlFor="create-table-level">Level</label>
+              <select
+                id="create-table-level"
+                value={createTableData.Level}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    Level: event.target.value,
+                  })
+                }
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+
+              <label htmlFor="create-table-visibility">
+                Visibility
+              </label>
+              <select
+                id="create-table-visibility"
+                value={String(createTableData.IsPublic)}
+                onChange={(event) =>
+                  setCreateTableData({
+                    ...createTableData,
+                    IsPublic: event.target.value === 'true',
+                  })
+                }
+              >
+                <option value="true">Public</option>
+                <option value="false">Private</option>
+              </select>
+
+              {createError && (
+                <p className="modal-note" role="alert">
+                  {createError}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="join-btn"
+                  disabled={creatingTable}
+                >
+                  {creatingTable ? 'Creating...' : 'Create Table'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* PRIVATE TABLE MODAL */}
       {showPrivateModal && (

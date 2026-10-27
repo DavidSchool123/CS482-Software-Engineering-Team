@@ -61,6 +61,12 @@ app.get('/', (req, res) => {
 // Lobby endpoint
 app.get('/api/tables', TableController.getAllTables);
 
+//create table
+app.post('/api/tables', TableController.createTable);
+
+//read table by joincode
+app.get('/api/tables/:joinCode', TableController.findTableByCode);
+
 // Submit a message to the admin
 app.post('/api/contact', ContactController.submitContact);
 
