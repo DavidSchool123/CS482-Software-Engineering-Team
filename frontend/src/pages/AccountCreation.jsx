@@ -93,7 +93,7 @@ function AccountCreation() {
 
         <div className='login-panels'>
           {accountView === 'login' ? (
-            <Login handleSubmit={handleLoginSubmit} />
+            <Login handleSubmit={handleLoginSubmit} message={message} />
           ) : (
             <Register
               handleSubmit={handleRegisterSubmit}

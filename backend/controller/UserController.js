@@ -177,14 +177,17 @@ function adminCheck(req) {
 
 async function getUsers(req, res) {
   try {
-    if (exports.adminCheck(req) === true) {
+    if (adminCheck(req) === true) {
       const users = await UserDao.readAll();
       return res.status(200).json(users);
     } else {
-      res.status(403);
-      res.end();
+      return res.status(403).json({
+        message: 'You are not authorized to view all users.',
+      });
     }
   } catch (error) {
+    console.error('Error retrieving users:', error);
+
     return res.status(500).json({
       message: 'Failed to retrieve users.',
     });

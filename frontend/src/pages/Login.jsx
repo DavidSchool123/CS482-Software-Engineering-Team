@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './AccountCreation.css';
 
-function Login({ handleSubmit }) {
+function Login({ handleSubmit, message }) {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
 
@@ -40,6 +40,11 @@ function Login({ handleSubmit }) {
             >
               {showLoginPassword ? 'Hide' : 'Show'}
             </button>
+            {loginMessage && (
+              <p className='auth-message' role='status'>
+                {loginMessage}
+              </p>
+            )}
           </div>
         </div>
 
