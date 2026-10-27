@@ -1,90 +1,29 @@
 
-import { useState } from 'react';
-import {
-  NavLink,
-  Link,
-  useNavigate,
-  useLocation,
-} from 'react-router-dom';
-import './GameNavbar.css';
+import { useLocation } from 'react-router-dom';
+import Navbar from './Navbar';
+import GameNavbar from './GameNavbar';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-function GameNavbar({ tableSearch, setTableSearch }) {
-  const navigate = useNavigate();
+function AppNavbar({ tableSearch, setTableSearch }) {
   const location = useLocation();
 
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState('');
+  const publicPages = [
+    '/',
+    '/account',
+    '/tutorial',
+    '/about',
+    '/contact',
+  ];
 
-  // Only show table search in the lobby.
-  const isLobbyPage = location.pathname === '/lobby';
+  const isPublicPage = publicPages.includes(location.pathname);
 
-  async function handleLogout() {
-    setLoggingOut(true);
-    setLogoutError('');
-
-    try {
-      const response = await fetch(`${API_URL}/api/accounts/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to log out');
-      }
-
-      navigate('/', { replace: true });
-    } catch (error) {
-      console.error('Logout error:', error);
-      setLogoutError('Unable to log out. Please try again.');
-    } finally {
-      setLoggingOut(false);
-    }
-  }
-
-  return (
-    <nav className="navbar game-navbar">
-      <Link to="/lobby" className="navbar-logo">
-        ♛ POKER FACE
-      </Link>
-
-      <div className="navbar-links">
-        <NavLink to="/lobby">Lobby</NavLink>
-        <NavLink to="/profile">Profile</NavLink>
-        <NavLink to="/friends">Friends</NavLink>
-        <NavLink to="/messages">Messages</NavLink>
-        <NavLink to="/tutorial">How to Play</NavLink>
-      </div>
-
-      <div className="game-navbar-actions">
-        {isLobbyPage && (
-          <input
-            type="search"
-            placeholder="Search tables..."
-            aria-label="Search tables"
-            value={tableSearch}
-            onChange={(event) => setTableSearch(event.target.value)}
-          />
-        )}
-
-        <button
-          type="button"
-          className="game-logout-btn"
-          onClick={handleLogout}
-          disabled={loggingOut}
-        >
-          {loggingOut ? 'Logging Out...' : 'Log Out'}
-        </button>
-
-        {logoutError && (
-          <span role="alert" className="logout-error">
-            {logoutError}
-          </span>
-        )}
-      </div>
-    </nav>
+  return isPublicPage ? (
+    <Navbar />
+  ) : (
+    <GameNavbar
+      tableSearch={tableSearch}
+      setTableSearch={setTableSearch}
+    />
   );
 }
 
-export default GameNavbar;
+export default AppNavbar;
