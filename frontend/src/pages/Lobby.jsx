@@ -168,6 +168,7 @@ function Lobby({ tableSearch = '' }) {
     try {
       const response = await fetch(`${API_URL}/api/tables`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

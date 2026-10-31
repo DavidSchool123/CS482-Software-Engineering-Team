@@ -1,8 +1,11 @@
+
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './AccountCreation.css';
 import Login from './Login';
 import Register from './Register';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function AccountCreation() {
   const location = useLocation();
@@ -14,23 +17,26 @@ function AccountCreation() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [guestLoading, setGuestLoading] = useState(false);
 
   async function handleRegisterSubmit(event) {
     event.preventDefault();
     setMessage('');
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/accounts`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ username, email, password, confirmPassword }),
+      const response = await fetch(`${API_URL}/api/accounts`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          confirmPassword,
+        }),
+      });
 
       const data = await response.json();
       setMessage(data.message);
@@ -55,18 +61,17 @@ function AccountCreation() {
     const formData = new FormData(event.currentTarget);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/accounts/login`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txt_login: formData.get('username'),
-            txt_pass: formData.get('password'),
-          }),
+      const response = await fetch(`${API_URL}/api/accounts/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          txt_login: formData.get('username'),
+          txt_pass: formData.get('password'),
+        }),
+      });
 
       const data = await response.json();
       setMessage(data.message);
@@ -79,21 +84,54 @@ function AccountCreation() {
     }
   }
 
+  async function handleGuestLogin() {
+    setMessage('');
+    setGuestLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/guest/login`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          data.message || data.error || 'Unable to continue as guest.'
+        );
+        return;
+      }
+
+      navigate('/lobby?guest=true');
+    } catch (error) {
+      setMessage('Unable to connect to the server.');
+    } finally {
+      setGuestLoading(false);
+    }
+  }
+
   return (
-    <main className='login-page'>
-      <aside className='login-ad' aria-label='Advertisement'>
+    <main className="login-page">
+      <aside className="login-ad" aria-label="Advertisement">
         <span>ADVERTISEMENT</span>
       </aside>
 
-      <section className='login-content' aria-labelledby='login-page-title'>
-        <header className='login-intro'>
-          <h1 id='login-page-title'>Welcome Back!</h1>
+      <section
+        className="login-content"
+        aria-labelledby="login-page-title"
+      >
+        <header className="login-intro">
+          <h1 id="login-page-title">Welcome Back!</h1>
           <p>Log in to continue playing or create a new account.</p>
         </header>
 
-        <div className='login-panels'>
+        <div className="login-panels">
           {accountView === 'login' ? (
-            <Login handleSubmit={handleLoginSubmit} message={message} />
+            <Login
+              handleSubmit={handleLoginSubmit}
+              message={message}
+            />
           ) : (
             <Register
               handleSubmit={handleRegisterSubmit}
@@ -110,20 +148,32 @@ function AccountCreation() {
           )}
         </div>
 
-        <div className='guest-divider' aria-hidden='true'>
+        <div className="guest-divider" aria-hidden="true">
           <span>or</span>
         </div>
 
-        <div className='guest-action'>
-          <Link to='/lobby?guest=true' className='guest-button'>
-            <span aria-hidden='true'>♙</span>
-            Continue as Guest
-          </Link>
+        <div className="guest-action">
+          <button
+            type="button"
+            className="guest-button"
+            onClick={handleGuestLogin}
+            disabled={guestLoading}
+          >
+            <span aria-hidden="true">♙</span>
+            {guestLoading ? 'Joining as Guest...' : 'Continue as Guest'}
+          </button>
+
           <p>Play now without an account.</p>
+
+          {message && (
+            <p className="auth-message" role="status">
+              {message}
+            </p>
+          )}
         </div>
       </section>
 
-      <aside className='login-ad' aria-label='Advertisement'>
+      <aside className="login-ad" aria-label="Advertisement">
         <span>ADVERTISEMENT</span>
       </aside>
     </main>

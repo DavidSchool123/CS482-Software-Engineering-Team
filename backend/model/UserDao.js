@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Define the schema for the User model
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -7,27 +8,42 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+
+  userType: {
+    type: String,
+    enum: ['registered', 'guest'],
+    default: 'registered',
+    required: true,
+  },
+
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return this.userType === 'registered';
+    },
   },
+
   email: {
     type: String,
-    required: true,
-    unique: true,
+    required: function() {
+      return this.userType === 'registered';
+    },
     trim: true,
   },
+
   avatar: {
     type: String,
     default: '',
     maxlength: 2_100_000,
   },
+
   friends: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
   ],
+
   friendRequests: [
     {
       from: {
@@ -43,6 +59,18 @@ const userSchema = new mongoose.Schema({
     },
   ],
 });
+
+// Create a unique index on the email field for registered users
+userSchema.index(
+  { email: 1 },
+  {
+    name: 'email_guest_unique',
+    unique: true,
+    partialFilterExpression: {
+      email: { $type: 'string' },
+    },
+  }
+);
 
 // Create a model for the user schema
 const User = mongoose.model('User', userSchema);
