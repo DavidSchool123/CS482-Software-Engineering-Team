@@ -83,14 +83,11 @@ exports.findPublicTables = async function () {
   );
 };
 
-exports.findTableByCode = async function (req) { //needs test
-    let code = req.params.joinCode;
-    return await TableModel.findOne({
-      JoinCode: code,
-    }).select(
-      'Name Capacity UserIds BotCount Level Status JoinCode'
-    )
-}
+exports.findTableByCode = async function(req) {
+  let code = req.params.joinCode;
+  return await TableModel.findOne({ JoinCode: code })
+    .select('Name Capacity UserIds BotCount Level Status JoinCode CurrentGameID');
+};
 
 exports.deleteTableByCode = async function (req) { //needs test
     let tableId = TableModel.findOne({
@@ -102,3 +99,46 @@ exports.deleteTableByCode = async function (req) { //needs test
     const table  = TableModel.findByIdAndDelete(tableId);
     return table;
 }
+
+
+/**
+ * Find a table by its MongoDB ID.
+ * Used when starting a new poker game.
+ */
+exports.findById = async function(tableId, session = null) {
+  return await TableModel.findById(tableId).session(session);
+};
+
+/**
+ * Associate a game with its table and update its status.
+ */
+exports.setCurrentGame = async function(tableId, gameId, session) {
+  return await TableModel.findByIdAndUpdate(
+    tableId,
+    { $set: { CurrentGameID: gameId } },
+    { new: true, session }
+  );
+};
+
+
+/**
+ * Reserve a waiting table before starting a game.
+ * Only one request can change Waiting to In Progress.
+ */
+
+exports.reserveForGame = async function(tableId, session) {
+  return await TableModel.findOneAndUpdate(
+    {
+      _id: tableId,
+      Status: 'Waiting'
+    },
+    {
+      $set: { Status: 'In Progress' }
+    },
+    {
+      new: true,
+      session
+    }
+  );
+};
+

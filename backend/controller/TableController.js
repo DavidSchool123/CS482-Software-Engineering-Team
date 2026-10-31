@@ -48,7 +48,13 @@ exports.createTable = async function(req, res){
             const generatedJoinCode = crypto.randomBytes(4).toString('hex').toUpperCase();
 
             //get host ID -- update when have persistent user ID
-            const hostId =  (await UserDao.readAll())[0];
+            const hostId = req.session?.userId;
+
+            if (!hostId) {
+                return res.status(401).json({
+                    message: 'You must be logged in to create a table',
+                });
+            }
 
             const tableData = {
                 Name: req.body.Name,
@@ -106,6 +112,8 @@ exports.findTableByCode = async function(req, res){
                 level: table.Level,
                 name: table.Name,
                 joinCode: table.JoinCode,
+                status: table.Status,
+                currentGameId: table.CurrentGameID,
             });
         } catch (error) {
             console.error('Error finding table:', error);

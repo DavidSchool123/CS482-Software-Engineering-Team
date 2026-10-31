@@ -50,6 +50,7 @@ app.use(session(sessionConfig));
 const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');
 const ContactController = require('./controller/ContactController');
+const GameController = require('./controller/GameController');
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -106,5 +107,14 @@ app.post('/api/accounts/login', UserController.login);
 app.get('/api/accounts/me', UserController.loggedUser);
 app.post('/api/accounts/logout', UserController.logout);
 app.delete('/api/accounts/me', UserController.userDelete);
+
+// Start a new Seven-Card Stud game
+app.post('/api/tables/:tableId/start', GameController.startGame);
+
+// Retrieve an existing game and its visible cards
+app.get('/api/games/:gameId', GameController.getGame);
+
+// Guest login endpoint
+app.post('/api/guest/login', UserController.guestLogin);
 
 module.exports = app;

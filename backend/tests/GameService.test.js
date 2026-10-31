@@ -1,10 +1,17 @@
 
+const mongoose = require('mongoose');
+
 const TableDao = require('../model/TableDao');
 const GameDao = require('../model/GameDao');
 const { startGame } = require('../service/GameService');
 
 jest.mock('../model/TableDao');
 jest.mock('../model/GameDao');
+
+jest.spyOn(mongoose, 'startSession').mockImplementation(async () => ({
+  withTransaction: async (callback) => callback(),
+  endSession: jest.fn().mockResolvedValue(undefined)
+}));
 
 describe('Game Service', () => {
   const tableId = '507f1f77bcf86cd799439011';
@@ -21,7 +28,12 @@ describe('Game Service', () => {
 
     TableDao.findById.mockResolvedValue({ ...mockTable });
 
-    GameDao.create.mockImplementation(async gameData => ({
+    TableDao.reserveForGame.mockResolvedValue({
+      ...mockTable,
+      Status: 'In Progress'
+    });
+
+    GameDao.create.mockImplementation(async (gameData) => ({
       _id: 'game123',
       ...gameData
     }));
@@ -44,7 +56,11 @@ describe('Game Service', () => {
     await startGame(tableId);
 
     expect(TableDao.setCurrentGame)
-      .toHaveBeenCalledWith(tableId, 'game123');
+      .toHaveBeenCalledWith(
+        tableId,
+        'game123',
+        expect.anything()
+      );
   });
 
   test('should reject a nonexistent table', async () => {
@@ -94,11 +110,22 @@ describe('Game Service', () => {
   });
 
   test('should not update the table if game creation fails', async () => {
-    GameDao.create.mockRejectedValue(new Error('Database error'));
+    GameDao.create.mockRejectedValue(
+      new Error('Database error')
+    );
 
     await expect(startGame(tableId))
       .rejects.toThrow('Database error');
 
     expect(TableDao.setCurrentGame).not.toHaveBeenCalled();
+  });
+
+  test('should reject a table that cannot be reserved', async () => {
+    TableDao.reserveForGame.mockResolvedValue(null);
+
+    await expect(startGame(tableId))
+      .rejects.toThrow('Table is not waiting for a game');
+
+    expect(GameDao.create).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 const UserDao = require('../model/UserDao');
 const passUtil = require('../util/PasswordUtil.js');
+const crypto = require('node:crypto');
 
 async function userCreateUpdate(req, res) {
   let username = req.body.username;
@@ -377,6 +378,33 @@ async function getSentFriendRequests(req, res) {
   }
 }
 
+
+async function guestLogin(req, res) {
+  try {
+    const guest = await UserDao.createUser({
+      username: `Guest_${crypto.randomUUID()}`,
+      userType: 'guest',
+    });
+
+    req.session.userId = guest._id.toString();
+
+    return res.status(201).json({
+      message: 'Guest session created successfully',
+      user: {
+        id: guest._id,
+        username: guest.username,
+        userType: guest.userType,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating guest:', error);
+
+    return res.status(500).json({
+      error: 'Unable to create guest session',
+    });
+  }
+}
+
 module.exports = {
   userCreateUpdate,
   userDelete,
@@ -395,4 +423,5 @@ module.exports = {
   logout,
   adminCheck,
   removeFriend,
+  guestLogin
 };

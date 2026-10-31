@@ -105,8 +105,11 @@ function Home() {
 
               <span>or</span>
 
-              <Link to="/lobby?guest=true">
-                Play as Guest
+              <Link
+                to="/account"
+                state={{ accountView: 'login' }}
+                >
+                  Play as Guest
               </Link>
             </div>
           </div>
