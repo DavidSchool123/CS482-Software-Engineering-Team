@@ -885,3 +885,16 @@
 .stud-felt::before {
   border-radius: 48% / 39%;
 }
+
+/* Make unavailable betting actions visibly disabled */
+.stud-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(70%);
+}
+
+/* Make available betting actions easier to identify */
+.stud-actions button:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const GameService = require('../service/GameService');
 const TableDao = require('../model/TableDao');
 const GameDao = require('../model/GameDao');
+const { performBettingAction } = require('../service/BettingService');
 const { getVisiblePlayers } = require('../service/GameViewService');
 
 // Start a new Seven-Card Stud game
@@ -146,6 +147,13 @@ exports.getGame = async function (req, res) {
       bringIn: game.BringIn,
       bringInPlayerId: game.BringInPlayerId,
 
+      // Betting information
+      currentBet: game.CurrentBet,
+      currentTurnPlayerId: game.CurrentTurnPlayerId,
+      lastRaiseAmount: game.LastRaiseAmount,
+      raiseCount: game.RaiseCount,
+      bettingRoundComplete: game.BettingRoundComplete,
+
       // Player cards with private cards protected
       players,
 
@@ -160,6 +168,123 @@ exports.getGame = async function (req, res) {
 
     return res.status(500).json({
       error: 'Unable to retrieve game',
+    });
+  }
+};
+
+
+/**
+ * P16 - Player Bets, Raises, Checks, and Folds
+ * POST /api/games/:gameId/action
+ */
+exports.performBettingAction = async function (req, res) {
+  try {
+    const userId = req.session?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'You must be logged in to perform a betting action',
+      });
+    }
+
+    const { gameId } = req.params;
+    const { action } = req.body || {};
+
+    if (!mongoose.isValidObjectId(gameId)) {
+      return res.status(400).json({
+        error: 'Invalid game ID',
+      });
+    }
+
+    const validActions = ['fold', 'check', 'call', 'bet', 'raise'];
+
+    if (!validActions.includes(action)) {
+      return res.status(400).json({
+        error: 'Invalid betting action',
+      });
+    }
+
+    const game = await GameDao.findById(gameId);
+
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found',
+      });
+    }
+
+    const table = await TableDao.findById(game.TableId);
+
+    if (!table) {
+      return res.status(404).json({
+        error: 'Table not found',
+      });
+    }
+
+    // Verify the logged-in user is seated at this table.
+    const isPlayer = table.UserIds.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (!isPlayer) {
+      return res.status(403).json({
+        error: 'You are not a player at this table',
+      });
+    }
+
+    // BettingService validates turns, chip balances,
+    // betting rules, and updates the game transactionally.
+    const updatedGame = await performBettingAction(
+      gameId,
+      userId.toString(),
+      action
+    );
+
+    return res.status(200).json({
+      message: 'Betting action completed successfully',
+      action,
+      gameId: updatedGame._id,
+      status: updatedGame.Status,
+      pot: updatedGame.Pot,
+      currentBet: updatedGame.CurrentBet,
+      currentTurnPlayerId: updatedGame.CurrentTurnPlayerId,
+      bettingRoundComplete: updatedGame.BettingRoundComplete,
+      raiseCount: updatedGame.RaiseCount,
+    });
+  } catch (error) {
+    const badRequestErrors = [
+      'Invalid betting action',
+      'Cannot check when facing a bet',
+      'Nothing to call',
+      'Cannot bet when a bet already exists',
+      'Cannot raise without an existing bet',
+      'Insufficient chips',
+      'Player cannot act',
+    ];
+
+    const conflictErrors = [
+      'Game is not in progress',
+      'Betting round is complete',
+      'It is not this player’s turn',
+      'Maximum raises reached',
+    ];
+
+    if (badRequestErrors.includes(error.message)) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (conflictErrors.includes(error.message)) {
+      return res.status(409).json({ error: error.message });
+    }
+
+    if (error.message === 'Game not found' ||
+        error.message === 'Table not found') {
+      return res.status(404).json({ error: error.message });
+    }
+
+    console.error('Error performing betting action:', error);
+
+    return res.status(500).json({
+      error: 'Unable to perform betting action',
     });
   }
 };

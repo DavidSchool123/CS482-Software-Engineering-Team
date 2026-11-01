@@ -34,7 +34,7 @@ async function startGame(tableId) {
         throw new Error('Invalid table level');
       }
 
-      const { ante, bringIn, minBuyIn } = stakes;
+      const { ante, bringIn, smallBet, minBuyIn } = stakes;
 
       // 3. Collect human players
       const players = table.UserIds.map(userId => ({
@@ -98,7 +98,6 @@ async function startGame(tableId) {
 
       // 8. Collect antes
       let pot = 0;
-
       const contributions = new Map();
 
       for (const player of players) {
@@ -153,17 +152,38 @@ async function startGame(tableId) {
       bringInContribution.total += bringIn;
       bringInContribution.round += bringIn;
 
-      // 13. Save game
+      // 13. Initialize betting state
+      // The bring-in establishes the amount to match.
+      const currentBet = bringIn;
+
+      // Find the bring-in player's position in seating order.
+      const bringInIndex = hands.findIndex(
+        hand => hand.playerId === bringInPlayerId
+      );
+
+      // The next player clockwise acts first.
+      const currentTurnPlayerId =
+        hands[(bringInIndex + 1) % hands.length].playerId;
+
+      // Third Street uses the small betting limit.
+      const lastRaiseAmount = smallBet;
+
+      // 14. Save game
       game = await GameDao.create({
         TableId: table._id,
 
         Players: hands.map(hand => ({
           PlayerId: hand.playerId,
           Cards: hand.cards,
+
           TotalContribution:
             contributions.get(hand.playerId).total,
+
           RoundContribution:
-            contributions.get(hand.playerId).round
+            contributions.get(hand.playerId).round,
+
+          HasFolded: false,
+          HasActed: false
         })),
 
         Deck: deck,
@@ -173,10 +193,16 @@ async function startGame(tableId) {
         Pot: pot,
         Ante: ante,
         BringIn: bringIn,
-        BringInPlayerId: bringInPlayerId
+        BringInPlayerId: bringInPlayerId,
+
+        CurrentBet: currentBet,
+        CurrentTurnPlayerId: currentTurnPlayerId,
+        LastRaiseAmount: lastRaiseAmount,
+        RaiseCount: 0,
+        BettingRoundComplete: false
       }, session);
 
-      // 14. Associate game with table
+      // 15. Associate game with table
       const linkedTable = await TableDao.setCurrentGame(
         tableId,
         game._id,
