@@ -7,6 +7,14 @@ function getVisiblePlayers(players, viewerId) {
     return {
       playerId: player.PlayerId,
       isCurrentPlayer,
+
+      // P16: Betting information
+      roundContribution: player.RoundContribution,
+      totalContribution: player.TotalContribution,
+      hasFolded: player.HasFolded,
+      hasActed: player.HasActed,
+
+      // P37: Protect opponents' private cards
       cards: player.Cards.map((card) => {
         if (isCurrentPlayer || card.faceUp) {
           return {

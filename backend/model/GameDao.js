@@ -56,6 +56,18 @@ const gamePlayerSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
+  },
+
+  // Whether the player has folded this hand
+  HasFolded: {
+    type: Boolean,
+    default: false
+  },
+
+  // Whether the player has acted since the last bet or raise
+  HasActed: {
+    type: Boolean,
+    default: false
   }
 }, { _id: false });
 
@@ -113,7 +125,41 @@ const gameSchema = new mongoose.Schema({
   BringInPlayerId: {
     type: String,
     default: null
+  },
+
+  // Highest amount a player must match in the current round
+  CurrentBet: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Player whose turn it is to act
+  CurrentTurnPlayerId: {
+    type: String,
+    default: null
+  },
+
+  // Size of the last full bet or raise
+  LastRaiseAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Number of full raises during the current betting round
+  RaiseCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Whether the current betting round has finished
+  BettingRoundFinished: {
+    type: Boolean,
+    default: false
   }
+
 });
 
 const GameModel = mongoose.model('Game', gameSchema);
@@ -128,8 +174,8 @@ exports.create = async function(gameData, session) {
 };
 
 // Find a game by its ID
-exports.findById = async function(gameId) {
-  return await GameModel.findById(gameId);
+exports.findById = async function(gameId, session=null) {
+  return await GameModel.findById(gameId).session(session);
 };
 
 // Export model for testing and future game operations

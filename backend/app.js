@@ -114,6 +114,9 @@ app.post('/api/tables/:tableId/start', GameController.startGame);
 // Retrieve an existing game and its visible cards
 app.get('/api/games/:gameId', GameController.getGame);
 
+// Player betting actions: fold, check, call, bet, raise
+app.post('/api/games/:gameId/action', GameController.performBettingAction);
+
 // Guest login endpoint
 app.post('/api/guest/login', UserController.guestLogin);
 
