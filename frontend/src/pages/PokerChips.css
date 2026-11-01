@@ -1,0 +1,196 @@
+
+/* Poker Face — Poker Chip Styling */
+
+/* Player chip balances */
+.poker-player-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #e7dcff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Chip stack container */
+.poker-chip-stack {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 55px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.4));
+}
+
+/* Individual poker chips */
+.poker-chip {
+  display: block;
+  position: absolute;
+  left: 3px;
+  bottom: 4px;
+
+  width: 40px;
+  height: 17px;
+  box-sizing: border-box;
+
+  border-radius: 50%;
+  border: 2px solid #ead9ff;
+
+  background:
+    radial-gradient(
+      ellipse at 45% 35%,
+      #cfa6ff 0%,
+      #a16be1 35%,
+      #6f37ad 65%,
+      #43206d 100%
+    );
+
+  box-shadow:
+    0 3px 0 #3b1c5d,
+    0 5px 0 #d9c2f5,
+    0 7px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Stack the chips using their index */
+.poker-chip:nth-child(1) {
+  bottom: 4px;
+}
+
+.poker-chip:nth-child(2) {
+  bottom: 10px;
+}
+
+.poker-chip:nth-child(3) {
+  bottom: 16px;
+}
+
+.poker-chip:nth-child(4) {
+  bottom: 22px;
+}
+
+.poker-chip:nth-child(5) {
+  bottom: 28px;
+}
+
+/* Smaller chips beside players */
+.poker-chip-stack-small {
+  width: 27px;
+  height: 30px;
+}
+
+.poker-chip-stack-small .poker-chip {
+  width: 23px;
+  height: 11px;
+  left: 2px;
+  border-width: 1px;
+
+  box-shadow:
+    0 2px 0 #3b1c5d,
+    0 3px 0 #d9c2f5,
+    0 4px 2px rgba(0, 0, 0, 0.4);
+}
+
+.poker-chip-stack-small .poker-chip:nth-child(1) {
+  bottom: 2px;
+}
+
+.poker-chip-stack-small .poker-chip:nth-child(2) {
+  bottom: 5px;
+}
+
+.poker-chip-stack-small .poker-chip:nth-child(3) {
+  bottom: 8px;
+}
+
+.poker-chip-stack-small .poker-chip:nth-child(4) {
+  bottom: 11px;
+}
+
+.poker-chip-stack-small .poker-chip:nth-child(5) {
+  bottom: 14px;
+}
+
+/* Center pot */
+.poker-pot-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.poker-pot-chips {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  min-height: 55px;
+}
+
+/* Different stack heights */
+.poker-pot-chips .poker-chip-stack:nth-child(2) {
+  transform: translateY(-6px);
+}
+
+/* Different chip colors */
+.poker-pot-chips .poker-chip-stack:nth-child(2) .poker-chip {
+  background: radial-gradient(
+    ellipse at 45% 35%,
+    #ffffff 0%,
+    #e5dced 40%,
+    #a69bb8 75%,
+    #625575 100%
+  );
+}
+
+.poker-pot-chips .poker-chip-stack:nth-child(3) .poker-chip {
+  background: radial-gradient(
+    ellipse at 45% 35%,
+    #8d829d 0%,
+    #50445f 40%,
+    #2d2339 75%,
+    #171020 100%
+  );
+}
+
+/* Pot amount */
+.poker-pot-area .stud-pot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Ante and bring-in */
+.poker-pot-area .stud-betting-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.poker-pot-area .stud-betting-info span {
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid rgba(186, 150, 240, 0.45);
+  border-radius: 999px;
+  background: rgba(26, 15, 45, 0.75);
+  color: #e7dcff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Bring-in player indicator */
+.stud-bring-in-label {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #6841a0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}

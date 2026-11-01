@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PlayingCard from '../components/PlayingCard';
 import './PokerTable.css';
+import './PokerChips.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -19,13 +20,61 @@ function EmptySeat({ position }) {
   );
 }
 
+// Decorative chips: balances and pot values always come from the API.
+function ChipStack({ amount = 0, small = false }) {
+  const count = amount > 0 ? 5 : 0;
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        width: small ? 26 : 46,
+        height: small ? 32 : 55,
+        flexShrink: 0,
+      }}
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <span
+          key={index}
+          style={{
+            position: 'absolute',
+            display: 'block',
+            left: 2,
+            bottom: 2 + index * (small ? 4 : 7),
+            width: small ? 22 : 40,
+            height: small ? 11 : 17,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse at 45% 35%, #cfa6ff 0%, #8b36e9 45%, #43206d 100%)',
+            border: '2px solid #ead9ff',
+            boxShadow: '0 3px 0 #3b1c5d, 0 5px 2px rgba(0, 0, 0, 0.45)',
+            boxSizing: 'border-box',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PlayerChips({ chips }) {
+  if (chips == null) return null;
+  return (
+    <div className="poker-player-chips">
+      <ChipStack amount={chips} small />
+      <span>{chips} chips</span>
+    </div>
+  );
+}
+
 // This component represents the current player's seat.
-function HostSeat({ cards = [] }) {
+function HostSeat({ cards = [], chips, isBringIn = false }) {
   return (
     <div className="stud-seat stud-seat-you seat-bottom">
       <div className="stud-seat-avatar" aria-hidden="true">♙</div>
       <div className="stud-seat-details">
         <strong>You</strong>
+        {isBringIn && <span className="stud-bring-in-label">Bring-in</span>}
+        <PlayerChips chips={chips} />
         <span>{cards.length > 0 ? 'Cards dealt' : 'Waiting for cards'}</span>
       </div>
       {cards.length > 0 && (
@@ -40,12 +89,14 @@ function HostSeat({ cards = [] }) {
 }
 
 // This component represents another player's seat.
-function PlayerSeat({ name, position, cards = [] }) {
+function PlayerSeat({ name, position, cards = [], chips, isBringIn = false }) {
   return (
     <div className={`stud-seat seat-${position}`}>
       <div className="stud-seat-avatar" aria-hidden="true">♙</div>
       <div className="stud-seat-details">
         <strong>{name}</strong>
+        {isBringIn && <span className="stud-bring-in-label">Bring-in</span>}
+        <PlayerChips chips={chips} />
         <span>{cards.length > 0 ? 'Cards dealt' : 'Waiting for cards'}</span>
       </div>
       {cards.length > 0 && (
@@ -187,6 +238,7 @@ if (data.currentGameId) {
       setGame(gameData);
       setGameNotice('Initial cards have been dealt.');
       console.log('Game loaded:', gameData);
+      console.log('P42 Pot:', gameData.pot);
     } catch (err) {
       console.error('Error starting game:', err);
       setGameNotice(err.message || 'Unable to start the game.');
@@ -198,6 +250,12 @@ if (data.currentGameId) {
   const players = game?.players || [];
   const me = players.find((player) => player.isCurrentPlayer);
   const opponents = players.filter((player) => !player.isCurrentPlayer);
+
+  const getPlayerChips = (playerId) => {
+    return game?.playerStacks?.find(
+      (stack) => stack.playerId === playerId
+    )?.chips;
+  };
 
   if (loading) {
     return (
@@ -319,22 +377,41 @@ if (data.currentGameId) {
                   key={player.playerId}
                   name={String(player.playerId).startsWith('bot-') ? `Bot ${index + 1}` : `Player ${index + 2}`}
                   position={position}
+                  chips={getPlayerChips(player.playerId)}
+                  isBringIn={game?.bringInPlayerId === player.playerId}
                   cards={player.cards}
                 />
               ) : (
                 <EmptySeat key={position} position={position} />
               );
             })}
-            <HostSeat cards={me?.cards || []} />
+            <HostSeat
+              cards={me?.cards || []}
+              chips={getPlayerChips(me?.playerId)}
+              isBringIn={Boolean(me && game?.bringInPlayerId === me.playerId)}
+            />
 
-            <div className="stud-board stud-board-waiting">
+            <div className="stud-board stud-board-waiting poker-pot-area">
+              {game && (
+                <div className="poker-pot-chips" aria-hidden="true">
+                  <ChipStack amount={game.pot} />
+                  <ChipStack amount={game.pot} />
+                  <ChipStack amount={game.pot} />
+                </div>
+              )}
               <div className="stud-pot">
-                <span className="stud-pot-chips" aria-hidden="true">▤</span>
-                <span>Pot: $0</span>
+                <span>Pot: {game?.pot ?? 0} chips</span>
               </div>
-              <p className="stud-board-caption">
-                Each player receives two private cards and one exposed card.
-              </p>
+              {game ? (
+                <div className="stud-betting-info">
+                  <span>Ante: {game.ante}</span>
+                  <span>Bring-in: {game.bringIn}</span>
+                </div>
+              ) : (
+                <p className="stud-board-caption">
+                  Each player receives two private cards and one exposed card.
+                </p>
+              )}
             </div>
           </div>
 
