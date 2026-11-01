@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Lobby.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const TABLE_STAKES = {
+  Low: { minBuyIn: 200, maxBuyIn: 1000 },
+  Medium: { minBuyIn: 400, maxBuyIn: 2000 },
+  High: { minBuyIn: 1000, maxBuyIn: 5000 },
+};
 
 function Lobby({ tableSearch = '' }) {
   const [selectedLevels, setSelectedLevels] = useState([]);
@@ -31,9 +36,42 @@ function Lobby({ tableSearch = '' }) {
   const [showBuyInModal, setShowBuyInModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [buyIn, setBuyIn] = useState(0);
+  const [createBuyIn, setCreateBuyIn] = useState(400);
 
-  // Temporary balance until the account/chip system is connected.
-  const demoBalance = 1000;
+  const [chipBalance, setChipBalance] = useState(null);
+
+  // Load the signed-in player's actual chip balance.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchBalance() {
+      try {
+        const response = await fetch(`${API_URL}/api/accounts/me`, {
+          credentials: 'include',
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to retrieve chip balance.');
+        }
+
+        const user = await response.json();
+        if (!Number.isFinite(user.chipBalance)) {
+          throw new Error('Chip balance is unavailable.');
+        }
+
+        setChipBalance(user.chipBalance);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch chip balance:', err);
+          setChipBalance(null);
+        }
+      }
+    }
+
+    fetchBalance();
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,7 +136,7 @@ function Lobby({ tableSearch = '' }) {
 
   function canJoinTable(table) {
     return (
-      table.status !== 'Closed' &&
+      table.status === 'Waiting' &&
       !isTableFull(table) &&
       Boolean(table.stakes)
     );
@@ -159,8 +197,21 @@ function Lobby({ tableSearch = '' }) {
     alert('Private table lookup is not available yet.');
   }
 
+  useEffect(() => {
+    setCreateBuyIn(TABLE_STAKES[createTableData.Level].minBuyIn);
+  }, [createTableData.Level]);
+
+  const createStakes = TABLE_STAKES[createTableData.Level];
+  const createMaxBuyIn = Math.min(createStakes.maxBuyIn, chipBalance ?? 0);
+  const validCreateBuyIn = Number.isInteger(createBuyIn) &&
+    createBuyIn >= createStakes.minBuyIn && createBuyIn <= createMaxBuyIn;
+
   async function handleCreateTable(event) {
     event.preventDefault();
+    if (!validCreateBuyIn) {
+      setCreateError('Enter a valid buy-in within your available balance.');
+      return;
+    }
 
     setCreatingTable(true);
     setCreateError('');
@@ -172,7 +223,7 @@ function Lobby({ tableSearch = '' }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(createTableData),
+        body: JSON.stringify({ ...createTableData, buyIn: createBuyIn }),
       });
 
       const result = await response.json();
@@ -186,7 +237,7 @@ function Lobby({ tableSearch = '' }) {
       }
 
       setShowCreateModal(false);
-      navigate(`/table/${result.joinCode}`); //theoretically, this should also use the same buy in as the join table -- i need to talk with the team about how the buy-ins should work...
+      navigate(`/table/${result.joinCode}`);
     } catch (error) {
           console.error('Create table failed:', error);
 
@@ -272,12 +323,6 @@ function Lobby({ tableSearch = '' }) {
         </div>
 
         <div className="table-card-footer">
-          {isInProgress && joinable && (
-            <span className="join-next-hand-note">
-              Join now, play next hand
-            </span>
-          )}
-
           <div className="table-actions">
             {isInProgress && (
               <button
@@ -305,11 +350,12 @@ function Lobby({ tableSearch = '' }) {
   }
 
   const maxAffordableBuyIn = selectedTable
-    ? Math.min(selectedTable.stakes.maxBuyIn, demoBalance)
+    ? Math.min(selectedTable.stakes.maxBuyIn, chipBalance ?? 0)
     : 0;
 
   const canAffordTable = selectedTable
-    ? demoBalance >= selectedTable.stakes.minBuyIn
+    ? chipBalance !== null &&
+      chipBalance >= selectedTable.stakes.minBuyIn
     : false;
 
 
@@ -546,6 +592,33 @@ function Lobby({ tableSearch = '' }) {
                 <option value="false">Private</option>
               </select>
 
+              <p>Your Balance: <strong>{chipBalance === null ? 'Unavailable' : `${chipBalance.toLocaleString()} chips`}</strong></p>
+              <p>Buy-In Range: {createStakes.minBuyIn.toLocaleString()}–{createStakes.maxBuyIn.toLocaleString()} chips</p>
+              <label htmlFor="create-buy-in-input">Your Buy-In</label>
+              <input
+                id="create-buy-in-input"
+                type="number"
+                min={createStakes.minBuyIn}
+                max={createMaxBuyIn}
+                step="1"
+                value={createBuyIn}
+                onChange={(event) => setCreateBuyIn(event.target.value === '' ? '' : Number(event.target.value))}
+              />
+              {createMaxBuyIn >= createStakes.minBuyIn && (
+                <input
+                  aria-label="Create table buy-in slider"
+                  type="range"
+                  min={createStakes.minBuyIn}
+                  max={createMaxBuyIn}
+                  step="1"
+                  value={Number.isFinite(createBuyIn) && createBuyIn !== '' ? Math.max(createStakes.minBuyIn, Math.min(createMaxBuyIn, createBuyIn)) : createStakes.minBuyIn}
+                  onChange={(event) => setCreateBuyIn(Number(event.target.value))}
+                />
+              )}
+              {chipBalance !== null && createMaxBuyIn < createStakes.minBuyIn && (
+                <p className="modal-note" role="alert">Not enough chips for this table level.</p>
+              )}
+
               {createError && (
                 <p className="modal-note" role="alert">
                   {createError}
@@ -563,7 +636,7 @@ function Lobby({ tableSearch = '' }) {
                 <button
                   type="submit"
                   className="join-btn"
-                  disabled={creatingTable}
+                  disabled={creatingTable || !validCreateBuyIn}
                 >
                   {creatingTable ? 'Creating...' : 'Create Table'}
                 </button>
@@ -644,18 +717,12 @@ function Lobby({ tableSearch = '' }) {
               Join {selectedTable.name}
             </h2>
 
-            {selectedTable.status === 'In Progress' && (
-              <p className="modal-note">
-                This game is already in progress. You can
-                take an available seat and play starting
-                with the next hand.
-              </p>
-            )}
-
             <p>
               Your Balance:{' '}
               <strong>
-                {demoBalance.toLocaleString()} chips
+                {chipBalance === null
+                  ? 'Unavailable'
+                  : `${chipBalance.toLocaleString()} chips`}
               </strong>
             </p>
 
@@ -671,31 +738,52 @@ function Lobby({ tableSearch = '' }) {
 
             {canAffordTable ? (
               <>
-                <label htmlFor="buy-in-slider">
-                  Your Buy-In:{' '}
-                  <strong>{buyIn.toLocaleString()} chips</strong>
-                </label>
 
-                <input
-                  id="buy-in-slider"
-                  type="range"
-                  min={selectedTable.stakes.minBuyIn}
-                  max={maxAffordableBuyIn}
-                  step={1}
-                  value={buyIn}
-                  onChange={(event) =>
-                    setBuyIn(Number(event.target.value))
-                  }
-                />
+<label htmlFor="buy-in-input">
+  Your Buy-In:
+</label>
 
-                <p className="modal-note">
-                  Choose how many chips to bring to the table.
-                </p>
+<input
+  id="buy-in-input"
+  type="number"
+  min={selectedTable.stakes.minBuyIn}
+  max={maxAffordableBuyIn}
+  step="1"
+  value={buyIn}
+  onChange={(event) => {
+    const value = event.target.value;
+
+    setBuyIn(value === '' ? '' : Number(value));
+  }}
+/>
+
+<input
+  id="buy-in-slider"
+  type="range"
+  min={selectedTable.stakes.minBuyIn}
+  max={maxAffordableBuyIn}
+  step="1"
+  value={
+    Number.isFinite(buyIn) && buyIn !== ''
+      ? Math.min(
+          maxAffordableBuyIn,
+          Math.max(selectedTable.stakes.minBuyIn, buyIn)
+        )
+      : selectedTable.stakes.minBuyIn
+  }
+  onChange={(event) =>
+    setBuyIn(Number(event.target.value))
+  }
+/>
+
+<p className="modal-note">
+  Choose how many chips to bring to the table.
+</p>
+
               </>
             ) : (
               <p className="modal-note" role="alert">
-                You don't have enough chips to meet this
-                table's minimum buy-in.
+                {chipBalance === null ? 'Balance unavailable.' : "You don't have enough chips for this table's minimum buy-in."}
               </p>
             )}
 

@@ -139,7 +139,21 @@ exports.getGame = async function (req, res) {
       tableId: game.TableId,
       street: game.Street,
       status: game.Status,
+
+      // P42: Ante and bring-in information
+      pot: game.Pot,
+      ante: game.Ante,
+      bringIn: game.BringIn,
+      bringInPlayerId: game.BringInPlayerId,
+
+      // Player cards with private cards protected
       players,
+
+      // Remaining chips at the table for each player
+        playerStacks: table.PlayerStacks.map((stack) => ({
+          playerId: stack.PlayerId,
+          chips: stack.Chips
+        }))
     });
   } catch (error) {
     console.error('Error retrieving game:', error);

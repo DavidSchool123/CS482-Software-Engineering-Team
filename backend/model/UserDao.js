@@ -16,6 +16,15 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
 
+  chipBalance: {
+    type: Number,
+    required: true,
+    default: function() {
+      return this.userType === 'guest' ? 500 : 1000;
+    },
+    min: 0,
+  },
+
   password: {
     type: String,
     required: function() {
@@ -80,10 +89,10 @@ async function readAll() {
   return await User.find().select('_id username');
 }
 
+// Get a user's profile by their ID
 async function getProfile(userId) {
-
   const user = await User.findById(userId).select(
-    '_id username email friends avatar',
+    '_id username email friends avatar userType chipBalance'
   );
 
   if (!user) {
@@ -96,8 +105,11 @@ async function getProfile(userId) {
     email: user.email,
     friendCount: user.friends.length,
     avatar: user.avatar || '',
+    userType: user.userType,
+    chipBalance: user.chipBalance,
   };
 }
+
 
 async function updateAvatar(userId, avatar) {
   return User.findByIdAndUpdate(
@@ -317,6 +329,30 @@ async function getSentFriendRequests(userId) {
   return receivers;
 }
 
+
+/**
+ * Deduct chips from a user's account for a table buy-in.
+ * Only succeeds if the user has enough chips.
+ */
+async function deductChips(userId, amount, session) {
+  return await User.findOneAndUpdate(
+    {
+      _id: userId,
+      chipBalance: { $gte: amount },
+    },
+    {
+      $inc: { chipBalance: -amount },
+    },
+    {
+      new: true,
+      session,
+      runValidators: true,
+    }
+  );
+}
+
+
+
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
 User.getProfile = getProfile;
@@ -334,5 +370,6 @@ User.deleteUser = deleteUser;
 User.findUserByLogin = findUserByLogin;
 User.findUserByEmail = findUserByEmail;
 User.findUserByUsername = findUserByUsername;
+User.deductChips = deductChips;
 
 module.exports = User;

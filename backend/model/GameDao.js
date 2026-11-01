@@ -42,6 +42,20 @@ const gamePlayerSchema = new mongoose.Schema({
   Cards: {
     type: [cardSchema],
     default: []
+  },
+
+  // Chips contributed to the pot through antes and bets
+  TotalContribution: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Amount contributed during the current betting round
+  RoundContribution: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, { _id: false });
 
@@ -72,13 +86,39 @@ const gameSchema = new mongoose.Schema({
     type: String,
     enum: ['Waiting', 'In Progress', 'Completed'],
     default: 'Waiting'
+  },
+
+  // Total chips currently in the pot
+  Pot: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Ante amount required from each player
+  Ante: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Required bring-in amount
+  BringIn: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // Player responsible for posting the bring-in
+  BringInPlayerId: {
+    type: String,
+    default: null
   }
 });
 
 const GameModel = mongoose.model('Game', gameSchema);
 
 // Create a new game
-
 exports.create = async function(gameData, session) {
   const game = new GameModel(gameData);
 
@@ -86,7 +126,6 @@ exports.create = async function(gameData, session) {
 
   return game;
 };
-
 
 // Find a game by its ID
 exports.findById = async function(gameId) {

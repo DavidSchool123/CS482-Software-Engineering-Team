@@ -195,18 +195,25 @@ async function getUsers(req, res) {
   }
 }
 
-async function getProfile(req, res) {
-  try {
-    const user = await UserDao.getProfile(req.params.userId);
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
+async function getProfile(userId) {
+  const user = await User.findById(userId).select(
+    '_id username email friends avatar userType chipBalance'
+  );
 
-    return res.status(200).json(user);
-  } catch (error) {
-    return res.status(400).json({ message: 'Invalid user ID.' });
+  if (!user) {
+    return null;
   }
+
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    friendCount: user.friends.length,
+    avatar: user.avatar || '',
+    userType: user.userType,
+    chipBalance: user.chipBalance,
+  };
 }
 
 async function updateAvatar(req, res) {
@@ -405,6 +412,42 @@ async function guestLogin(req, res) {
   }
 }
 
+
+async function getCurrentUser(req, res) {
+  try {
+    const userId = req.session?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Not logged in',
+      });
+    }
+
+    const user = await UserDao.findById(userId)
+      .select('_id username userType chipBalance');
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      id: user._id.toString(),
+      username: user.username,
+      userType: user.userType,
+      chipBalance: user.chipBalance,
+    });
+  } catch (error) {
+    console.error('Error retrieving current user:', error);
+
+    return res.status(500).json({
+      message: 'Unable to retrieve current user',
+    });
+  }
+}
+
+
 module.exports = {
   userCreateUpdate,
   userDelete,
@@ -423,5 +466,6 @@ module.exports = {
   logout,
   adminCheck,
   removeFriend,
-  guestLogin
+  guestLogin,
+  getCurrentUser,
 };
