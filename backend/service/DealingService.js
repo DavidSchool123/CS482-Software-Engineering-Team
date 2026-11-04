@@ -34,4 +34,51 @@ function dealInitialCards(deck, players) {
   return playerHands;
 }
 
-module.exports = { dealInitialCards };
+/**
+ * P40 - New Cards
+ *
+ * Deals one additional card to each active player.
+ *
+ * Streets 4, 5, 6: Face-up cards
+ * Street 7: Face-down card
+ *
+ * Modifies the supplied deck and player hands.
+ */
+function dealNextStreet(deck, players, street) {
+  // Validate the street
+  if (![4, 5, 6, 7].includes(street)) {
+    throw new Error('Invalid street for dealing');
+  }
+
+  // Only players who have not folded receive new cards
+  const activePlayers = players.filter(
+    player => !player.HasFolded
+  );
+
+  if (activePlayers.length < 2) {
+    throw new Error('Not enough active players to deal');
+  }
+
+  // Ensure enough cards remain
+  if (deck.length < activePlayers.length) {
+    throw new Error('Not enough cards in the deck');
+  }
+
+  // Seventh Street is dealt face-down
+  const faceUp = street !== 7;
+
+  // Deal one card to each active player
+  for (const player of activePlayers) {
+    player.Cards.push({
+      ...deck.pop(),
+      faceUp
+    });
+  }
+
+  return players;
+}
+
+module.exports = {
+  dealInitialCards,
+  dealNextStreet
+};

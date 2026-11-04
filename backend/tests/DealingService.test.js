@@ -1,8 +1,11 @@
 
 const { createDeck, shuffleDeck } = require('../service/DeckService');
-const { dealInitialCards } = require('../service/DealingService');
+const {
+  dealInitialCards,
+  dealNextStreet
+} = require('../service/DealingService');
 
-describe('Dealing Service', () => {
+describe('P15 - Initial Card Dealing', () => {
   const players = [
     { id: 'alice' },
     { id: 'bob' },
@@ -74,5 +77,164 @@ describe('Dealing Service', () => {
 
     expect(() => dealInitialCards(deck, players))
       .toThrow('Not enough cards in the deck');
+  });
+});
+
+describe('P40 - New Cards', () => {
+  const players = [
+    { id: 'alice' },
+    { id: 'bob' },
+    { id: 'charlie' }
+  ];
+
+  function setupGame() {
+    const deck = shuffleDeck(createDeck());
+    const hands = dealInitialCards(deck, players);
+
+    const gamePlayers = hands.map(hand => ({
+      PlayerId: hand.playerId,
+      Cards: hand.cards,
+      HasFolded: false
+    }));
+
+    return { deck, gamePlayers };
+  }
+
+  test('should deal one face-up card on fourth street', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    dealNextStreet(deck, gamePlayers, 4);
+
+    for (const player of gamePlayers) {
+      expect(player.Cards).toHaveLength(4);
+      expect(player.Cards[3].faceUp).toBe(true);
+    }
+
+    expect(deck).toHaveLength(40);
+  });
+
+  test('should deal face-up cards on fifth and sixth streets', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    dealNextStreet(deck, gamePlayers, 4);
+    dealNextStreet(deck, gamePlayers, 5);
+    dealNextStreet(deck, gamePlayers, 6);
+
+    for (const player of gamePlayers) {
+      expect(player.Cards).toHaveLength(6);
+
+      expect(player.Cards.map(card => card.faceUp))
+        .toEqual([
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ]);
+    }
+
+    expect(deck).toHaveLength(34);
+  });
+
+  test('should deal the final card face-down on seventh street', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    dealNextStreet(deck, gamePlayers, 4);
+    dealNextStreet(deck, gamePlayers, 5);
+    dealNextStreet(deck, gamePlayers, 6);
+    dealNextStreet(deck, gamePlayers, 7);
+
+    for (const player of gamePlayers) {
+      expect(player.Cards).toHaveLength(7);
+
+      expect(player.Cards.map(card => card.faceUp))
+        .toEqual([
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          false
+        ]);
+    }
+
+    expect(deck).toHaveLength(31);
+  });
+
+  test('should not deal new cards to folded players', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    gamePlayers[2].HasFolded = true;
+
+    dealNextStreet(deck, gamePlayers, 4);
+
+    expect(gamePlayers[0].Cards).toHaveLength(4);
+    expect(gamePlayers[1].Cards).toHaveLength(4);
+
+    // Charlie folded and keeps the original three cards
+    expect(gamePlayers[2].Cards).toHaveLength(3);
+
+    // Only two cards were removed
+    expect(deck).toHaveLength(41);
+  });
+
+  test('should not deal duplicate cards across streets', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    dealNextStreet(deck, gamePlayers, 4);
+    dealNextStreet(deck, gamePlayers, 5);
+    dealNextStreet(deck, gamePlayers, 6);
+    dealNextStreet(deck, gamePlayers, 7);
+
+    const allCards = gamePlayers.flatMap(
+      player => player.Cards
+    );
+
+    const uniqueCards = new Set(
+      allCards.map(card => `${card.rank}-${card.suit}`)
+    );
+
+    expect(allCards).toHaveLength(21);
+    expect(uniqueCards.size).toBe(21);
+  });
+
+  test('should reject an invalid street', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    expect(() => dealNextStreet(deck, gamePlayers, 3))
+      .toThrow('Invalid street for dealing');
+
+    expect(() => dealNextStreet(deck, gamePlayers, 8))
+      .toThrow('Invalid street for dealing');
+  });
+
+  test('should reject dealing when the deck has insufficient cards', () => {
+    const { gamePlayers } = setupGame();
+
+    const shortDeck = createDeck().slice(0, 2);
+
+    expect(() => dealNextStreet(shortDeck, gamePlayers, 4))
+      .toThrow('Not enough cards in the deck');
+
+    // No player should receive an extra card
+    for (const player of gamePlayers) {
+      expect(player.Cards).toHaveLength(3);
+    }
+
+    expect(shortDeck).toHaveLength(2);
+  });
+
+  test('should reject dealing when fewer than two players remain', () => {
+    const { deck, gamePlayers } = setupGame();
+
+    gamePlayers[1].HasFolded = true;
+    gamePlayers[2].HasFolded = true;
+
+    expect(() => dealNextStreet(deck, gamePlayers, 4))
+      .toThrow('Not enough active players to deal');
+
+    expect(deck).toHaveLength(43);
   });
 });

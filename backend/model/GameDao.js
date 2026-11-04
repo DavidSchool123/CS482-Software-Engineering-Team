@@ -44,27 +44,23 @@ const gamePlayerSchema = new mongoose.Schema({
     default: []
   },
 
-  // Chips contributed to the pot through antes and bets
   TotalContribution: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Amount contributed during the current betting round
   RoundContribution: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Whether the player has folded this hand
   HasFolded: {
     type: Boolean,
     default: false
   },
 
-  // Whether the player has acted since the last bet or raise
   HasActed: {
     type: Boolean,
     default: false
@@ -100,54 +96,46 @@ const gameSchema = new mongoose.Schema({
     default: 'Waiting'
   },
 
-  // Total chips currently in the pot
   Pot: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Ante amount required from each player
   Ante: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Required bring-in amount
   BringIn: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Player responsible for posting the bring-in
   BringInPlayerId: {
     type: String,
     default: null
   },
 
-  // Highest amount a player must match in the current round
   CurrentBet: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Player whose turn it is to act
   CurrentTurnPlayerId: {
     type: String,
     default: null
   },
 
-  // Size of the last full bet or raise
   LastRaiseAmount: {
     type: Number,
     default: 0,
     min: 0
   },
 
-  // Number of full raises during the current betting round
   RaiseCount: {
     type: Number,
     default: 0,
@@ -155,11 +143,17 @@ const gameSchema = new mongoose.Schema({
   },
 
   // Whether the current betting round has finished
-  BettingRoundFinished: {
+  BettingRoundComplete: {
+    type: Boolean,
+    default: false
+  },
+
+  // P40: Cards for the next street have been dealt,
+  // but P49 has not initialized the new betting round.
+  AwaitingNextRound: {
     type: Boolean,
     default: false
   }
-
 });
 
 const GameModel = mongoose.model('Game', gameSchema);
@@ -174,8 +168,48 @@ exports.create = async function(gameData, session) {
 };
 
 // Find a game by its ID
-exports.findById = async function(gameId, session=null) {
+exports.findById = async function(gameId, session = null) {
   return await GameModel.findById(gameId).session(session);
+};
+
+/**
+ * P40 - Atomically save the next street and its cards.
+ */
+exports.advanceStreet = async function(
+  gameId,
+  expectedStreet,
+  updatedPlayers,
+  remainingDeck,
+  session = null
+) {
+  return await GameModel.findOneAndUpdate(
+    {
+      _id: gameId,
+      Street: expectedStreet,
+      Status: 'In Progress',
+      BettingRoundComplete: true,
+
+      // Prevent dealing again while waiting for P49
+      AwaitingNextRound: false
+    },
+    {
+      $set: {
+        Players: updatedPlayers,
+        Deck: remainingDeck,
+        Street: expectedStreet + 1,
+
+        // P49 will initialize the next betting round
+        BettingRoundComplete: true,
+        AwaitingNextRound: true,
+        CurrentTurnPlayerId: null
+      }
+    },
+    {
+      new: true,
+      runValidators: true,
+      session
+    }
+  );
 };
 
 // Export model for testing and future game operations
