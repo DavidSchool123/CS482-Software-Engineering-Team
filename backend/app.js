@@ -10,7 +10,12 @@ const mongoStore = require('connect-mongo').default;
 const app = express();
 
 // Middleware
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: '2.1mb' }));
 
 // app.use(
@@ -45,7 +50,9 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-app.use(session(sessionConfig));
+const sessionMiddleware = session(sessionConfig);
+app.locals.sessionMiddleware = sessionMiddleware;
+app.use(sessionMiddleware);
 
 const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');

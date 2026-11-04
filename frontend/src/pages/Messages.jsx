@@ -15,6 +15,7 @@ function Messages() {
   const [editingContent, setEditingContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [liveFriendId, setLiveFriendId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +98,122 @@ function Messages() {
     };
   }, [currentUserId, selectedFriendId]);
 
+  useEffect(() => {
+    if (
+      !currentUserId ||
+      !selectedFriendId ||
+      !friends.some((friend) => friend._id === selectedFriendId)
+    ) {
+      return undefined;
+    }
+
+    const socketUrl = new URL(API_URL);
+    socketUrl.protocol = socketUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+    socketUrl.pathname = '/ws/messages';
+    socketUrl.search = new URLSearchParams({
+      friendId: selectedFriendId,
+    }).toString();
+
+    let socket;
+    let retryTimer;
+    let retryDelay = 1000;
+    let stopped = false;
+
+    function connect() {
+      if (stopped) return;
+
+      const connection = new WebSocket(socketUrl);
+      socket = connection;
+      connection.addEventListener('open', async () => {
+        if (stopped) {
+          connection.close();
+          return;
+        }
+
+        retryDelay = 1000;
+        setLiveFriendId(selectedFriendId);
+
+        try {
+          const response = await fetch(
+            `${API_URL}/api/messages/${selectedFriendId}`,
+            { credentials: 'include' },
+          );
+          if (stopped || !response.ok) return;
+          const latestMessages = await response.json();
+          setMessages((existing) => {
+            const byId = new Map(
+              existing.map((message) => [message._id, message]),
+            );
+            latestMessages.forEach((message) => byId.set(message._id, message));
+            return [...byId.values()].sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+            );
+          });
+        } catch (syncError) {
+          console.error('Could not sync messages after reconnect:', syncError);
+        }
+      });
+
+      connection.addEventListener('message', (event) => {
+        if (stopped) return;
+        const update = JSON.parse(event.data);
+        if (update.type === 'message-created') {
+          setMessages((existing) =>
+            existing.some((message) => message._id === update.message._id)
+              ? existing
+              : [...existing, update.message],
+          );
+        } else if (update.type === 'message-updated') {
+          setMessages((existing) =>
+            existing.map((message) =>
+              message._id === update.message._id ? update.message : message,
+            ),
+          );
+        } else if (update.type === 'message-deleted') {
+          setMessages((existing) =>
+            existing.filter((message) => message._id !== update.messageId),
+          );
+        } else if (update.type === 'conversation-deleted') {
+          stopped = true;
+          setMessages([]);
+          setFriends((existing) =>
+            existing.filter((friend) => friend._id !== selectedFriendId),
+          );
+          setSearchParams({});
+          setError('This conversation ended because you are no longer friends.');
+        }
+      });
+
+      connection.addEventListener('close', (event) => {
+        if (event.code === 4002) {
+          stopped = true;
+          setLiveFriendId('');
+          setError('Your session ended. Log in again to continue messaging.');
+          return;
+        }
+
+        if (!stopped) {
+          setLiveFriendId('');
+        }
+        if (!stopped) {
+          retryTimer = window.setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 10000);
+        }
+      });
+
+      connection.addEventListener('error', () => {
+        connection.close();
+      });
+    }
+
+    connect();
+    return () => {
+      stopped = true;
+      window.clearTimeout(retryTimer);
+      socket?.close();
+    };
+  }, [currentUserId, friends, selectedFriendId, setSearchParams]);
+
   const selectedFriend = friends.find(
     (friend) => friend._id === selectedFriendId,
   );
@@ -125,7 +242,11 @@ function Messages() {
       if (!response.ok) {
         throw new Error(data.message || 'Could not send message.');
       }
-      setMessages((existing) => [...existing, data]);
+      setMessages((existing) =>
+        existing.some((message) => message._id === data._id)
+          ? existing
+          : [...existing, data],
+      );
       setContent('');
       setError('');
     } catch (sendError) {
@@ -214,7 +335,18 @@ function Messages() {
         <section className="messages-conversation" aria-label="Conversation">
           {selectedFriend ? (
             <>
-              <h2>{selectedFriend.username}</h2>
+              <header className="messages-conversation-header">
+                <h2>{selectedFriend.username}</h2>
+                <span
+                  className={`messages-live-status ${
+                    liveFriendId === selectedFriendId ? 'connected' : ''
+                  }`}
+                  aria-live="polite"
+                >
+                  <span className="messages-live-dot" aria-hidden="true" />
+                  {liveFriendId === selectedFriendId ? 'Live' : 'Connecting...'}
+                </span>
+              </header>
               <div className="messages-list" aria-live="polite">
                 {messages.length === 0 ? (
                   <p className="messages-empty">No messages yet. Say hello!</p>

@@ -109,6 +109,7 @@ async function deleteConversation(userId, friendId) {
 }
 
 Message.listConversation = listConversation;
+Message.requireFriends = requireFriends;
 Message.createMessage = createMessage;
 Message.updateMessage = updateMessage;
 Message.deleteMessage = deleteMessage;

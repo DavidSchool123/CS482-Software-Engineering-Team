@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const MessageDao = require('../model/MessageDao');
+const MessageEvents = require('../service/MessageEvents');
 
 function getUserId(req, res) {
   const userId = req.session?.userId;
@@ -85,6 +86,12 @@ async function createMessage(req, res) {
       new mongoose.Types.ObjectId(recipientId),
       content.trim(),
     );
+    MessageEvents.publish({
+      type: 'message-created',
+      userA: userId,
+      userB: new mongoose.Types.ObjectId(recipientId),
+      message: message.toObject(),
+    });
     return res.status(201).json(message);
   } catch (error) {
     return handleError(res, error);
@@ -109,6 +116,12 @@ async function updateMessage(req, res) {
       new mongoose.Types.ObjectId(messageId),
       content.trim(),
     );
+    MessageEvents.publish({
+      type: 'message-updated',
+      userA: userId,
+      userB: message.recipient,
+      message: message.toObject(),
+    });
     return res.status(200).json(message);
   } catch (error) {
     return handleError(res, error);
@@ -125,10 +138,20 @@ async function deleteMessage(req, res) {
   }
 
   try {
+    const message = await MessageDao.findOne({
+      _id: messageId,
+      sender: userId,
+    });
     await MessageDao.deleteMessage(
       userId,
       new mongoose.Types.ObjectId(messageId),
     );
+    MessageEvents.publish({
+      type: 'message-deleted',
+      userA: userId,
+      userB: message.recipient,
+      messageId,
+    });
     return res.status(200).json({ message: 'Message deleted.' });
   } catch (error) {
     return handleError(res, error);

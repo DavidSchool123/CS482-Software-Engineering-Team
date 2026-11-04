@@ -1,5 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
+const http = require('node:http');
+const WebSocket = require('ws');
 const path = require('path');
 
 require('dotenv').config({
@@ -10,6 +12,7 @@ const app = require('../app');
 const User = require('../model/UserDao');
 const Message = require('../model/MessageDao');
 const passUtil = require('../util/PasswordUtil');
+const createMessageSockets = require('../service/MessageSockets');
 
 let sender;
 let friend;
@@ -155,5 +158,63 @@ describe('Private messages', () => {
     await request(app)
       .get(`/api/messages/${friend._id}`)
       .expect(401);
+  });
+
+  test('delivers new messages to connected friends immediately', async () => {
+    const senderLogin = await request(app)
+      .post('/api/accounts/login')
+      .send({ txt_login: sender.username, txt_pass: 'testpass123' })
+      .expect(200);
+    const friendAgent = await loggedInAgent(friend);
+
+    const server = http.createServer(app);
+    const messageSockets = createMessageSockets(
+      server,
+      app.locals.sessionMiddleware,
+    );
+
+    try {
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const cookie = senderLogin.headers['set-cookie'][0].split(';')[0];
+      const socket = new WebSocket(
+        `ws://127.0.0.1:${server.address().port}/ws/messages?friendId=${friend._id}`,
+        {
+          headers: {
+            Cookie: cookie,
+            Origin: 'http://localhost:5173',
+          },
+        },
+      );
+
+      await new Promise((resolve, reject) => {
+        socket.once('open', resolve);
+        socket.once('error', reject);
+      });
+
+      const receivedMessage = new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('WebSocket message was not delivered')),
+          3000,
+        );
+        socket.once('message', (data) => {
+          clearTimeout(timer);
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      await friendAgent
+        .post('/api/messages')
+        .send({ recipientId: sender._id.toString(), content: 'Live message' })
+        .expect(201);
+
+      const event = await receivedMessage;
+      expect(event.type).toBe('message-created');
+      expect(event.message.content).toBe('Live message');
+
+      socket.close();
+    } finally {
+      messageSockets.close();
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 });
