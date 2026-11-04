@@ -199,7 +199,10 @@ async function startGame(tableId) {
         CurrentTurnPlayerId: currentTurnPlayerId,
         LastRaiseAmount: lastRaiseAmount,
         RaiseCount: 0,
-        BettingRoundComplete: false
+        BettingRoundComplete: false,
+
+        // P40: No new street is waiting for betting initialization.
+        AwaitingNextRound: false
       }, session);
 
       // 15. Associate game with table
