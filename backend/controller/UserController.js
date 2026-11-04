@@ -1,6 +1,7 @@
 const UserDao = require('../model/UserDao');
 const passUtil = require('../util/PasswordUtil.js');
 const crypto = require('node:crypto');
+const MessageEvents = require('../service/MessageEvents');
 
 async function userCreateUpdate(req, res) {
   let username = req.body.username;
@@ -101,6 +102,7 @@ async function userDelete(req, res) {
       });
     }
 
+    MessageEvents.publish({ type: 'user-logged-out', userId });
     req.session.destroy((error) => {
       if (error) {
         return res.status(500).json({
@@ -165,6 +167,7 @@ async function loggedUser(req, res) {
 }
 
 async function logout(req, res) {
+  const userId = req.session?.userId;
   req.session.destroy((error) => {
     if (error) {
       return res.status(500).json({
@@ -172,6 +175,9 @@ async function logout(req, res) {
       });
     }
 
+    if (userId) {
+      MessageEvents.publish({ type: 'user-logged-out', userId });
+    }
     res.clearCookie('connect.sid');
     return res.status(200).json({
       message: 'Logged out successfully.',

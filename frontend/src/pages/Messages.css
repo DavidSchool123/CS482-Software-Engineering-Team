@@ -97,11 +97,38 @@
     #fff;
 }
 
-.messages-conversation > h2 {
+.messages-conversation-header {
   min-height: 74px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid #eee8f5;
+}
+
+.messages-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #847b90;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.messages-live-status.connected {
+  color: #4a805c;
+}
+
+.messages-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b7adbf;
+}
+
+.messages-live-status.connected .messages-live-dot {
+  background: #48a365;
+  box-shadow: 0 0 0 3px rgba(72, 163, 101, 0.13);
 }
 
 .messages-list {
@@ -307,7 +334,7 @@
     padding: 0 16px 16px;
   }
 
-  .messages-conversation > h2 {
+  .messages-conversation-header {
     min-height: 62px;
   }
 
