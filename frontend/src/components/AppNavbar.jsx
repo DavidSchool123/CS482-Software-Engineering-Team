@@ -14,7 +14,9 @@ function AppNavbar({ tableSearch, setTableSearch }) {
     '/contact',
   ];
 
-  const isPublicPage = publicPages.includes(location.pathname);
+  const isPublicPage =
+    publicPages.includes(location.pathname) &&
+    !(location.pathname === '/tutorial' && location.state?.gameNavbar);
 
   return isPublicPage ? (
     <Navbar />
