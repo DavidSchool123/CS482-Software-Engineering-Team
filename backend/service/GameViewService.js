@@ -2,6 +2,7 @@
 function getVisiblePlayers(players, viewerId) {
   return players.map((player) => {
     const isCurrentPlayer =
+      viewerId != null &&
       player.PlayerId.toString() === viewerId.toString();
 
     return {

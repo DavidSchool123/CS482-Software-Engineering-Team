@@ -33,7 +33,7 @@ function EmptySeat({ position }) {
   );
 }
 
-// Decorative chips. Actual balances come from the API.
+// Decorative pot chips. Actual balances come from the API.
 function ChipStack({ amount = 0, small = false }) {
   const count = amount > 0 ? 5 : 0;
 
@@ -71,65 +71,8 @@ function ChipStack({ amount = 0, small = false }) {
   );
 }
 
-function PlayerChips({ chips }) {
-  if (chips == null) return null;
-
-  return (
-    <div className="poker-player-chips">
-      <ChipStack amount={chips} small />
-      <span>{chips} chips</span>
-    </div>
-  );
-}
-
-function HostSeat({
-  cards = [],
-  chips,
-  isBringIn = false,
-  isTurn = false,
-  hasFolded = false,
-  contribution = 0,
-}) {
-  return (
-    <div className="stud-seat stud-seat-you seat-bottom">
-      <div className="stud-seat-avatar" aria-hidden="true">♙</div>
-
-      <div className="stud-seat-details">
-        <strong>You</strong>
-
-        {isBringIn && (
-          <span className="stud-bring-in-label">Bring-in</span>
-        )}
-
-        {isTurn && !hasFolded && (
-          <span className="stud-bring-in-label">Your turn</span>
-        )}
-
-        {hasFolded && <span>Folded</span>}
-
-        <PlayerChips chips={chips} />
-
-        {contribution > 0 && (
-          <span>Round bet: {contribution}</span>
-        )}
-
-        <span>
-          {cards.length > 0 ? 'Cards dealt' : 'Waiting for cards'}
-        </span>
-      </div>
-
-      {cards.length > 0 && (
-        <div className="stud-hole-cards">
-          {cards.map((card, index) => (
-            <PlayingCard key={index} card={card} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PlayerSeat({
+// Compact seat shared by the current player and opponents.
+function PokerSeat({
   name,
   position,
   cards = [],
@@ -138,42 +81,72 @@ function PlayerSeat({
   isTurn = false,
   hasFolded = false,
   contribution = 0,
+  isYou = false,
 }) {
   return (
-    <div className={`stud-seat seat-${position}`}>
-      <div className="stud-seat-avatar" aria-hidden="true">♙</div>
+    <div
+      className={`stud-seat stud-seat-compact seat-${position} ${
+        isYou ? 'stud-seat-you' : ''
+      }`}
+    >
+      <div className="stud-seat-header">
+        <div className="stud-seat-avatar" aria-hidden="true">
+          ♙
+        </div>
 
-      <div className="stud-seat-details">
-        <strong>{name}</strong>
+        <div className="stud-seat-info">
+          <strong className="stud-seat-name">{name}</strong>
 
-        {isBringIn && (
-          <span className="stud-bring-in-label">Bring-in</span>
-        )}
+          <div className="stud-seat-meta">
+            {chips != null && (
+              <span className="stud-seat-balance">
+                🪙 {chips}
+              </span>
+            )}
 
-        {isTurn && !hasFolded && (
-          <span className="stud-bring-in-label">Current turn</span>
-        )}
-
-        {hasFolded && <span>Folded</span>}
-
-        <PlayerChips chips={chips} />
-
-        {contribution > 0 && (
-          <span>Round bet: {contribution}</span>
-        )}
-
-        <span>
-          {cards.length > 0 ? 'Cards dealt' : 'Waiting for cards'}
-        </span>
+            {contribution > 0 && (
+              <span className="stud-seat-bet">
+                Bet: {contribution}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
+      {(isBringIn || isTurn || hasFolded) && (
+        <div className="stud-seat-status">
+          {hasFolded ? (
+            <span className="stud-bring-in-label">
+              Folded
+            </span>
+          ) : (
+            <>
+              {isBringIn && (
+                <span className="stud-bring-in-label">
+                  Bring-in
+                </span>
+              )}
+
+              {isTurn && (
+                <span className="stud-bring-in-label">
+                  {isYou ? 'Your turn' : 'Current turn'}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {cards.length > 0 && (
-        <div className="stud-hole-cards">
+        <div 
+          className="stud-hole-cards"
+          style={{ '--card-count': cards.length }}
+          >
           {cards.map((card, index) => (
             <PlayingCard
               key={index}
               card={card}
-              hidden={!card.faceUp}
+              hidden={!isYou && !card.faceUp}
             />
           ))}
         </div>
@@ -697,7 +670,7 @@ function Table() {
               const player = opponents[index];
 
               return player ? (
-                <PlayerSeat
+                <PokerSeat
                   key={player.playerId}
                   name={
                     String(player.playerId).startsWith('bot-')
@@ -726,13 +699,16 @@ function Table() {
               );
             })}
 
-            <HostSeat
+            <PokerSeat
+              name="You"
+              position="bottom"
+              isYou
               cards={me?.cards || []}
               chips={myChips}
               isBringIn={Boolean(
                 me &&
-                String(game?.bringInPlayerId) ===
-                  String(me.playerId)
+                  String(game?.bringInPlayerId) ===
+                    String(me.playerId)
               )}
               isTurn={isMyTurn}
               hasFolded={me?.hasFolded}
