@@ -7,6 +7,7 @@ import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
 import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
+import Messages from './pages/Messages';
 import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
 import PokerTable from './pages/PokerTable';
@@ -46,10 +47,7 @@ function App() {
 
         <Route path='*' element={<Placeholder title='Page Not Found' />} />
 
-        <Route
-          path='/messages'
-          element={<Placeholder title='Messages Coming Soon' />}
-        />
+        <Route path='/messages' element={<Messages />} />
       </Routes>
     </BrowserRouter>
   );

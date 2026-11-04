@@ -51,6 +51,7 @@ const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');
 const ContactController = require('./controller/ContactController');
 const GameController = require('./controller/GameController');
+const MessageController = require('./controller/MessageController');
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -98,6 +99,12 @@ app.patch(
 // Get friends for a user
 app.get('/api/friends/:userId', UserController.getFriends);
 app.delete('/api/friends/:userId/:friendId', UserController.removeFriend);
+
+// Private messages are limited to the authenticated user and their friends.
+app.get('/api/messages/:friendId', MessageController.getConversation);
+app.post('/api/messages', MessageController.createMessage);
+app.patch('/api/messages/:messageId', MessageController.updateMessage);
+app.delete('/api/messages/:messageId', MessageController.deleteMessage);
 
 // Get sent friend requests for a user
 app.get('/api/friends/sent/:userId', UserController.getSentFriendRequests);
