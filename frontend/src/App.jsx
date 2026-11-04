@@ -11,6 +11,7 @@ import Messages from './pages/Messages';
 import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
 import PokerTable from './pages/PokerTable';
+import Tutorial from './pages/Tutorial';
 
 import './App.css';
 
@@ -36,7 +37,7 @@ function App() {
 
         <Route path='/friends' element={<Friends />} />
 
-        <Route path='/tutorial' element={<Placeholder title='How to Play' />} />
+        <Route path='/tutorial' element={<Tutorial />} />
 
         <Route
           path='/about'

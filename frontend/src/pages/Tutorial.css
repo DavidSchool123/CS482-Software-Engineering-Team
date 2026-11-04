@@ -1,0 +1,1195 @@
+.tutorial-page {
+  --tutorial-ink: #21183e;
+  --tutorial-muted: #71677f;
+  --tutorial-purple: #8b36e9;
+  --tutorial-border: #e8ddf5;
+  padding: 0 0 72px;
+  color: var(--tutorial-ink);
+}
+
+.tutorial-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: center;
+  gap: 48px;
+  min-height: 390px;
+  padding: 58px max(7vw, 32px) 96px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 80% 35%, rgba(139, 54, 233, 0.34), transparent 34%),
+    linear-gradient(120deg, #21183e, #30204f 65%, #3b2160);
+  color: #fff;
+}
+
+.tutorial-hero::before,
+.tutorial-hero::after {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border: 1px solid rgba(214, 185, 255, 0.12);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.tutorial-hero::before {
+  top: -240px;
+  left: 48%;
+}
+
+.tutorial-hero::after {
+  right: -180px;
+  bottom: -240px;
+  width: 440px;
+  height: 440px;
+}
+
+.tutorial-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 660px;
+}
+
+.tutorial-eyebrow,
+.tutorial-step-label {
+  color: #b993e8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.tutorial-hero h1 {
+  margin: 14px 0 14px;
+  color: #fff;
+  font-size: clamp(38px, 5vw, 58px);
+  letter-spacing: -0.05em;
+  line-height: 1.04;
+}
+
+.tutorial-hero-content > p {
+  max-width: 570px;
+  margin: 0 0 26px;
+  color: #e1d7ed;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.tutorial-primary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #8b36e9;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tutorial-primary-link:hover {
+  transform: translateY(-2px);
+  background: #9c4af0;
+  box-shadow: 0 8px 22px rgba(139, 54, 233, 0.28);
+}
+
+.tutorial-hero-art {
+  position: relative;
+  z-index: 1;
+  height: 220px;
+}
+
+.tutorial-hero-card {
+  position: absolute;
+  display: flex;
+  width: 126px;
+  height: 176px;
+  align-items: center;
+  justify-content: center;
+  border: 5px solid white;
+  border-radius: 13px;
+  box-shadow: 0 18px 40px rgba(12, 6, 24, 0.35);
+}
+
+.tutorial-hero-card-back {
+  top: 26px;
+  left: 42px;
+  transform: rotate(-15deg);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 7px, rgba(220, 194, 255, 0.22) 8px 10px),
+    #6d35a2;
+  color: #dec5ff;
+  font-size: 44px;
+}
+
+.tutorial-hero-card-front {
+  top: 8px;
+  left: 142px;
+  flex-direction: column;
+  gap: 0;
+  transform: rotate(12deg);
+  background: #fff;
+  color: #21183e;
+}
+
+.tutorial-hero-card-front span {
+  font-size: 33px;
+  font-weight: 800;
+}
+
+.tutorial-hero-card-front strong {
+  color: #21183e;
+  font-size: 57px;
+  line-height: 1;
+}
+
+.tutorial-hero-chip {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  border: 7px dashed #e6ccff;
+  border-radius: 50%;
+  background: #8b36e9;
+  box-shadow: 0 9px 22px rgba(12, 6, 24, 0.35);
+  color: #fff;
+  font-size: 26px;
+}
+
+.tutorial-hero-facts {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 6vw, 72px);
+  padding: 12px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 10, 28, 0.18);
+  color: #ddd1eb;
+  font-size: 12px;
+}
+
+.tutorial-hero-facts span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tutorial-hero-facts strong {
+  color: #d3adff;
+  font-size: 17px;
+}
+
+.tutorial-jump-links {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-bottom: 1px solid #eee8f5;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.tutorial-jump-links a {
+  padding: 9px 13px;
+  border-radius: 8px;
+  color: #5f526e;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.tutorial-jump-links a:hover {
+  background: #f3ecfb;
+  color: #7130b4;
+}
+
+.tutorial-section,
+.tutorial-quiz-section,
+.tutorial-play-cta,
+.tutorial-availability-note {
+  width: min(1050px, calc(100% - 48px));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.tutorial-section {
+  padding-top: 78px;
+  scroll-margin-top: 70px;
+}
+
+.tutorial-section-heading {
+  max-width: 680px;
+  margin-bottom: 28px;
+}
+
+.tutorial-section-heading .tutorial-step-label,
+.tutorial-quiz-heading .tutorial-step-label,
+.tutorial-play-cta .tutorial-step-label {
+  color: #8b55b9;
+}
+
+.tutorial-section-heading h2,
+.tutorial-quiz-heading h2 {
+  margin: 10px 0;
+  color: var(--tutorial-ink);
+  font-size: clamp(26px, 3.5vw, 34px);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.tutorial-section-heading > p,
+.tutorial-quiz-heading > p {
+  margin: 0;
+  color: var(--tutorial-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.tutorial-deal-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.tutorial-street-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--tutorial-border);
+  border-radius: 14px;
+  background: #fbf9fe;
+}
+
+.tutorial-street-picker button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #594c68;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.tutorial-street-picker button:hover {
+  background: #f4edfb;
+}
+
+.tutorial-street-picker button.active {
+  border-color: #e7d8f6;
+  background: #fff;
+  color: #612a9c;
+  box-shadow: 0 4px 12px rgba(49, 28, 79, 0.06);
+}
+
+.tutorial-street-number {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: #eee5f7;
+  color: #72518e;
+  font-size: 12px;
+}
+
+.tutorial-street-picker button.active .tutorial-street-number {
+  background: #8b36e9;
+  color: #fff;
+}
+
+.tutorial-street-card {
+  min-width: 0;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid var(--tutorial-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(49, 28, 79, 0.06);
+  animation: tutorial-panel-enter 220ms ease both;
+}
+
+.tutorial-street-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tutorial-street-kicker {
+  color: #8b55b9;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tutorial-bet-badge {
+  padding: 7px 10px;
+  border: 1px solid #e8ddf5;
+  border-radius: 20px;
+  background: #f8f3fc;
+  color: #6a4b86;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tutorial-street-card h3 {
+  margin: 17px 0 9px;
+  color: var(--tutorial-ink);
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+
+.tutorial-street-card > p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--tutorial-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.tutorial-example-table {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid #e8ddf5;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at center, rgba(77, 134, 101, 0.9), transparent 65%),
+    #28543e;
+  text-align: center;
+}
+
+.tutorial-example-label {
+  color: #d9e7dc;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.tutorial-example-cards {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  min-height: 112px;
+  margin: 15px 0 10px;
+}
+
+.tutorial-playing-card {
+  display: flex;
+  width: 65px;
+  height: 94px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fff;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 5px 12px rgba(18, 30, 21, 0.24);
+  color: #21183e;
+}
+
+.tutorial-playing-card strong {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.tutorial-playing-card > span {
+  font-size: 29px;
+  line-height: 1.1;
+}
+
+.tutorial-playing-card.red {
+  color: #c64055;
+}
+
+.tutorial-playing-card.black {
+  color: #21183e;
+}
+
+.tutorial-playing-card.tutorial-card-back {
+  border-color: #fff;
+  outline: 1px solid rgba(255, 255, 255, 0.55);
+  outline-offset: -7px;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 5px, rgba(224, 204, 255, 0.3) 6px 8px),
+    #673894;
+  color: #e5ceff;
+  font-size: 32px;
+}
+
+.tutorial-hidden-note {
+  color: #d9e7dc;
+  font-size: 11px;
+}
+
+.tutorial-step-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+  color: #82768f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tutorial-step-controls button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid #e3d8ed;
+  border-radius: 8px;
+  background: #fff;
+  color: #5a4b69;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tutorial-step-controls button:hover:not(:disabled) {
+  border-color: #c9a9e9;
+  background: #faf6ff;
+}
+
+.tutorial-step-controls button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.tutorial-step-controls .tutorial-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: transparent;
+  background: #8b36e9;
+  color: white;
+}
+
+.tutorial-step-controls .tutorial-next:hover:not(:disabled) {
+  background: #7130b4;
+}
+
+.tutorial-key-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid #e8ddf5;
+  border-radius: 12px;
+  background: #f7f1fc;
+}
+
+.tutorial-key-rule-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #8b36e9;
+  color: #fff;
+  font-weight: 800;
+}
+
+.tutorial-key-rule p {
+  margin: 2px 0 0;
+  color: #5d506d;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.tutorial-betting-section {
+  padding-top: 88px;
+}
+
+.tutorial-action-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tutorial-action-card {
+  min-height: 190px;
+  padding: 19px 16px;
+  border: 1px solid var(--tutorial-border);
+  border-radius: 13px;
+  background: #fff;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.tutorial-action-card:hover {
+  transform: translateY(-3px);
+  border-color: #d7c0ee;
+  box-shadow: 0 10px 24px rgba(49, 28, 79, 0.08);
+}
+
+.tutorial-action-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  background: #f0e5fb;
+  color: #7130b4;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.tutorial-action-card h3 {
+  margin: 0 0 7px;
+  color: var(--tutorial-ink);
+  font-size: 15px;
+}
+
+.tutorial-action-card p {
+  margin: 0;
+  color: var(--tutorial-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.tutorial-limit-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.85fr);
+  align-items: center;
+  gap: 32px;
+  margin-top: 20px;
+  padding: 26px;
+  border: 1px solid var(--tutorial-border);
+  border-radius: 15px;
+  background: linear-gradient(110deg, #fbf9fe, #fff);
+}
+
+.tutorial-limit-panel h3 {
+  margin: 9px 0 7px;
+  color: var(--tutorial-ink);
+  font-size: 19px;
+}
+
+.tutorial-limit-panel p {
+  max-width: 470px;
+  margin: 0;
+  color: var(--tutorial-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.tutorial-limit-table-wrap {
+  padding: 12px 16px 10px;
+  border: 1px solid #ece5f4;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.tutorial-limit-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #4e425e;
+  font-size: 12px;
+  text-align: left;
+}
+
+.tutorial-limit-table th,
+.tutorial-limit-table td {
+  padding: 9px 7px;
+  border-bottom: 1px solid #f0ebf5;
+}
+
+.tutorial-limit-table thead th {
+  color: #8b55b9;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.tutorial-limit-table tbody th {
+  color: #312344;
+}
+
+.tutorial-limit-table tbody tr:last-child th,
+.tutorial-limit-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tutorial-chip-note {
+  display: block;
+  margin-top: 5px;
+  color: #8b8195;
+  font-size: 10px;
+  text-align: right;
+}
+
+.tutorial-hands-section {
+  padding-top: 88px;
+}
+
+.tutorial-hands-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+}
+
+.tutorial-hand-row {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 14px;
+  border: 1px solid #ece5f4;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.tutorial-hand-rank {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #f1e8fa;
+  color: #7130b4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tutorial-hand-row h3 {
+  margin: 0 0 3px;
+  color: #302241;
+  font-size: 13px;
+}
+
+.tutorial-hand-row p {
+  margin: 0;
+  color: #766b82;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tutorial-tie-note {
+  margin: 14px 0 0;
+  padding: 13px 15px;
+  border-left: 3px solid #b67aff;
+  background: #f8f4fc;
+  color: #655a72;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.tutorial-quiz-section {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: start;
+  gap: 34px;
+  padding-top: 88px;
+  scroll-margin-top: 70px;
+}
+
+.tutorial-quiz-heading h2 {
+  margin: 10px 0;
+}
+
+.tutorial-quiz-card {
+  padding: 26px;
+  border: 1px solid #e8ddf5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(49, 28, 79, 0.07);
+}
+
+.tutorial-quiz-count {
+  color: #8b55b9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.tutorial-quiz-count span {
+  color: #a79bb3;
+}
+
+.tutorial-quiz-card h3 {
+  margin: 13px 0 17px;
+  color: var(--tutorial-ink);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.tutorial-quiz-options {
+  display: grid;
+  gap: 8px;
+}
+
+.tutorial-quiz-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #e8e1ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #574a66;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.tutorial-quiz-option:hover:not(:disabled) {
+  border-color: #c9a9e9;
+  background: #fcf9ff;
+}
+
+.tutorial-quiz-option.selected {
+  border-color: #a86de0;
+  background: #f8f1ff;
+  color: #55218c;
+}
+
+.tutorial-quiz-option.correct {
+  border-color: #9bc7a3;
+  background: #f1faf3;
+  color: #326844;
+}
+
+.tutorial-quiz-option.incorrect {
+  border-color: #e5aeba;
+  background: #fff5f6;
+  color: #96384c;
+}
+
+.tutorial-quiz-option:disabled {
+  cursor: default;
+}
+
+.tutorial-quiz-feedback {
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: #fff3f4;
+  color: #8b394d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tutorial-quiz-feedback.correct {
+  background: #eff8f1;
+  color: #356a46;
+}
+
+.tutorial-quiz-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  color: #8b8195;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tutorial-quiz-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #8b36e9;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tutorial-quiz-submit:hover:not(:disabled) {
+  background: #7130b4;
+}
+
+.tutorial-quiz-submit:disabled {
+  background: #c7b5d8;
+  cursor: not-allowed;
+}
+
+.tutorial-play-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 88px;
+  padding: clamp(24px, 5vw, 38px);
+  border: 1px solid #e5d7f2;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 90% 50%, rgba(182, 122, 255, 0.18), transparent 45%),
+    #f7f1fc;
+}
+
+.tutorial-play-cta h2 {
+  margin: 8px 0;
+  color: #21183e;
+  font-size: clamp(20px, 3vw, 26px);
+  letter-spacing: -0.035em;
+}
+
+.tutorial-play-cta p {
+  margin: 0;
+  color: #71677f;
+  font-size: 13px;
+}
+
+.tutorial-play-cta .tutorial-primary-link {
+  flex: 0 0 auto;
+}
+
+.tutorial-availability-note {
+  margin-top: 18px;
+  padding: 13px 16px;
+  border: 1px solid #ece5f4;
+  border-radius: 10px;
+  background: #fff;
+  color: #766b82;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.tutorial-availability-note strong {
+  color: #574568;
+}
+
+.tutorial-page button:focus-visible,
+.tutorial-page a:focus-visible {
+  outline: 3px solid #b67aff;
+  outline-offset: 3px;
+}
+
+@keyframes tutorial-panel-enter {
+  from {
+    opacity: 0.65;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .tutorial-hero {
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 20px;
+  }
+
+  .tutorial-hero-art {
+    transform: scale(0.82);
+    transform-origin: center right;
+  }
+
+  .tutorial-action-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tutorial-action-card {
+    min-height: 160px;
+  }
+
+  .tutorial-limit-panel {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+@media (max-width: 650px) {
+  .tutorial-page {
+    padding-bottom: 44px;
+  }
+
+  .tutorial-hero {
+    display: block;
+    min-height: 430px;
+    padding: 42px 24px 116px;
+  }
+
+  .tutorial-hero-content {
+    max-width: 100%;
+  }
+
+  .tutorial-hero-content > p {
+    font-size: 14px;
+  }
+
+  .tutorial-hero-art {
+    position: absolute;
+    right: 16px;
+    bottom: 70px;
+    width: 220px;
+    height: 145px;
+    transform: scale(0.65);
+    transform-origin: bottom right;
+    opacity: 0.72;
+  }
+
+  .tutorial-hero-facts {
+    min-height: 58px;
+    justify-content: space-around;
+    gap: 8px;
+    padding: 9px 12px;
+  }
+
+  .tutorial-hero-facts span {
+    flex-direction: column;
+    gap: 1px;
+    font-size: 9px;
+  }
+
+  .tutorial-hero-facts strong {
+    font-size: 14px;
+  }
+
+  .tutorial-jump-links {
+    position: static;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 8px 12px;
+  }
+
+  .tutorial-jump-links a {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .tutorial-section,
+  .tutorial-quiz-section,
+  .tutorial-play-cta,
+  .tutorial-availability-note {
+    width: min(100% - 28px, 1050px);
+  }
+
+  .tutorial-section {
+    padding-top: 58px;
+  }
+
+  .tutorial-section-heading {
+    margin-bottom: 20px;
+  }
+
+  .tutorial-section-heading > p,
+  .tutorial-quiz-heading > p {
+    font-size: 13px;
+  }
+
+  .tutorial-deal-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .tutorial-street-picker {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .tutorial-street-picker button {
+    min-height: 60px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 2px;
+    font-size: 9px;
+    text-align: center;
+  }
+
+  .tutorial-street-number {
+    width: 23px;
+    height: 23px;
+    border-radius: 7px;
+    font-size: 10px;
+  }
+
+  .tutorial-street-card {
+    padding: 19px 16px;
+  }
+
+  .tutorial-street-card h3 {
+    font-size: 18px;
+  }
+
+  .tutorial-street-card > p {
+    font-size: 13px;
+  }
+
+  .tutorial-example-table {
+    margin-top: 18px;
+    padding: 14px 8px;
+  }
+
+  .tutorial-example-cards {
+    gap: 4px;
+  }
+
+  .tutorial-playing-card {
+    width: clamp(37px, 11vw, 58px);
+    height: clamp(61px, 16vw, 84px);
+    border-width: 2px;
+    border-radius: 6px;
+  }
+
+  .tutorial-playing-card strong {
+    font-size: 20px;
+  }
+
+  .tutorial-playing-card > span {
+    font-size: 23px;
+  }
+
+  .tutorial-step-controls {
+    gap: 6px;
+  }
+
+  .tutorial-step-controls button {
+    padding: 0 9px;
+    font-size: 10px;
+  }
+
+  .tutorial-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .tutorial-action-card {
+    min-height: 150px;
+    padding: 15px 13px;
+  }
+
+  .tutorial-action-card p {
+    font-size: 11px;
+  }
+
+  .tutorial-limit-panel {
+    padding: 19px 15px;
+  }
+
+  .tutorial-limit-table-wrap {
+    padding: 9px;
+  }
+
+  .tutorial-hands-section {
+    padding-top: 58px;
+  }
+
+  .tutorial-hands-list {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .tutorial-hand-row {
+    min-height: 62px;
+  }
+
+  .tutorial-quiz-section {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding-top: 58px;
+  }
+
+  .tutorial-quiz-card {
+    padding: 20px 16px;
+  }
+
+  .tutorial-quiz-card h3 {
+    font-size: 15px;
+  }
+
+  .tutorial-play-cta {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-top: 58px;
+    padding: 23px 18px;
+  }
+
+  .tutorial-play-cta p {
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 380px) {
+  .tutorial-hero {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .tutorial-hero h1 {
+    font-size: 35px;
+  }
+
+  .tutorial-hero-art {
+    right: 4px;
+    opacity: 0.52;
+  }
+
+  .tutorial-hero-facts span {
+    font-size: 8px;
+  }
+
+  .tutorial-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-action-card {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-page *,
+  .tutorial-page *::before,
+  .tutorial-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
