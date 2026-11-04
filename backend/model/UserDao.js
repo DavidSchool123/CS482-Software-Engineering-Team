@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const MessageDao = require('./MessageDao');
 
 // Define the schema for the User model
 const userSchema = new mongoose.Schema({
@@ -306,6 +307,7 @@ async function removeFriend(userId, friendId) {
   user.friends.pull(friend._id);
   friend.friends.pull(user._id);
   await Promise.all([user.save(), friend.save()]);
+  await MessageDao.deleteConversation(user._id, friend._id);
 
   return { message: 'Friend removed successfully' };
 }

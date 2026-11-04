@@ -86,6 +86,13 @@ async function userDelete(req, res) {
   }
 
   try {
+    const MessageDao = require('../model/MessageDao');
+    await MessageDao.deleteMany({
+      $or: [
+        { sender: userId },
+        { recipient: userId },
+      ],
+    });
     const user = await UserDao.deleteUser(userId);
 
     if (!user) {

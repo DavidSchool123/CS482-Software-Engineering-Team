@@ -1,0 +1,339 @@
+.messages-page {
+  width: min(1180px, calc(100% - 48px));
+  min-height: calc(100vh - 100px);
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+.messages-header {
+  margin-bottom: 26px;
+}
+
+.messages-header h1 {
+  margin: 0 0 8px;
+  color: #21183e;
+  font-size: clamp(28px, 4vw, 36px);
+  letter-spacing: -0.04em;
+}
+
+.messages-header p {
+  margin: 0;
+  color: #71677f;
+  font-size: 15px;
+}
+
+.messages-friends h2,
+.messages-conversation h2 {
+  margin: 0;
+  color: #21183e;
+  font-size: 18px;
+}
+
+.messages-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 580px;
+  overflow: hidden;
+  border: 1px solid #e8ddf5;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 45px rgba(49, 28, 79, 0.09);
+}
+
+.messages-friends {
+  padding: 24px 16px;
+  border-right: 1px solid #e8ddf5;
+  background:
+    radial-gradient(ellipse at top left, rgba(182, 122, 255, 0.12), transparent 55%),
+    #fbf9fe;
+}
+
+.messages-friends h2 {
+  padding: 0 8px 18px;
+}
+
+.messages-friend {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 5px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: #44375c;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.messages-friend:hover {
+  transform: translateX(2px);
+  background: #f3ecfb;
+}
+
+.messages-friend.active {
+  border-color: #e4d3f6;
+  background: #eee3fb;
+  color: #542194;
+  box-shadow: inset 3px 0 #8b36e9;
+}
+
+.messages-conversation {
+  display: flex;
+  min-width: 0;
+  min-height: 580px;
+  flex-direction: column;
+  padding: 0 26px 22px;
+  background:
+    radial-gradient(ellipse at 85% 10%, rgba(182, 122, 255, 0.07), transparent 40%),
+    #fff;
+}
+
+.messages-conversation > h2 {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee8f5;
+}
+
+.messages-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 24px 4px;
+  scrollbar-color: #cbb1e7 transparent;
+  scrollbar-width: thin;
+}
+
+.private-message {
+  align-self: flex-start;
+  max-width: min(78%, 620px);
+  padding: 13px 16px;
+  border: 1px solid #ece6f3;
+  border-radius: 16px 16px 16px 5px;
+  background: #f8f6fb;
+  color: #33264a;
+  overflow-wrap: anywhere;
+  animation: message-appear 180ms ease-out both;
+}
+
+.private-message.own-message {
+  align-self: flex-end;
+  border-color: #e3d1f6;
+  border-radius: 16px 16px 5px 16px;
+  background: linear-gradient(135deg, #f3eafd, #eee3fb);
+}
+
+.private-message p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.private-message time {
+  display: block;
+  color: #786e86;
+  font-size: 11px;
+}
+
+.message-actions,
+.message-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.message-actions button,
+.message-edit button,
+.message-compose button {
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: #8b36e9;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.message-actions button:hover,
+.message-edit button:hover,
+.message-compose button:not(:disabled):hover {
+  transform: translateY(-1px);
+  background: #7130b4;
+  box-shadow: 0 4px 12px rgba(113, 48, 180, 0.2);
+}
+
+.message-actions .message-delete,
+.message-edit .message-secondary {
+  background: #746b80;
+}
+
+.message-edit {
+  min-width: min(420px, 65vw);
+}
+
+.message-edit textarea,
+.message-compose textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 12px 14px;
+  resize: vertical;
+  border: 1px solid #ded3eb;
+  border-radius: 11px;
+  background: #fff;
+  color: #21183e;
+  font: inherit;
+  line-height: 1.5;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.message-edit textarea:focus,
+.message-compose textarea:focus {
+  border-color: #a76ce0;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 54, 233, 0.12);
+}
+
+.message-compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid #eee8f5;
+}
+
+.message-compose button {
+  min-width: 78px;
+  min-height: 46px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.message-compose button:disabled {
+  background: #c9b9d8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.messages-empty {
+  margin: 8px;
+  color: #786e86;
+  line-height: 1.5;
+}
+
+.messages-conversation > .messages-empty {
+  margin: auto;
+  padding: 30px;
+  text-align: center;
+}
+
+.messages-error {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid #f0cbd2;
+  border-radius: 10px;
+  background: #fff4f5;
+  color: #982d42;
+}
+
+.messages-page button:focus-visible {
+  outline: 3px solid #b67aff;
+  outline-offset: 2px;
+}
+
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .messages-page {
+    width: min(100% - 28px, 1180px);
+    padding: 28px 0 40px;
+  }
+
+  .messages-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    border-radius: 14px;
+  }
+
+  .messages-friends {
+    padding: 18px 14px 12px;
+    border-right: 0;
+    border-bottom: 1px solid #e8ddf5;
+  }
+
+  .messages-friends h2 {
+    padding-bottom: 10px;
+  }
+
+  .messages-friend {
+    display: inline-flex;
+    width: auto;
+    min-height: 40px;
+    margin: 0 5px 5px 0;
+    padding: 9px 13px;
+  }
+
+  .messages-conversation {
+    min-height: 480px;
+    padding: 0 16px 16px;
+  }
+
+  .messages-conversation > h2 {
+    min-height: 62px;
+  }
+
+  .private-message {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 420px) {
+  .message-compose {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .message-compose button {
+    align-self: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

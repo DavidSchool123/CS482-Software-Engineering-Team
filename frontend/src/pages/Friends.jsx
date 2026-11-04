@@ -627,7 +627,7 @@ function Friends() {
 
                   <div className="friends-player-actions">
                     <Link
-                      to="/messages"
+                      to={`/messages?friend=${friend._id}`}
                       className="friends-message-button"
                       aria-label={`Message ${friend.username}`}
                       title={`Message ${friend.username}`}
