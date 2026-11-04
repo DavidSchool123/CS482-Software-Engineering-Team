@@ -1,7 +1,7 @@
 
 const { getVisiblePlayers } = require('../service/GameViewService');
 
-describe('P15 - Game Card Visibility', () => {
+describe('P37 - View Cards', () => {
   const players = [
     {
       PlayerId: 'alice',
@@ -34,6 +34,10 @@ describe('P15 - Game Card Visibility', () => {
     expect(result[1].isCurrentPlayer).toBe(false);
     expect(result[1].cards[0]).toEqual({ faceUp: false });
     expect(result[1].cards[1]).toEqual({ faceUp: false });
+
+    // Ensure rank and suit are not exposed
+    expect(result[1].cards[0]).not.toHaveProperty('rank');
+    expect(result[1].cards[0]).not.toHaveProperty('suit');
   });
 
   test('shows opponents face-up cards', () => {
@@ -49,7 +53,10 @@ describe('P15 - Game Card Visibility', () => {
   test('changes visible cards based on the viewer', () => {
     const result = getVisiblePlayers(players, 'bob');
 
+    expect(result[1].isCurrentPlayer).toBe(true);
     expect(result[1].cards).toEqual(players[1].Cards);
+
+    expect(result[0].isCurrentPlayer).toBe(false);
     expect(result[0].cards[0]).toEqual({ faceUp: false });
     expect(result[0].cards[1]).toEqual({ faceUp: false });
   });
@@ -60,5 +67,33 @@ describe('P15 - Game Card Visibility', () => {
     getVisiblePlayers(players, 'alice');
 
     expect(JSON.stringify(players)).toBe(original);
+  });
+
+  test('hides private cards when no viewer is provided', () => {
+    const result = getVisiblePlayers(players, null);
+
+    expect(result[0].isCurrentPlayer).toBe(false);
+    expect(result[1].isCurrentPlayer).toBe(false);
+
+    // Alice's private cards remain hidden
+    expect(result[0].cards[0]).toEqual({ faceUp: false });
+    expect(result[0].cards[1]).toEqual({ faceUp: false });
+
+    // Bob's private cards remain hidden
+    expect(result[1].cards[0]).toEqual({ faceUp: false });
+    expect(result[1].cards[1]).toEqual({ faceUp: false });
+
+    // Public cards remain visible
+    expect(result[0].cards[2]).toEqual({
+      rank: 'K',
+      suit: 'Diamonds',
+      faceUp: true,
+    });
+
+    expect(result[1].cards[2]).toEqual({
+      rank: '9',
+      suit: 'Spades',
+      faceUp: true,
+    });
   });
 });

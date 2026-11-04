@@ -340,54 +340,6 @@
   padding-top: 3px;
 }
 
-.stud-card {
-  position: relative;
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 39px;
-  height: 57px;
-  border: 1px solid #d8d3e1;
-  border-radius: 5px;
-  background: #ffffff;
-  color: #21183e;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-}
-
-.stud-card + .stud-card {
-  margin-left: 4px;
-}
-
-.stud-card-red {
-  color: #c4365c;
-}
-
-.stud-card-rank {
-  position: absolute;
-  top: 3px;
-  left: 4px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.stud-card-suit {
-  font-size: 24px;
-}
-
-.stud-card-back {
-  border: 3px solid #f5efff;
-  background: repeating-linear-gradient(45deg, #7030b4, #7030b4 4px, #9658d4 4px, #9658d4 8px);
-}
-
-.stud-card-back::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 2px;
-}
-
 .seat-top {
   top: 3%;
   left: 50%;
@@ -442,14 +394,6 @@
 .stud-community-cards .stud-card {
   width: clamp(30px, 4vw, 43px);
   height: clamp(45px, 5.8vw, 62px);
-}
-
-.stud-community-cards .stud-card-rank {
-  font-size: 11px;
-}
-
-.stud-community-cards .stud-card-suit {
-  font-size: 22px;
 }
 
 .stud-pot {
@@ -701,18 +645,7 @@
     font-size: 9px;
   }
 
-  .stud-card {
-    width: 31px;
-    height: 46px;
-  }
-
-  .stud-card-rank {
-    font-size: 10px;
-  }
-
-  .stud-card-suit {
-    font-size: 20px;
-  }
+  
 
   .seat-left,
   .seat-left-lower {
@@ -757,19 +690,9 @@
     font-size: 15px;
   }
 
-  .stud-hole-cards .stud-card {
-    width: 25px;
-    height: 37px;
-  }
-
-  .stud-hole-cards .stud-card-suit {
-    font-size: 16px;
-  }
-
-  .stud-hole-cards .stud-card-rank {
-    top: 2px;
-    left: 2px;
-    font-size: 8px;
+  .stud-community-cards .stud-card {
+    width: clamp(30px, 4vw, 36px);
+    height: clamp(45px, 5.8vw, 62px);
   }
 
   .stud-community-cards {
@@ -897,4 +820,266 @@
 .stud-actions button:not(:disabled) {
   opacity: 1;
   cursor: pointer;
+}
+
+
+/* Compact player seats */
+
+.stud-seat-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  width: 142px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.stud-seat-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.stud-seat-compact .stud-seat-avatar {
+  flex-shrink: 0;
+}
+
+.stud-seat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.stud-seat-name {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stud-seat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 7px;
+  color: #d7c6f0;
+  font-size: 10px;
+}
+
+.stud-seat-status {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.stud-seat-compact .stud-hole-cards {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  padding-top: 0;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .stud-seat-compact {
+    width: 112px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .stud-seat-compact {
+    width: 94px;
+    padding: 5px;
+  }
+
+  .stud-seat-meta {
+    font-size: 9px;
+  }
+}
+
+
+/* Keep pot and betting information centered */
+
+.stud-board.poker-pot-area {
+  width: 260px;
+  max-width: 260px;
+  gap: 10px;
+  text-align: center;
+}
+
+/* Compact betting information */
+
+.stud-betting-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.stud-betting-info span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border: 1px solid #765a99;
+  border-radius: 20px;
+  background: rgba(23, 17, 39, 0.85);
+  color: #eadcff;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Turn status on its own line */
+
+.stud-betting-info span:last-child {
+  flex-basis: 100%;
+  width: fit-content;
+  margin: 2px auto 0;
+  color: #ffffff;
+}
+
+/* Keep the pot label centered */
+
+.stud-board.poker-pot-area .stud-pot {
+  justify-content: center;
+}
+
+/* Smaller betting information on narrow screens */
+
+@media (max-width: 760px) {
+  .stud-board.poker-pot-area {
+    width: 220px;
+    max-width: 220px;
+  }
+
+  .stud-betting-info {
+    gap: 4px;
+  }
+
+  .stud-betting-info span {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 430px) {
+  .stud-board.poker-pot-area {
+    width: 170px;
+    max-width: 170px;
+  }
+
+  .stud-betting-info span {
+    font-size: 8px;
+    padding: 3px 5px;
+  }
+}
+
+
+/* Progressive overlap for seven-card stud */
+
+.stud-seat-compact .stud-hole-cards {
+  --card-width: 39px;
+  --card-step: 39px;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 0 4px;
+  gap: 0;
+  overflow: visible;
+}
+
+/* Cards overlap only when needed */
+
+.stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(4)) {
+  --card-step: 27px;
+}
+
+.stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(5)) {
+  --card-step: 22px;
+}
+
+.stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(6)) {
+  --card-step: 17px;
+}
+
+.stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(7)) {
+  --card-step: 14px;
+}
+
+/* Overlap each card after the first */
+
+.stud-seat-compact .stud-hole-cards .stud-card {
+  flex: 0 0 var(--card-width);
+  margin-left: calc(var(--card-step) - var(--card-width));
+  position: relative;
+}
+
+.stud-seat-compact .stud-hole-cards .stud-card:first-child {
+  margin-left: 0;
+}
+
+/* Bring hovered cards forward */
+
+.stud-seat-compact .stud-hole-cards .stud-card:hover {
+  z-index: 20;
+  transform: translateY(-8px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive card widths */
+
+@media (max-width: 760px) {
+  .stud-seat-compact .stud-hole-cards {
+    --card-width: 31px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(4)) {
+    --card-step: 21px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(5)) {
+    --card-step: 17px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(6)) {
+    --card-step: 13px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(7)) {
+    --card-step: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .stud-seat-compact .stud-hole-cards {
+    --card-width: 25px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(4)) {
+    --card-step: 17px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(5)) {
+    --card-step: 13px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(6)) {
+    --card-step: 10px;
+  }
+
+  .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(7)) {
+    --card-step: 8px;
+  }
 }

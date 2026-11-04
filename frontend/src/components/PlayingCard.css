@@ -1,0 +1,154 @@
+
+/* PlayingCard.css */
+
+.stud-card {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 39px;
+  height: 57px;
+  overflow: hidden;
+  border: 1px solid #dedbd4;
+  border-radius: 5px;
+  background: #fffdf8;
+  color: #171717;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.stud-card:hover {
+  transform: translateY(-3px);
+  z-index: 3;
+}
+
+.stud-card-red {
+  color: #c62828;
+}
+
+/* Corner rank and suit */
+
+.stud-card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: Georgia, serif;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 10px;
+  z-index: 2;
+}
+
+.stud-card-corner-top {
+  top: 2px;
+  left: 3px;
+}
+
+.stud-card-corner-bottom {
+  bottom: 2px;
+  right: 3px;
+  transform: rotate(180deg);
+}
+
+/* Large central suit */
+
+.stud-card-center {
+  position: absolute;
+  inset: 13px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stud-card-main-suit {
+  font-size: 23px;
+  line-height: 1;
+  font-family: Georgia, serif;
+}
+
+/* Purple card back */
+
+.stud-card-back {
+  border: 2px solid #fffdf8;
+  padding: 3px;
+  background: #4b176f;
+}
+
+.stud-card-back-pattern {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d3b0f5;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255, 255, 255, 0.15) 3px,
+      rgba(255, 255, 255, 0.15) 5px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255, 255, 255, 0.15) 3px,
+      rgba(255, 255, 255, 0.15) 5px
+    );
+}
+
+.stud-card-back-pattern span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #d3b0f5;
+  border-radius: 50%;
+  color: #ead7ff;
+  font-size: 16px;
+}
+
+/* Responsive sizes */
+
+@media (max-width: 760px) {
+  .stud-card {
+    width: 31px;
+    height: 46px;
+  }
+
+  .stud-card-corner {
+    font-size: 8px;
+    line-height: 8px;
+  }
+
+  .stud-card-center {
+    inset: 11px 6px;
+  }
+
+  .stud-card-main-suit {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 430px) {
+  .stud-hole-cards .stud-card {
+    width: 25px;
+    height: 37px;
+  }
+
+  .stud-card-corner {
+    font-size: 7px;
+    line-height: 7px;
+  }
+
+  .stud-card-center {
+    inset: 9px 5px;
+  }
+
+  .stud-card-main-suit {
+    font-size: 14px;
+  }
+}
