@@ -13,6 +13,7 @@ function Messages() {
   const [content, setContent] = useState('');
   const [editingId, setEditingId] = useState('');
   const [editingContent, setEditingContent] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [liveFriendId, setLiveFriendId] = useState('');
@@ -222,6 +223,7 @@ function Messages() {
     setSearchParams({ friend: friendId });
     setError('');
     setEditingId('');
+    setPendingDeleteId('');
   }
 
   async function sendMessage(event) {
@@ -291,6 +293,7 @@ function Messages() {
       setMessages((existing) =>
         existing.filter((message) => message._id !== messageId),
       );
+      setPendingDeleteId('');
       setError('');
     } catch (deleteError) {
       console.error('Could not delete message:', deleteError);
@@ -313,7 +316,13 @@ function Messages() {
 
       <div className="messages-layout">
         <aside className="messages-friends">
-          <h2>Friends</h2>
+          <div className="messages-friends-heading">
+            <div>
+              <span className="messages-eyebrow">YOUR PEOPLE</span>
+              <h2>Conversations</h2>
+            </div>
+            <span className="messages-friend-count">{friends.length}</span>
+          </div>
           {friends.length === 0 ? (
             <p className="messages-empty">Add friends to start a conversation.</p>
           ) : (
@@ -326,7 +335,15 @@ function Messages() {
                 }`}
                 onClick={() => chooseFriend(friend._id)}
               >
-                {friend.username}
+                <span className="messages-avatar" aria-hidden="true">
+                  {friend.avatar ? (
+                    <img src={friend.avatar} alt="" />
+                  ) : (
+                    friend.username.charAt(0).toUpperCase()
+                  )}
+                </span>
+                <span className="messages-friend-name">{friend.username}</span>
+                <span className="messages-friend-arrow" aria-hidden="true">›</span>
               </button>
             ))
           )}
@@ -336,7 +353,19 @@ function Messages() {
           {selectedFriend ? (
             <>
               <header className="messages-conversation-header">
-                <h2>{selectedFriend.username}</h2>
+                <div className="messages-contact">
+                  <span className="messages-avatar messages-avatar-large" aria-hidden="true">
+                    {selectedFriend.avatar ? (
+                      <img src={selectedFriend.avatar} alt="" />
+                    ) : (
+                      selectedFriend.username.charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <div>
+                    <h2>{selectedFriend.username}</h2>
+                    <span className="messages-contact-caption">Private conversation</span>
+                  </div>
+                </div>
                 <span
                   className={`messages-live-status ${
                     liveFriendId === selectedFriendId ? 'connected' : ''
@@ -344,7 +373,7 @@ function Messages() {
                   aria-live="polite"
                 >
                   <span className="messages-live-dot" aria-hidden="true" />
-                  {liveFriendId === selectedFriendId ? 'Live' : 'Connecting...'}
+                  {liveFriendId === selectedFriendId ? 'Live' : 'Connecting'}
                 </span>
               </header>
               <div className="messages-list" aria-live="polite">
@@ -404,7 +433,7 @@ function Messages() {
                                 <button
                                   type="button"
                                   className="message-delete"
-                                  onClick={() => deleteMessage(message._id)}
+                                  onClick={() => setPendingDeleteId(message._id)}
                                 >
                                   Delete
                                 </button>
@@ -425,8 +454,13 @@ function Messages() {
                   aria-label="New message"
                   onChange={(event) => setContent(event.target.value)}
                 />
-                <button type="submit" disabled={!content.trim()}>
-                  Send
+                <button
+                  type="submit"
+                  disabled={!content.trim()}
+                  aria-label="Send message"
+                >
+                  <span aria-hidden="true">↑</span>
+                  <span>Send</span>
                 </button>
               </form>
             </>
@@ -439,6 +473,41 @@ function Messages() {
           )}
         </section>
       </div>
+
+      {pendingDeleteId && (
+        <div className="message-dialog-backdrop">
+          <section
+            className="message-delete-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-message-title"
+            aria-describedby="delete-message-description"
+          >
+            <span className="message-dialog-icon" aria-hidden="true">×</span>
+            <h2 id="delete-message-title">Delete this message?</h2>
+            <p id="delete-message-description">
+              This message will be removed from the conversation for both of you.
+              This action can’t be undone.
+            </p>
+            <div className="message-dialog-actions">
+              <button
+                type="button"
+                className="message-dialog-cancel"
+                onClick={() => setPendingDeleteId('')}
+              >
+                Keep message
+              </button>
+              <button
+                type="button"
+                className="message-dialog-confirm"
+                onClick={() => deleteMessage(pendingDeleteId)}
+              >
+                Delete message
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

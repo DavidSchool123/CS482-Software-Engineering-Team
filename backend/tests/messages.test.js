@@ -80,6 +80,19 @@ async function loggedInAgent(user) {
 }
 
 describe('Private messages', () => {
+  test('includes friend profile images in the friends list response', async () => {
+    const avatar = 'data:image/png;base64,dGVzdA==';
+    await User.findByIdAndUpdate(friend._id, { avatar });
+
+    const response = await request(app)
+      .get(`/api/friends/${sender._id}`)
+      .expect(200);
+
+    expect(
+      response.body.find((item) => item._id === friend._id.toString()).avatar,
+    ).toBe(avatar);
+  });
+
   test('supports sending, reading, editing, and deleting messages', async () => {
     const senderAgent = await loggedInAgent(sender);
     const friendAgent = await loggedInAgent(friend);

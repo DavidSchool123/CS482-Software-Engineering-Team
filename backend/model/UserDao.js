@@ -283,7 +283,7 @@ async function respondToFriendRequest(userId, requestId, action) {
 
 async function getFriends(userId) {
   const user = await User.findById(userId)
-    .populate('friends', '_id username')
+    .populate('friends', '_id username avatar')
     .select('friends');
 
   if (!user) {

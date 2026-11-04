@@ -41,26 +41,56 @@
 }
 
 .messages-friends {
-  padding: 24px 16px;
+  padding: 26px 16px;
   border-right: 1px solid #e8ddf5;
   background:
     radial-gradient(ellipse at top left, rgba(182, 122, 255, 0.12), transparent 55%),
     #fbf9fe;
 }
 
-.messages-friends h2 {
-  padding: 0 8px 18px;
+.messages-friends-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 8px 20px;
+}
+
+.messages-friends-heading h2 {
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+.messages-eyebrow {
+  color: #907da5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.messages-friend-count {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #e8ddf5;
+  border-radius: 50%;
+  background: #fff;
+  color: #6b4c8f;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .messages-friend {
   display: flex;
   align-items: center;
+  gap: 11px;
   width: 100%;
-  min-height: 52px;
-  margin-bottom: 5px;
-  padding: 12px 14px;
+  min-height: 58px;
+  margin-bottom: 6px;
+  padding: 9px 11px;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 12px;
   background: transparent;
   color: #44375c;
   font-size: 14px;
@@ -81,9 +111,64 @@
 
 .messages-friend.active {
   border-color: #e4d3f6;
-  background: #eee3fb;
+  background: #fff;
   color: #542194;
-  box-shadow: inset 3px 0 #8b36e9;
+  box-shadow: 0 5px 16px rgba(49, 28, 79, 0.07);
+}
+
+.messages-avatar {
+  position: relative;
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #e1d0f2;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f3eafd, #e6d5f7);
+  color: #6a35a0;
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.messages-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.messages-friend.active .messages-avatar {
+  border-color: #d7b8f3;
+  background: linear-gradient(145deg, #ead7fb, #d9baf4);
+}
+
+.messages-friend-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messages-friend-arrow {
+  color: #a091b2;
+  font-size: 23px;
+  line-height: 1;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.messages-friend:hover .messages-friend-arrow,
+.messages-friend.active .messages-friend-arrow {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .messages-conversation {
@@ -104,6 +189,27 @@
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid #eee8f5;
+}
+
+.messages-contact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.messages-avatar-large {
+  width: 42px;
+  height: 42px;
+  font-size: 16px;
+}
+
+.messages-contact h2 {
+  margin-bottom: 3px;
+}
+
+.messages-contact-caption {
+  color: #83788f;
+  font-size: 11px;
 }
 
 .messages-live-status {
@@ -143,6 +249,7 @@
 }
 
 .private-message {
+  position: relative;
   align-self: flex-start;
   max-width: min(78%, 620px);
   padding: 13px 16px;
@@ -182,6 +289,16 @@
   margin-top: 10px;
 }
 
+.message-actions {
+  opacity: 0.68;
+  transition: opacity 160ms ease;
+}
+
+.private-message:hover .message-actions,
+.private-message:focus-within .message-actions {
+  opacity: 1;
+}
+
 .message-actions button,
 .message-edit button,
 .message-compose button {
@@ -211,6 +328,10 @@
 .message-actions .message-delete,
 .message-edit .message-secondary {
   background: #746b80;
+}
+
+.message-actions .message-delete:hover {
+  background: #a13d56;
 }
 
 .message-edit {
@@ -245,15 +366,24 @@
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  padding-top: 18px;
+  padding-top: 16px;
   border-top: 1px solid #eee8f5;
 }
 
 .message-compose button {
-  min-width: 78px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 92px;
   min-height: 46px;
   border-radius: 10px;
   font-size: 14px;
+}
+
+.message-compose button span:first-child {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .message-compose button:disabled {
@@ -288,6 +418,98 @@
   outline-offset: 2px;
 }
 
+.message-dialog-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(26, 17, 43, 0.48);
+  backdrop-filter: blur(4px);
+  animation: message-appear 140ms ease-out both;
+}
+
+.message-delete-dialog {
+  width: min(440px, 100%);
+  padding: 30px;
+  border: 1px solid #eee5f6;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(28, 17, 43, 0.25);
+}
+
+.message-dialog-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: #fff0f2;
+  color: #a13d56;
+  font-size: 27px;
+  font-weight: 400;
+}
+
+.message-delete-dialog h2 {
+  margin: 0 0 9px;
+  color: #21183e;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+.message-delete-dialog p {
+  margin: 0;
+  color: #71677f;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.message-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 26px;
+}
+
+.message-dialog-actions button {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.message-dialog-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.message-dialog-cancel {
+  border-color: #e4d9ee !important;
+  background: #fff;
+  color: #51445f;
+}
+
+.message-dialog-cancel:hover {
+  background: #f8f5fb;
+}
+
+.message-dialog-confirm {
+  background: #a13d56;
+  color: #fff;
+}
+
+.message-dialog-confirm:hover {
+  background: #842d44;
+}
+
 @keyframes message-appear {
   from {
     opacity: 0;
@@ -317,16 +539,26 @@
     border-bottom: 1px solid #e8ddf5;
   }
 
-  .messages-friends h2 {
-    padding-bottom: 10px;
+  .messages-friends-heading {
+    margin-bottom: 10px;
   }
 
   .messages-friend {
     display: inline-flex;
     width: auto;
-    min-height: 40px;
+    min-height: 44px;
     margin: 0 5px 5px 0;
-    padding: 9px 13px;
+    padding: 6px 11px 6px 7px;
+  }
+
+  .messages-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .messages-friend-arrow {
+    display: none;
   }
 
   .messages-conversation {
