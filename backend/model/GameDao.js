@@ -92,7 +92,7 @@ const gameSchema = new mongoose.Schema({
 
   Status: {
     type: String,
-    enum: ['Waiting', 'In Progress', 'Completed'],
+    enum: ['Waiting', 'In Progress', 'Showdown', 'Completed'],
     default: 'Waiting'
   },
 

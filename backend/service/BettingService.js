@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const GameDao = require('../model/GameDao');
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
+const { advanceRoundInGame } = require('./NextStreetService');
 
 const ACTIONS = ['fold', 'check', 'call', 'bet', 'raise'];
 const MAX_RAISES = 3;
@@ -21,21 +22,26 @@ function nextPlayer(players, currentPlayerId, currentBet) {
     throw new Error('Current player not found');
   }
 
-  for (let offset = 1; offset < players.length; offset++) {
+  for (let offset = 1; offset <= players.length; offset++) {
     const player = players[(index + offset) % players.length];
 
     if (
       !player.HasFolded &&
-      (
-        !player.HasActed ||
-        player.RoundContribution < currentBet
-      )
+      (!player.HasActed || player.RoundContribution < currentBet)
     ) {
       return player.PlayerId;
     }
   }
 
   return null;
+}
+
+function isBettingRoundComplete(players, currentBet) {
+  const activePlayers = players.filter(p => !p.HasFolded);
+
+  return activePlayers.every(
+    p => p.HasActed && p.RoundContribution >= currentBet
+  );
 }
 
 async function performBettingAction(gameId, playerId, action) {
@@ -59,8 +65,8 @@ async function performBettingAction(gameId, playerId, action) {
         throw new Error('Game is not in progress');
       }
 
-      if (game.BettingRoundComplete) {
-        throw new Error('Betting round is complete');
+      if (game.BettingRoundComplete || game.AwaitingNextRound) {
+        throw new Error('Betting round is not accepting actions');
       }
 
       if (game.CurrentTurnPlayerId !== playerId) {
@@ -135,7 +141,7 @@ async function performBettingAction(gameId, playerId, action) {
             );
           }
 
-          // Complete the bring-in to the full small bet.
+          // Complete the Third Street bring-in.
           if (
             game.Street === 3 &&
             game.CurrentBet < stakes.smallBet
@@ -150,6 +156,7 @@ async function performBettingAction(gameId, playerId, action) {
             }
 
             amount = amountToCall + betSize;
+
             game.CurrentBet += betSize;
             game.RaiseCount = (game.RaiseCount || 0) + 1;
           }
@@ -158,6 +165,7 @@ async function performBettingAction(gameId, playerId, action) {
           break;
       }
 
+      // Deduct chips and update contributions.
       if (amount > 0) {
         const result = await TableDao.deductPlayerChips(
           game.TableId,
@@ -175,6 +183,8 @@ async function performBettingAction(gameId, playerId, action) {
         game.Pot += amount;
       }
 
+      // A new bet or raise requires other players
+      // to respond again.
       if (isFullRaise || action === 'bet') {
         game.Players.forEach(p => {
           if (!p.HasFolded && p.PlayerId !== playerId) {
@@ -190,21 +200,45 @@ async function performBettingAction(gameId, playerId, action) {
       );
 
       if (activePlayers.length === 1) {
+        // All other players folded.
         game.Status = 'Completed';
         game.CurrentTurnPlayerId = null;
         game.BettingRoundComplete = true;
       } else {
-        const next = nextPlayer(
+        const complete = isBettingRoundComplete(
           game.Players,
-          playerId,
           game.CurrentBet
         );
 
-        game.CurrentTurnPlayerId = next;
-        game.BettingRoundComplete = next === null;
+        if (complete) {
+          game.CurrentTurnPlayerId = null;
+          game.BettingRoundComplete = true;
+
+          if (game.Street === 7) {
+            // Final betting round is complete.
+            // Hand evaluation will happen separately.
+            game.Status = 'Showdown';
+          } else {
+            // P49: Deal the next street and initialize
+            // betting inside this same transaction.
+            advanceRoundInGame(game);
+          }
+        } else {
+          // Continue the current betting round.
+          game.CurrentTurnPlayerId = nextPlayer(
+            game.Players,
+            playerId,
+            game.CurrentBet
+          );
+
+          game.BettingRoundComplete = false;
+        }
       }
 
+      // Save betting action and any street progression
+      // together in the same transaction.
       await game.save({ session });
+
       updatedGame = game;
     });
 
@@ -217,5 +251,6 @@ async function performBettingAction(gameId, playerId, action) {
 module.exports = {
   performBettingAction,
   getBetSize,
-  nextPlayer
+  nextPlayer,
+  isBettingRoundComplete
 };
