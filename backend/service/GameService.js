@@ -48,6 +48,12 @@ async function startGame(tableId) {
         });
       }
 
+      // Randomize player seating order at the start of each game
+      for (let i = players.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [players[i], players[j]] = [players[j], players[i]];
+      }
+
       if (players.length < 2 || players.length > 6) {
         throw new Error('A game must have between 2 and 6 players');
       }

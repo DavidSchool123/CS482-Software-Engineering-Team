@@ -69,11 +69,15 @@ function dealNextStreet(deck, players, street) {
 
   // Deal one card to each active player
   for (const player of activePlayers) {
+    const card = deck.pop();
+
     player.Cards.push({
-      ...deck.pop(),
-      faceUp
+        rank: card.rank,
+        suit: card.suit,
+        faceUp: faceUp
     });
   }
+
 
   return players;
 }
