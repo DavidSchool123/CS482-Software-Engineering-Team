@@ -699,9 +699,8 @@ function EditProfile() {
             </h2>
             <p>Are you sure you want to {confirmation.description}?</p>
             <p className='confirmation-note'>
-              {confirmation.type === 'delete'
-                ? 'Your account will be permanently deleted.'
-                : 'Account changes are not connected to a service yet.'}
+              {confirmation.type === 'delete' &&
+                'Your account will be permanently deleted.'}
             </p>
             <div className='profile-confirmation-actions'>
               <button
