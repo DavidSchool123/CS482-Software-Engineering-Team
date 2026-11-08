@@ -161,12 +161,9 @@ function Profile() {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(
-          `${API_URL}/api/accounts/me`,
-          {
-            credentials: 'include',
-          },
-        );
+        const response = await fetch(`${API_URL}/api/accounts/me`, {
+          credentials: 'include',
+        });
 
         const data = await response.json();
 
@@ -410,10 +407,14 @@ function Profile() {
 function EditProfile() {
   const location = useLocation();
   const navigate = useNavigate();
+
   const [confirmation, setConfirmation] = useState(null);
   const [feedback, setFeedback] = useState('');
 
-  function requestConfirmation(event, type, description) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  function requestConfirmation(event, type, description, updatedValues) {
     event.preventDefault();
     setFeedback('');
 
@@ -426,7 +427,11 @@ function EditProfile() {
       return;
     }
 
-    setConfirmation({ type, description });
+    setConfirmation({
+      type,
+      description,
+      updatedValues,
+    });
   }
 
   function closeConfirmation() {
@@ -434,34 +439,105 @@ function EditProfile() {
   }
 
   async function confirmAction() {
-    if (confirmation.type !== 'delete') {
-      setFeedback('Account changes are not connected to a service yet.');
-      setConfirmation(null);
+    if (confirmation.type === 'delete') {
+      try {
+        const response = await fetch(`${API_URL}/api/accounts/me`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setFeedback(data.message || 'Failed to delete account.');
+          setConfirmation(null);
+          return;
+        }
+
+        navigate('/', {
+          state: { accountView: 'login' },
+        });
+      } catch (error) {
+        setFeedback('Unable to connect to the server.');
+        setConfirmation(null);
+      }
+
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/accounts/me`, {
-        method: 'DELETE',
+      const updatedUser = {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+      };
+
+      // Add the field that the user wants to change.
+      if (confirmation.type === 'username') {
+        updatedUser.username = confirmation.updatedValues.username;
+      }
+
+      if (confirmation.type === 'email') {
+        updatedUser.email = confirmation.updatedValues.email;
+      }
+
+      if (confirmation.type === 'password') {
+        updatedUser.password = confirmation.updatedValues.password;
+      }
+
+      const response = await fetch(`${API_URL}/api/accounts`, {
+        method: 'POST',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedUser),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setFeedback(data.message || 'Failed to delete account.');
-        setConfirmation(null);
-        return;
+        throw new Error(data.message || 'Failed to update account.');
       }
 
-      navigate('/', {
-        state: { accountView: 'login' },
-      });
+      // Update the local user information.
+      setUser((currentUser) => ({
+        ...currentUser,
+        ...updatedUser,
+        password: currentUser.password,
+      }));
+
+      setFeedback('Account updated successfully!');
+      setConfirmation(null);
     } catch (error) {
-      setFeedback('Unable to connect to the server.');
+      setFeedback(error.message || 'Unable to connect to the server.');
       setConfirmation(null);
     }
   }
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch(`${API_URL}/api/accounts/me`, {
+          credentials: 'include',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Could not load account.');
+        }
+
+        setUser(data);
+      } catch (error) {
+        setFeedback(error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
 
   return (
     <div className='profile-page edit-profile-page'>
@@ -488,6 +564,9 @@ function EditProfile() {
                 event,
                 'username',
                 `change your username to "${event.currentTarget.username.value.trim()}"`,
+                {
+                  username: event.currentTarget.username.value.trim(),
+                },
               )
             }
           >
@@ -501,6 +580,7 @@ function EditProfile() {
                 minLength='3'
                 maxLength='30'
                 required
+                defaultValue={user?.username || ''}
               />
               <button type='submit' className='edit-profile-save-button'>
                 Save username
@@ -515,6 +595,9 @@ function EditProfile() {
                 event,
                 'email',
                 `change your email address to "${event.currentTarget.email.value.trim()}"`,
+                {
+                  email: event.currentTarget.email.value.trim(),
+                },
               )
             }
           >
@@ -526,6 +609,7 @@ function EditProfile() {
                 type='email'
                 autoComplete='email'
                 required
+                defaultValue={user?.email || ''}
               />
               <button type='submit' className='edit-profile-save-button'>
                 Save email
@@ -536,7 +620,9 @@ function EditProfile() {
           <form
             className='edit-profile-form edit-password-form'
             onSubmit={(event) =>
-              requestConfirmation(event, 'password', 'change your password')
+              requestConfirmation(event, 'password', 'change your password', {
+                password: event.currentTarget.newPassword.value,
+              })
             }
           >
             <label htmlFor='profile-current-password'>Change password</label>

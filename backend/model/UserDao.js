@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
   chipBalance: {
     type: Number,
     required: true,
-    default: function() {
+    default: function () {
       return this.userType === 'guest' ? 500 : 1000;
     },
     min: 0,
@@ -29,14 +29,14 @@ const userSchema = new mongoose.Schema({
 
   password: {
     type: String,
-    required: function() {
+    required: function () {
       return this.userType === 'registered';
     },
   },
 
   email: {
     type: String,
-    required: function() {
+    required: function () {
       return this.userType === 'registered';
     },
     trim: true,
@@ -80,7 +80,7 @@ userSchema.index(
     partialFilterExpression: {
       email: { $type: 'string' },
     },
-  }
+  },
 );
 
 // Create a model for the user schema
@@ -94,7 +94,7 @@ async function readAll() {
 // Get a user's profile by their ID
 async function getProfile(userId) {
   const user = await User.findById(userId).select(
-    '_id username email friends avatar userType chipBalance'
+    '_id username email friends avatar userType chipBalance',
   );
 
   if (!user) {
@@ -111,7 +111,6 @@ async function getProfile(userId) {
     chipBalance: user.chipBalance,
   };
 }
-
 
 async function updateAvatar(userId, avatar) {
   return User.findByIdAndUpdate(
@@ -131,7 +130,10 @@ async function createUser(userData) {
 }
 
 async function updateUser(userId, updatedUser) {
-  const user = await User.findByIdAndUpdate(userId, updatedUser);
+  const user = await User.findByIdAndUpdate(userId, updatedUser, {
+    returnDocument: 'after',
+    runValidators: true,
+  });
   return user;
 }
 
@@ -337,7 +339,6 @@ async function getSentFriendRequests(userId) {
   return receivers;
 }
 
-
 /**
  * Deduct chips from a user's account for a table buy-in.
  * Only succeeds if the user has enough chips.
@@ -355,11 +356,9 @@ async function deductChips(userId, amount, session) {
       new: true,
       session,
       runValidators: true,
-    }
+    },
   );
 }
-
-
 
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
