@@ -5,6 +5,7 @@ import AppNavbar from './components/AppNavbar';
 import Home from './pages/Home';
 import Placeholder from './pages/Placeholder';
 import AccountCreation from './pages/AccountCreation';
+import ForgotPassword from './pages/ForgotPassword';
 import Lobby from './pages/Lobby';
 import Friends from './pages/Friends';
 import Messages from './pages/Messages';
@@ -26,6 +27,8 @@ function App() {
         <Route path='/' element={<Home />} />
 
         <Route path='/account' element={<AccountCreation />} />
+
+        <Route path='/forgot-password' element={<ForgotPassword />} />
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
 
