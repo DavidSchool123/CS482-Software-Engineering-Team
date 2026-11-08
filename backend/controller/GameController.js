@@ -4,6 +4,7 @@ const GameService = require('../service/GameService');
 const TableDao = require('../model/TableDao');
 const GameDao = require('../model/GameDao');
 const { performBettingAction } = require('../service/BettingService');
+const { runBotTurns } = require('../service/BotService');
 const { getVisiblePlayers } = require('../service/GameViewService');
 
 // Start a new Seven-Card Stud game
@@ -49,13 +50,17 @@ exports.startGame = async function (req, res) {
 
     // Start the game
     const game = await GameService.startGame(tableId);
+    const { game: activeGame, actions: botActions } =
+      await runBotTurns(game._id);
 
     return res.status(201).json({
       message: 'Game started successfully',
-      gameId: game._id,
-      tableId: game.TableId,
-      street: game.Street,
-      status: game.Status,
+      gameId: activeGame._id,
+      tableId: activeGame.TableId,
+      street: activeGame.Street,
+      status: activeGame.Status,
+      botActions,
+      winnerIds: activeGame.WinnerIds || [],
     });
   } catch (error) {
     if (error.message === 'Table not found') {
@@ -133,7 +138,12 @@ exports.getGame = async function (req, res) {
     }
 
     // Show the viewer's cards while protecting opponents' private cards
-    const players = getVisiblePlayers(game.Players, userId);
+    const winnerIds = game.WinnerIds || [];
+    const players = getVisiblePlayers(
+      game.Players,
+      userId,
+      winnerIds
+    );
 
     return res.status(200).json({
       gameId: game._id,
@@ -153,6 +163,7 @@ exports.getGame = async function (req, res) {
       lastRaiseAmount: game.LastRaiseAmount,
       raiseCount: game.RaiseCount,
       bettingRoundComplete: game.BettingRoundComplete,
+      winnerIds,
 
       // Player cards with private cards protected
       players,
@@ -233,22 +244,26 @@ exports.performBettingAction = async function (req, res) {
 
     // BettingService validates turns, chip balances,
     // betting rules, and updates the game transactionally.
-    const updatedGame = await performBettingAction(
+    await performBettingAction(
       gameId,
       userId.toString(),
       action
     );
+    const { game: activeGame, actions: botActions } =
+      await runBotTurns(gameId);
 
     return res.status(200).json({
       message: 'Betting action completed successfully',
       action,
-      gameId: updatedGame._id,
-      status: updatedGame.Status,
-      pot: updatedGame.Pot,
-      currentBet: updatedGame.CurrentBet,
-      currentTurnPlayerId: updatedGame.CurrentTurnPlayerId,
-      bettingRoundComplete: updatedGame.BettingRoundComplete,
-      raiseCount: updatedGame.RaiseCount,
+      gameId: activeGame._id,
+      status: activeGame.Status,
+      pot: activeGame.Pot,
+      currentBet: activeGame.CurrentBet,
+      currentTurnPlayerId: activeGame.CurrentTurnPlayerId,
+      bettingRoundComplete: activeGame.BettingRoundComplete,
+      raiseCount: activeGame.RaiseCount,
+      botActions,
+      winnerIds: activeGame.WinnerIds || [],
     });
   } catch (error) {
     const badRequestErrors = [

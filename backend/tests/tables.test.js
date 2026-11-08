@@ -1,11 +1,15 @@
 
 const request = require('supertest');
+const mongoose = require('mongoose');
 const app = require('../app');
 const TableDao = require('../model/TableDao');
+const UserDao = require('../model/UserDao');
+const TableController = require('../controller/TableController');
 const TABLE_LEVELS = require('../model/tableLevels');
 
 // Mock the database functions so tests don't access MongoDB
 jest.mock('../model/TableDao');
+jest.mock('../model/UserDao');
 
 describe('P9 - View Available Tables', () => {
 
@@ -45,6 +49,92 @@ describe('P9 - View Available Tables', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  describe('Joining a table', () => {
+    let session;
+    let table;
+    let req;
+    let res;
+
+    beforeEach(() => {
+      session = {
+        withTransaction: jest.fn(async (callback) => callback()),
+        endSession: jest.fn(),
+      };
+      jest.spyOn(mongoose, 'startSession').mockResolvedValue(session);
+
+      table = {
+        UserIds: [],
+        PlayerStacks: [],
+        BotCount: 0,
+        Capacity: 6,
+        Status: 'Waiting',
+        Level: 'Low',
+        JoinCode: 'ABCD1234',
+        save: jest.fn().mockResolvedValue(true),
+      };
+      TableDao.findById.mockResolvedValue(table);
+      UserDao.deductChips.mockResolvedValue({ _id: 'player-1' });
+
+      req = {
+        session: { userId: 'player-1' },
+        params: { tableId: '507f1f77bcf86cd799439011' },
+        body: { buyIn: TABLE_LEVELS.Low.minBuyIn },
+      };
+      res = {
+        status: jest.fn(function(statusCode) {
+          this.statusCode = statusCode;
+          return this;
+        }),
+        json: jest.fn(function(body) {
+          this.body = body;
+          return this;
+        }),
+      };
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('deducts the buy-in, seats the player, and returns the table code', async () => {
+      await TableController.joinTable(req, res);
+
+      expect(UserDao.deductChips).toHaveBeenCalledWith(
+        'player-1',
+        TABLE_LEVELS.Low.minBuyIn,
+        session
+      );
+      expect(table.UserIds).toContain('player-1');
+      expect(table.PlayerStacks).toContainEqual({
+        PlayerId: 'player-1',
+        Chips: TABLE_LEVELS.Low.minBuyIn,
+      });
+      expect(table.save).toHaveBeenCalledWith({ session });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.joinCode).toBe('ABCD1234');
+    });
+
+    test('rejects invalid buy-ins without charging the player', async () => {
+      req.body.buyIn = 1;
+
+      await TableController.joinTable(req, res);
+
+      expect(UserDao.deductChips).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe('Invalid buy-in amount');
+    });
+
+    test('does not charge a player who is already seated', async () => {
+      table.UserIds.push('player-1');
+
+      await TableController.joinTable(req, res);
+
+      expect(UserDao.deductChips).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+      expect(res.body.alreadySeated).toBe(true);
+    });
   });
 
   // TEST 1: Successfully retrieve public tables

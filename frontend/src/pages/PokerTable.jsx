@@ -375,7 +375,18 @@ function Table() {
 
       await refreshGame(game.gameId);
 
-      setGameNotice(`${action} completed successfully.`);
+      const botActivity = (data.botActions || [])
+        .map(({ playerId, action: botAction }) => {
+          const botNumber = playerId.split('-').pop();
+          return `Bot ${botNumber} ${botAction}`;
+        })
+        .join(', ');
+
+      setGameNotice(
+        botActivity
+          ? `${action} completed. ${botActivity}.`
+          : `${action} completed successfully.`
+      );
     } catch (err) {
       console.error('Betting action failed:', err);
 
@@ -396,6 +407,21 @@ function Table() {
   const opponents = players.filter(
     (player) => !player.isCurrentPlayer
   );
+
+  const winnerNames = (game?.winnerIds || []).map((playerId) => {
+    if (String(playerId) === String(me?.playerId)) return 'You';
+    if (String(playerId).startsWith('bot-')) {
+      return `Bot ${String(playerId).split('-').pop()}`;
+    }
+    return 'Another player';
+  });
+
+  const completionMessage =
+    winnerNames.length > 1
+      ? `Tie: ${winnerNames.join(' and ')} split the ${game?.pot ?? 0}-chip pot.`
+      : winnerNames.length === 1
+        ? `${winnerNames[0]} won the ${game?.pot ?? 0}-chip pot.`
+        : 'The hand is complete.';
 
   const getPlayerChips = (playerId) => {
     return game?.playerStacks?.find(
@@ -545,10 +571,18 @@ function Table() {
 
         <div>
           <strong>
-            {game ? 'Game status' : 'Waiting for game'}
+            {game?.status === 'Completed'
+              ? 'Hand complete'
+              : game
+                ? 'Game status'
+                : 'Waiting for game'}
           </strong>
 
-          <p>{gameNotice}</p>
+          <p>
+            {game?.status === 'Completed'
+              ? `${completionMessage} Remaining player chips were returned to their account balances.`
+              : gameNotice}
+          </p>
         </div>
       </div>
 
@@ -864,9 +898,11 @@ function Table() {
       </div>
 
       <p className="stud-footer-note">
-        {game
-          ? 'Betting is available on the current street. Later streets are not implemented yet.'
-          : 'Cards will appear after the game starts.'}
+        {game?.status === 'Completed'
+          ? 'This table is closed. Create or join another table to play again.'
+          : game
+            ? 'Use the betting controls when it is your turn.'
+            : 'Cards will appear after the game starts.'}
       </p>
     </main>
   );
