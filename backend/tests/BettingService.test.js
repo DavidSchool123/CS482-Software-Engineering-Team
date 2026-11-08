@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const GameDao = require('../model/GameDao');
 const TableDao = require('../model/TableDao');
+const UserDao = require('../model/UserDao');
 
 const {
   performBettingAction,
@@ -13,6 +14,7 @@ const {
 
 jest.mock('../model/GameDao');
 jest.mock('../model/TableDao');
+jest.mock('../model/UserDao');
 
 // Mock database sessions, but use the real
 // dealing and turn progression logic.
@@ -97,12 +99,19 @@ describe('Betting Service - P16 and P49', () => {
 
     TableDao.findById.mockResolvedValue({
       _id: tableId,
-      Level: 'Low'
+      Level: 'Low',
+      UserIds: ['user1', 'user2'],
+      PlayerStacks: [
+        { PlayerId: 'user1', Chips: 100 },
+        { PlayerId: 'user2', Chips: 100 }
+      ],
+      save: jest.fn().mockResolvedValue(undefined)
     });
 
     TableDao.deductPlayerChips.mockResolvedValue({
       _id: tableId
     });
+    UserDao.creditChips.mockResolvedValue({ _id: 'user' });
   });
 
   // ----------------------------------------
@@ -236,7 +245,20 @@ describe('Betting Service - P16 and P49', () => {
     expect(game.Status).toBe('Completed');
     expect(game.CurrentTurnPlayerId).toBeNull();
     expect(game.BettingRoundComplete).toBe(true);
+    expect(game.WinnerIds).toEqual(['user1']);
     expect(game.save).toHaveBeenCalledTimes(1);
+    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
+      1,
+      'user1',
+      104,
+      expect.anything()
+    );
+    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
+      2,
+      'user2',
+      100,
+      expect.anything()
+    );
   });
 
   test('check succeeds when nothing is owed', async () => {
@@ -432,6 +454,25 @@ describe('Betting Service - P16 and P49', () => {
       CurrentBet: 10
     });
 
+    game.Players[0].Cards = [
+      { rank: 'A', suit: 'Hearts', faceUp: false },
+      { rank: 'A', suit: 'Spades', faceUp: false },
+      { rank: '2', suit: 'Clubs', faceUp: true },
+      { rank: '3', suit: 'Diamonds', faceUp: true },
+      { rank: '4', suit: 'Hearts', faceUp: true },
+      { rank: '8', suit: 'Clubs', faceUp: true },
+      { rank: '9', suit: 'Spades', faceUp: false }
+    ];
+    game.Players[1].Cards = [
+      { rank: 'K', suit: 'Hearts', faceUp: false },
+      { rank: 'K', suit: 'Spades', faceUp: false },
+      { rank: 'Q', suit: 'Clubs', faceUp: true },
+      { rank: 'J', suit: 'Diamonds', faceUp: true },
+      { rank: '10', suit: 'Hearts', faceUp: true },
+      { rank: '9', suit: 'Clubs', faceUp: true },
+      { rank: '8', suit: 'Spades', faceUp: false }
+    ];
+
     game.Players[0].RoundContribution = 10;
     game.Players[0].HasActed = true;
 
@@ -441,11 +482,24 @@ describe('Betting Service - P16 and P49', () => {
       gameId, 'user2', 'call'
     );
 
-    expect(result.Status).toBe('Showdown');
+    expect(result.Status).toBe('Completed');
     expect(result.Street).toBe(7);
     expect(result.BettingRoundComplete).toBe(true);
     expect(result.CurrentTurnPlayerId).toBeNull();
+    expect(result.WinnerIds).toEqual(['user2']);
     expect(result.Deck).toHaveLength(52);
+    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
+      1,
+      'user1',
+      100,
+      expect.anything()
+    );
+    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
+      2,
+      'user2',
+      104,
+      expect.anything()
+    );
   });
 
   test('folding to one player ends game without dealing', async () => {
@@ -609,6 +663,9 @@ describe('Betting Service - P16 and P49', () => {
         { rank: '10', suit: 'Diamonds', faceUp: true }
       ])
     );
+    const table = await TableDao.findById(tableId);
+    table.UserIds.push('user3');
+    table.PlayerStacks.push({ PlayerId: 'user3', Chips: 100 });
 
     GameDao.findById.mockResolvedValue(game);
 

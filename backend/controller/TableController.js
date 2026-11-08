@@ -60,6 +60,24 @@ exports.createTable = async function(req, res) {
     });
   }
 
+  const { Capacity: capacity, BotCount: botCount } = req.body;
+
+  if (!Number.isInteger(capacity) || capacity < 2 || capacity > 6) {
+    return res.status(400).json({
+      message: 'Table capacity must be between 2 and 6 players',
+    });
+  }
+
+  if (
+    !Number.isInteger(botCount) ||
+    botCount < 0 ||
+    botCount > capacity - 1
+  ) {
+    return res.status(400).json({
+      message: 'Bot count must fit in the table after the host is seated',
+    });
+  }
+
   const buyIn = req.body.buyIn;
 
   if (
@@ -103,7 +121,7 @@ exports.createTable = async function(req, res) {
       const tableData = {
         Name: req.body.Name,
         JoinCode: generatedJoinCode,
-        Capacity: req.body.Capacity,
+        Capacity: capacity,
         UserIds: [hostId],
         PlayerStacks: [
           {
@@ -111,7 +129,7 @@ exports.createTable = async function(req, res) {
             Chips: buyIn,
           },
         ],
-        BotCount: req.body.BotCount,
+        BotCount: botCount,
         IsPublic: req.body.IsPublic,
         Level: req.body.Level,
       };
@@ -132,6 +150,118 @@ exports.createTable = async function(req, res) {
       message: error.status
         ? error.message
         : 'Unable to create table',
+    });
+  } finally {
+    await session.endSession();
+  }
+};
+
+// Join a waiting table and transfer the requested buy-in into the player's stack.
+exports.joinTable = async function(req, res) {
+  const userId = req.session?.userId;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: 'You must be logged in to join a table',
+    });
+  }
+
+  const { tableId } = req.params;
+
+  if (!mongoose.isValidObjectId(tableId)) {
+    return res.status(400).json({
+      message: 'Invalid table ID',
+    });
+  }
+
+  const buyIn = req.body?.buyIn;
+  const session = await mongoose.startSession();
+
+  try {
+    let result;
+
+    await session.withTransaction(async () => {
+      const table = await TableDao.findById(tableId, session);
+
+      if (!table) {
+        const error = new Error('Table not found');
+        error.status = 404;
+        throw error;
+      }
+
+      const isAlreadySeated = table.UserIds.some(
+        (id) => id.toString() === userId.toString()
+      );
+
+      if (isAlreadySeated) {
+        result = {
+          joinCode: table.JoinCode,
+          alreadySeated: true,
+        };
+        return;
+      }
+
+      if (table.Status !== 'Waiting') {
+        const error = new Error('This table is no longer waiting for players');
+        error.status = 409;
+        throw error;
+      }
+
+      if (table.UserIds.length + table.BotCount >= table.Capacity) {
+        const error = new Error('This table is full');
+        error.status = 409;
+        throw error;
+      }
+
+      const levelConfig = TABLE_LEVELS[table.Level];
+
+      if (
+        !levelConfig ||
+        !Number.isInteger(buyIn) ||
+        buyIn < levelConfig.minBuyIn ||
+        buyIn > levelConfig.maxBuyIn
+      ) {
+        const error = new Error('Invalid buy-in amount');
+        error.status = 400;
+        throw error;
+      }
+
+      const updatedUser = await UserDao.deductChips(
+        userId,
+        buyIn,
+        session
+      );
+
+      if (!updatedUser) {
+        const error = new Error('Insufficient chips or user not found');
+        error.status = 400;
+        throw error;
+      }
+
+      table.UserIds.push(userId);
+      table.PlayerStacks.push({
+        PlayerId: userId.toString(),
+        Chips: buyIn,
+      });
+      await table.save({ session });
+
+      result = {
+        joinCode: table.JoinCode,
+        alreadySeated: false,
+      };
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({
+        message: error.message,
+      });
+    }
+
+    console.error('Error joining table:', error);
+    return res.status(500).json({
+      message: 'Unable to join table',
     });
   } finally {
     await session.endSession();

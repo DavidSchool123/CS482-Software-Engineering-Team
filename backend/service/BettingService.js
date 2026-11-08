@@ -5,6 +5,8 @@ const GameDao = require('../model/GameDao');
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
 const { advanceRoundInGame } = require('./NextStreetService');
+const { findWinners } = require('./HandEvaluationService');
+const { settleHand } = require('./SettlementService');
 
 const ACTIONS = ['fold', 'check', 'call', 'bet', 'raise'];
 const MAX_RAISES = 3;
@@ -178,6 +180,15 @@ async function performBettingAction(gameId, playerId, action) {
           throw new Error('Insufficient chips');
         }
 
+        const tableStack = table.PlayerStacks.find(
+          stack => stack.PlayerId === playerId
+        );
+
+        if (!tableStack || tableStack.Chips < amount) {
+          throw new Error('Player chip stack is inconsistent');
+        }
+
+        tableStack.Chips -= amount;
         player.RoundContribution += amount;
         player.TotalContribution += amount;
         game.Pot += amount;
@@ -198,12 +209,13 @@ async function performBettingAction(gameId, playerId, action) {
       const activePlayers = game.Players.filter(
         p => !p.HasFolded
       );
+      let winnerIds = null;
 
       if (activePlayers.length === 1) {
         // All other players folded.
-        game.Status = 'Completed';
         game.CurrentTurnPlayerId = null;
         game.BettingRoundComplete = true;
+        winnerIds = [activePlayers[0].PlayerId];
       } else {
         const complete = isBettingRoundComplete(
           game.Players,
@@ -215,9 +227,7 @@ async function performBettingAction(gameId, playerId, action) {
           game.BettingRoundComplete = true;
 
           if (game.Street === 7) {
-            // Final betting round is complete.
-            // Hand evaluation will happen separately.
-            game.Status = 'Showdown';
+            winnerIds = findWinners(game.Players);
           } else {
             // P49: Deal the next street and initialize
             // betting inside this same transaction.
@@ -233,6 +243,10 @@ async function performBettingAction(gameId, playerId, action) {
 
           game.BettingRoundComplete = false;
         }
+      }
+
+      if (winnerIds) {
+        await settleHand(game, table, winnerIds, session);
       }
 
       // Save betting action and any street progression
