@@ -50,6 +50,12 @@ describe('P37 - View Cards', () => {
     });
   });
 
+  test('reveals winning hands after the hand is settled', () => {
+    const result = getVisiblePlayers(players, 'alice', ['bob']);
+
+    expect(result[1].cards).toEqual(players[1].Cards);
+  });
+
   test('changes visible cards based on the viewer', () => {
     const result = getVisiblePlayers(players, 'bob');
 

@@ -1,9 +1,13 @@
 
-function getVisiblePlayers(players, viewerId) {
+function getVisiblePlayers(players, viewerId, revealPlayerIds = []) {
+  const revealedPlayers = new Set(revealPlayerIds);
+
   return players.map((player) => {
     const isCurrentPlayer =
       viewerId != null &&
       player.PlayerId.toString() === viewerId.toString();
+    const revealCards =
+      isCurrentPlayer || revealedPlayers.has(player.PlayerId);
 
     return {
       playerId: player.PlayerId,
@@ -17,7 +21,7 @@ function getVisiblePlayers(players, viewerId) {
 
       // P37: Protect opponents' private cards
       cards: player.Cards.map((card) => {
-        if (isCurrentPlayer || card.faceUp) {
+        if (revealCards || card.faceUp) {
           return {
             rank: card.rank,
             suit: card.suit,

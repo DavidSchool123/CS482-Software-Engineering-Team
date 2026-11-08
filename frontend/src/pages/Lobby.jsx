@@ -36,6 +36,8 @@ function Lobby({ tableSearch = '' }) {
   const [showBuyInModal, setShowBuyInModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [buyIn, setBuyIn] = useState(0);
+  const [joiningTable, setJoiningTable] = useState(false);
+  const [joinError, setJoinError] = useState('');
   const [createBuyIn, setCreateBuyIn] = useState(400);
 
   const [chipBalance, setChipBalance] = useState(null);
@@ -186,6 +188,52 @@ function Lobby({ tableSearch = '' }) {
     setShowBuyInModal(false);
     setSelectedTable(null);
     setBuyIn(0);
+    setJoinError('');
+  }
+
+  async function handleJoinTable() {
+    if (!selectedTable || joiningTable) return;
+
+    if (
+      !Number.isInteger(buyIn) ||
+      buyIn < selectedTable.stakes.minBuyIn ||
+      buyIn > maxAffordableBuyIn
+    ) {
+      setJoinError('Enter a valid buy-in within your available balance.');
+      return;
+    }
+
+    setJoiningTable(true);
+    setJoinError('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/tables/${selectedTable.id}/join`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ buyIn }),
+        }
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Unable to join this table.');
+      }
+
+      if (!result.joinCode) {
+        throw new Error('The server did not return a table code.');
+      }
+
+      navigate(`/table/${result.joinCode}`);
+    } catch (err) {
+      setJoinError(err.message || 'Unable to join this table.');
+    } finally {
+      setJoiningTable(false);
+    }
   }
 
   function handlePrivateJoin(event) {
@@ -534,28 +582,39 @@ function Lobby({ tableSearch = '' }) {
                 min="2"
                 max="6"
                 value={createTableData.Capacity}
-                onChange={(event) =>
-                  setCreateTableData({
-                    ...createTableData,
-                    Capacity: Number(event.target.value),
-                  })
-                }
+                onChange={(event) => {
+                  const capacity = Number(event.target.value);
+                  setCreateTableData((previous) => ({
+                    ...previous,
+                    Capacity: capacity,
+                    BotCount: Math.min(
+                      previous.BotCount,
+                      Math.max(0, capacity - 1)
+                    ),
+                  }));
+                }}
                 required
               />
 
-              <label htmlFor="create-table-bots">Bot Count</label>
+              <label htmlFor="create-table-bots">
+                Bot Count (practice opponents)
+              </label>
               <input
                 id="create-table-bots"
                 type="number"
                 min="0"
-                max="5"
+                max={Math.max(0, createTableData.Capacity - 1)}
                 value={createTableData.BotCount}
-                onChange={(event) =>
-                  setCreateTableData({
-                    ...createTableData,
-                    BotCount: Number(event.target.value),
-                  })
-                }
+                onChange={(event) => {
+                  const botCount = Number(event.target.value);
+                  setCreateTableData((previous) => ({
+                    ...previous,
+                    BotCount: Math.max(
+                      0,
+                      Math.min(botCount, previous.Capacity - 1)
+                    ),
+                  }));
+                }}
                 required
               />
 
@@ -787,6 +846,12 @@ function Lobby({ tableSearch = '' }) {
               </p>
             )}
 
+            {joinError && (
+              <p className="modal-note" role="alert">
+                {joinError}
+              </p>
+            )}
+
             <div className="modal-actions">
               <button
                 type="button"
@@ -799,17 +864,18 @@ function Lobby({ tableSearch = '' }) {
               <button
                 type="button"
                 className="join-btn"
-                disabled
-                title="Joining a table will be connected later."
+                disabled={
+                  joiningTable ||
+                  !canAffordTable ||
+                  !Number.isInteger(buyIn) ||
+                  buyIn < selectedTable.stakes.minBuyIn ||
+                  buyIn > maxAffordableBuyIn
+                }
+                onClick={handleJoinTable}
               >
-                Confirm Buy-In
+                {joiningTable ? 'Joining Table...' : 'Confirm Buy-In'}
               </button>
             </div>
-
-            <p className="modal-note">
-              Chip transfers and joining will be connected
-              when the account and gameplay features are ready.
-            </p>
           </div>
         </div>
       )}
