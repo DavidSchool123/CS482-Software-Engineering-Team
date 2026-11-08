@@ -17,7 +17,7 @@ async function startServer() {
       console.log(`Poker Face server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Could not start Poker Face server.');
+    console.error('Could not start Poker Face server.', error);
     process.exit(1);
   }
 }
