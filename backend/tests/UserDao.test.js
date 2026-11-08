@@ -69,6 +69,25 @@ describe('UserDao account and profile operations', () => {
     expect(result).toEqual(updated);
   });
 
+  test('creditChips returns settled chips to the account', async () => {
+    const updatedUser = { _id: 'user123', chipBalance: 1_100 };
+    const session = {};
+    jest.spyOn(User, 'findByIdAndUpdate').mockResolvedValue(updatedUser);
+
+    const result = await User.creditChips('user123', 100, session);
+
+    expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
+      'user123',
+      { $inc: { chipBalance: 100 } },
+      {
+        new: true,
+        session,
+        runValidators: true,
+      }
+    );
+    expect(result).toEqual(updatedUser);
+  });
+
   test('updateUser updates an existing user', async () => {
     const updatedData = { username: 'newname' };
     const user = { _id: 'user123', ...updatedData };

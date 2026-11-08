@@ -360,6 +360,29 @@ async function deductChips(userId, amount, session) {
   );
 }
 
+/**
+ * Return chips from a settled table to a user's account.
+ */
+async function creditChips(userId, amount, session) {
+  if (!Number.isInteger(amount) || amount < 0) {
+    throw new Error('Invalid chip amount');
+  }
+
+  return await User.findByIdAndUpdate(
+    userId,
+    {
+      $inc: { chipBalance: amount },
+    },
+    {
+      new: true,
+      session,
+      runValidators: true,
+    }
+  );
+}
+
+
+
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
 User.getProfile = getProfile;
@@ -378,5 +401,6 @@ User.findUserByLogin = findUserByLogin;
 User.findUserByEmail = findUserByEmail;
 User.findUserByUsername = findUserByUsername;
 User.deductChips = deductChips;
+User.creditChips = creditChips;
 
 module.exports = User;

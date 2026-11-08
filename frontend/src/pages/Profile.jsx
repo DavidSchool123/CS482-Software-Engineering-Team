@@ -353,8 +353,14 @@ function Profile() {
                 </div>
 
                 <div className='profile-balance-text'>
-                  <div className='balance-amount'>$1,250</div>
-                  <div className='balance-label'>Chip Balance</div>
+                  <div className='balance-amount'>
+                    {loading
+                      ? 'Loading...'
+                      : Number.isFinite(user?.chipBalance)
+                        ? user.chipBalance.toLocaleString()
+                        : 'Unavailable'}
+                  </div>
+                  <div className='balance-label'>Chip Balance (chips)</div>
                 </div>
               </div>
 

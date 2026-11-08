@@ -80,6 +80,11 @@ const gameSchema = new mongoose.Schema({
     default: []
   },
 
+  WinnerIds: {
+    type: [String],
+    default: []
+  },
+
   Deck: {
     type: [deckCardSchema],
     default: []

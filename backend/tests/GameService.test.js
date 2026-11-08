@@ -117,8 +117,13 @@ describe('Game Service', () => {
     const game = await startGame(tableId);
 
     expect(game.Players).toHaveLength(3);
-    expect(game.Players[1].PlayerId).toBe(`bot-${tableId}-1`);
-    expect(game.Players[2].PlayerId).toBe(`bot-${tableId}-2`);
+    expect(game.Players.map((player) => player.PlayerId)).toEqual(
+      expect.arrayContaining([
+        'user1',
+        `bot-${tableId}-1`,
+        `bot-${tableId}-2`,
+      ])
+    );
     expect(game.Deck).toHaveLength(43);
   });
 
