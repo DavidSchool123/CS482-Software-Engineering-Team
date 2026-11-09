@@ -1,12 +1,12 @@
 const { Resend } = require('resend');
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error('RESEND_API_KEY is missing from .env');
-}
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 async function sendEmail({ to, subject, html }) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is missing from .env');
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
   const { data, error } = await resend.emails.send({
     from: 'Poker Face <onboarding@resend.dev>',
     to: to,
