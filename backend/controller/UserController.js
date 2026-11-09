@@ -306,7 +306,7 @@ async function getUsers(req, res) {
 }
 
 async function getProfile(userId) {
-  const user = await User.findById(userId).select(
+  const user = await UserDao.findById(userId).select(
     '_id username email friends avatar userType chipBalance',
   );
 

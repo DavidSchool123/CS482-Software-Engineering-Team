@@ -83,7 +83,7 @@ describe('UserDao account and profile operations', () => {
         new: true,
         session,
         runValidators: true,
-      }
+      },
     );
     expect(result).toEqual(updatedUser);
   });
@@ -99,6 +99,10 @@ describe('UserDao account and profile operations', () => {
     expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
       'user123',
       updatedData,
+      {
+        returnDocument: 'after',
+        runValidators: true,
+      },
     );
     expect(result).toEqual(user);
   });
@@ -120,10 +124,7 @@ describe('UserDao account and profile operations', () => {
     await User.findUserByLogin('  Alice@Example.COM  ');
 
     expect(User.findOne).toHaveBeenCalledWith({
-      $or: [
-        { username: 'Alice@Example.COM' },
-        { email: 'alice@example.com' },
-      ],
+      $or: [{ username: 'Alice@Example.COM' }, { email: 'alice@example.com' }],
     });
   });
 
