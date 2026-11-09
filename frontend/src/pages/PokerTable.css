@@ -1000,22 +1000,22 @@
   overflow: visible;
 }
 
-/* Cards overlap only when needed */
+/* Progressive overlap — more room for 5–7 cards */
 
 .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(4)) {
   --card-step: 27px;
 }
 
 .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(5)) {
-  --card-step: 22px;
+  --card-step: 25px;
 }
 
 .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(6)) {
-  --card-step: 17px;
+  --card-step: 23px;
 }
 
 .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(7)) {
-  --card-step: 14px;
+  --card-step: 22px;
 }
 
 /* Overlap each card after the first */
@@ -1034,8 +1034,8 @@
 
 .stud-seat-compact .stud-hole-cards .stud-card:hover {
   z-index: 20;
-  transform: translateY(-8px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45);
 }
 
 /* Responsive card widths */
@@ -1082,4 +1082,31 @@
   .stud-seat-compact .stud-hole-cards:has(.stud-card:nth-child(7)) {
     --card-step: 8px;
   }
+}
+
+.stud-seat-compact .stud-hole-cards {
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
+  align-self: center;
+  justify-content: center;
+}
+
+/* Hide bottom corners on overlapping cards */
+.stud-seat-compact .stud-hole-cards
+.stud-card:not(:last-child) .stud-card-corner-bottom {
+  opacity: 0;
+}
+
+/* Reveal both corners when hovering or selecting a card */
+.stud-seat-compact .stud-hole-cards
+.stud-card:hover .stud-card-corner-bottom,
+.stud-seat-compact .stud-hole-cards
+.stud-card:focus-within .stud-card-corner-bottom {
+  opacity: 1;
+}
+
+/* Smooth corner appearance */
+.stud-card-corner-bottom {
+  transition: opacity 0.15s ease;
 }

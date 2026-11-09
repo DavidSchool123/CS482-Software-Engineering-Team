@@ -132,6 +132,7 @@ describe('Friend Lookup', () => {
       .get('/api/users/search')
       .query({ username: david.username });
 
+    
     expect(response.status).toBe(200);
 
     expect(

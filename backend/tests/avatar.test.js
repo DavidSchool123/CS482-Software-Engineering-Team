@@ -1,9 +1,10 @@
+
 const express = require('express');
 const request = require('supertest');
 
 // Mock database operations so these API tests do not need MongoDB.
 jest.mock('../model/UserDao', () => ({
-  getProfile: jest.fn(),
+  findById: jest.fn(),
   updateAvatar: jest.fn(),
 }));
 
@@ -12,8 +13,27 @@ const UserController = require('../controller/UserController');
 
 // Create a small Express app exposing only the profile routes under test.
 const app = express();
-app.use(express.json({ limit: '2.1mb' }));
-app.get('/api/users/:userId', UserController.getProfile);
+app.use(express.json({ limit: '3mb' }));
+
+// getProfile is a helper function, not an Express route handler.
+app.get('/api/users/:userId', async (req, res) => {
+  try {
+    const profile = await UserController.getProfile(req.params.userId);
+
+    if (!profile) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    return res.status(200).json(profile);
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to retrieve profile.',
+    });
+  }
+});
+
 app.put('/api/users/:userId/avatar', UserController.updateAvatar);
 
 // Reusable user ID and small PNG data URL for request fixtures.
@@ -26,75 +46,110 @@ describe('Profile avatar API', () => {
   });
 
   test('profile response includes the saved avatar', async () => {
-    // Return a stored avatar from the profile lookup.
-    UserDao.getProfile.mockResolvedValue({ _id: userId, avatar });
+    // Simulate a user retrieved from MongoDB.
+    const mockUser = {
+      _id: userId,
+      username: 'testuser',
+      email: 'test@example.com',
+      friends: [],
+      avatar,
+      userType: 'registered',
+      chipBalance: 1000,
+    };
 
-    const response = await request(app).get(`/api/users/${userId}`);
+    const selectMock = jest.fn().mockResolvedValue(mockUser);
 
-    // Confirm clients receive the saved image after loading the profile.
+    UserDao.findById.mockReturnValue({
+      select: selectMock,
+    });
+
+    const response = await request(app).get(
+      `/api/users/${userId}`
+    );
+
+    expect(UserDao.findById).toHaveBeenCalledWith(userId);
+
+    expect(selectMock).toHaveBeenCalledWith(
+      '_id username email friends avatar userType chipBalance'
+    );
+
     expect(response.status).toBe(200);
     expect(response.body.avatar).toBe(avatar);
+    expect(response.body.friendCount).toBe(0);
   });
 
   test('saves a valid avatar', async () => {
-    // Simulate a successful database update for a valid PNG data URL.
-    UserDao.updateAvatar.mockResolvedValue({ _id: userId, avatar });
+    // Simulate a successful database update.
+    UserDao.updateAvatar.mockResolvedValue({
+      _id: userId,
+      avatar,
+    });
 
     const response = await request(app)
       .put(`/api/users/${userId}/avatar`)
       .send({ avatar });
 
-    // Confirm the endpoint accepts the image and updates this user's record.
     expect(response.status).toBe(200);
-    expect(UserDao.updateAvatar).toHaveBeenCalledWith(userId, avatar);
+    expect(UserDao.updateAvatar).toHaveBeenCalledWith(
+      userId,
+      avatar
+    );
+    expect(response.body.avatar).toBe(avatar);
   });
 
   test('removes an avatar when sent an empty value', async () => {
-    // An empty string represents resetting the avatar to the default.
-    UserDao.updateAvatar.mockResolvedValue({ _id: userId, avatar: '' });
+    // An empty string resets the avatar.
+    UserDao.updateAvatar.mockResolvedValue({
+      _id: userId,
+      avatar: '',
+    });
 
     const response = await request(app)
       .put(`/api/users/${userId}/avatar`)
       .send({ avatar: '' });
 
-    // Confirm the empty avatar is passed to storage.
     expect(response.status).toBe(200);
-    expect(UserDao.updateAvatar).toHaveBeenCalledWith(userId, '');
+    expect(UserDao.updateAvatar).toHaveBeenCalledWith(
+      userId,
+      ''
+    );
+    expect(response.body.avatar).toBe('');
   });
 
   test('rejects unsupported image types without saving', async () => {
-    // SVG is not among the image formats allowed by the avatar endpoint.
+    // SVG is not an allowed image format.
     const response = await request(app)
       .put(`/api/users/${userId}/avatar`)
-      .send({ avatar: 'data:image/svg+xml;base64,PHN2Zz4=' });
+      .send({
+        avatar: 'data:image/svg+xml;base64,PHN2Zz4=',
+      });
 
-    // Invalid formats must be rejected before reaching the database.
     expect(response.status).toBe(400);
     expect(UserDao.updateAvatar).not.toHaveBeenCalled();
   });
 
   test('rejects images that exceed the size limit', async () => {
-    // Build a data URL larger than the API's configured maximum.
+    // Build an image data URL larger than the controller limit.
     const oversizedAvatar = `data:image/png;base64,${'A'.repeat(2_100_001)}`;
 
     const response = await request(app)
       .put(`/api/users/${userId}/avatar`)
       .send({ avatar: oversizedAvatar });
 
-    // Confirm oversized images are rejected without a database write.
     expect(response.status).toBe(413);
     expect(UserDao.updateAvatar).not.toHaveBeenCalled();
   });
 
   test('returns not found when the user does not exist', async () => {
-    // No updated document means the requested user ID was not found.
     UserDao.updateAvatar.mockResolvedValue(null);
 
     const response = await request(app)
       .put(`/api/users/${userId}/avatar`)
       .send({ avatar });
 
-    // The API should report a missing user instead of claiming success.
     expect(response.status).toBe(404);
+    expect(response.body).toEqual({
+      message: 'User not found.',
+    });
   });
 });

@@ -228,6 +228,9 @@ async function performBettingAction(gameId, playerId, action) {
 
           if (game.Street === 7) {
             winnerIds = findWinners(game.Players);
+            
+
+        console.log('WINNER IDS:', winnerIds);
           } else {
             // P49: Deal the next street and initialize
             // betting inside this same transaction.
@@ -255,6 +258,16 @@ async function performBettingAction(gameId, playerId, action) {
 
       updatedGame = game;
     });
+
+    console.log(
+        `[GAME ${gameId}]` +
+        `Street ${updatedGame.Street} |` +
+        `${playerId.startsWith('bot-') ? 'Bot' : 'Human'} `+
+        `${playerId} -> ${action} | ` +
+        `Pot: ${updatedGame.Pot} | ` +
+        `Next: ${updatedGame.CurrentTurnPlayerId || 'None'} | ` +
+        `Status: ${updatedGame.Status}`
+    );
 
     return updatedGame;
   } finally {

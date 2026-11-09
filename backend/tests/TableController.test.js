@@ -12,8 +12,8 @@ describe('TableController - Creation and Joining', () => {
   let mockSession;
   let consoleErrorSpy;
 
-  const userId = 'user123';
-  const tableId = 'table123';
+  const userId = new mongoose.Types.ObjectId().toString();
+  const tableId = new mongoose.Types.ObjectId().toString();
 
   const validTableBody = {
     Name: 'Test Poker Table',
@@ -29,7 +29,8 @@ describe('TableController - Creation and Joining', () => {
     Name: 'Test Poker Table',
     JoinCode: 'ABC12345',
     Capacity: 6,
-    UserIds: ['otherUser'],
+    UserIds: [new mongoose.Types.ObjectId().toString()],
+    PlayerStacks: [],
     BotCount: 0,
     Level: 'Low',
     Status: 'Waiting',
@@ -50,12 +51,10 @@ describe('TableController - Creation and Joining', () => {
       endSession: jest.fn().mockResolvedValue(undefined),
     };
 
-    jest
-      .spyOn(mongoose, 'startSession')
+    jest.spyOn(mongoose, 'startSession')
       .mockResolvedValue(mockSession);
 
-    consoleErrorSpy = jest
-      .spyOn(console, 'error')
+    consoleErrorSpy = jest.spyOn(console, 'error')
       .mockImplementation(() => {});
   });
 
@@ -63,9 +62,7 @@ describe('TableController - Creation and Joining', () => {
     jest.restoreAllMocks();
   });
 
-  // -------------------------------------
   // TABLE CREATION TESTS
-  // -------------------------------------
 
   test('rejects table creation when the user is not logged in', async () => {
     const req = {
@@ -155,7 +152,7 @@ describe('TableController - Creation and Joining', () => {
 
   test('creates a table and deducts the host buy-in successfully', async () => {
     const createdTable = {
-      _id: 'newTable123',
+      _id: new mongoose.Types.ObjectId(),
       Name: validTableBody.Name,
       JoinCode: 'ABC12345',
     };
@@ -197,7 +194,7 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
-      id: 'newTable123',
+      id: createdTable._id.toString(),
       name: validTableBody.Name,
       joinCode: 'ABC12345',
       buyIn: validTableBody.buyIn,
@@ -218,7 +215,6 @@ describe('TableController - Creation and Joining', () => {
     await TableController.createTable(req, res);
 
     expect(TableDao.create).not.toHaveBeenCalled();
-
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       message: 'Insufficient chips or user not found',
@@ -227,9 +223,7 @@ describe('TableController - Creation and Joining', () => {
     expect(mockSession.endSession).toHaveBeenCalled();
   });
 
-  // -------------------------------------
   // TABLE JOINING TESTS
-  // -------------------------------------
 
   test('rejects joining when the user is not logged in', async () => {
     const req = {
@@ -281,15 +275,15 @@ describe('TableController - Creation and Joining', () => {
 
     await TableController.joinTable(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'This table is not accepting players',
+      message: 'This table is no longer waiting for players',
     });
 
     expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
-  test('prevents a user from joining the same table twice', async () => {
+  test('allows an already-seated user to rejoin without another deduction', async () => {
     TableDao.findById.mockResolvedValue({
       ...waitingTable,
       UserIds: [userId],
@@ -304,9 +298,10 @@ describe('TableController - Creation and Joining', () => {
 
     await TableController.joinTable(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'You are already at this table',
+      joinCode: waitingTable.JoinCode,
+      alreadySeated: true,
     });
 
     expect(UserDao.deductChips).not.toHaveBeenCalled();
@@ -359,16 +354,18 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Insufficient chips',
+      message: 'Insufficient chips or user not found',
     });
 
     expect(TableDao.addPlayer).not.toHaveBeenCalled();
   });
 
-  test('rejects joining if the table becomes full', async () => {
-    TableDao.findById.mockResolvedValue(waitingTable);
-    UserDao.deductChips.mockResolvedValue({ _id: userId });
-    TableDao.addPlayer.mockResolvedValue(null);
+  test('rejects joining if the table is full', async () => {
+    TableDao.findById.mockResolvedValue({
+      ...waitingTable,
+      UserIds: [new mongoose.Types.ObjectId().toString()],
+      BotCount: 5,
+    });
 
     const req = {
       params: { tableId },
@@ -379,29 +376,24 @@ describe('TableController - Creation and Joining', () => {
 
     await TableController.joinTable(req, res);
 
-    expect(TableDao.addPlayer).toHaveBeenCalledWith(
-      tableId,
-      userId,
-      500,
-      mockSession
-    );
-
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Unable to join. The table may be full or no longer available.',
+      message: 'This table is full',
     });
+
+    expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
   test('joins a table and deducts the buy-in successfully', async () => {
-    const joinedTable = {
-      _id: tableId,
-      Name: waitingTable.Name,
-      JoinCode: waitingTable.JoinCode,
+    const table = {
+      ...waitingTable,
+      UserIds: [new mongoose.Types.ObjectId().toString()],
+      PlayerStacks: [],
+      save: jest.fn().mockResolvedValue(undefined),
     };
 
-    TableDao.findById.mockResolvedValue(waitingTable);
+    TableDao.findById.mockResolvedValue(table);
     UserDao.deductChips.mockResolvedValue({ _id: userId });
-    TableDao.addPlayer.mockResolvedValue(joinedTable);
 
     const req = {
       params: { tableId },
@@ -423,27 +415,26 @@ describe('TableController - Creation and Joining', () => {
       mockSession
     );
 
-    expect(TableDao.addPlayer).toHaveBeenCalledWith(
-      tableId,
-      userId,
-      500,
-      mockSession
-    );
+    expect(table.UserIds).toContain(userId);
+    expect(table.PlayerStacks).toContainEqual({
+      PlayerId: userId,
+      Chips: 500,
+    });
+
+    expect(table.save).toHaveBeenCalledWith({
+      session: mockSession,
+    });
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Successfully joined table',
-      id: tableId,
-      joinCode: 'ABC12345',
-      name: 'Test Poker Table',
+      joinCode: waitingTable.JoinCode,
+      alreadySeated: false,
     });
 
     expect(mockSession.endSession).toHaveBeenCalled();
   });
 
-  // -------------------------------------
   // JOIN-CODE LOOKUP TESTS
-  // -------------------------------------
 
   test('finds a table by join code and returns its joining information', async () => {
     TableDao.findTableByCode.mockResolvedValue({
