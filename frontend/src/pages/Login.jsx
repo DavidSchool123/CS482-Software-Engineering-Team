@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './AccountCreation.css';
 
 function Login({ handleSubmit, message }) {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [loginMessage, setLoginMessage] = useState('');
 
   return (
     <section className='auth-card' aria-labelledby='sign-in-title'>
@@ -40,11 +40,6 @@ function Login({ handleSubmit, message }) {
             >
               {showLoginPassword ? 'Hide' : 'Show'}
             </button>
-            {loginMessage && (
-              <p className='auth-message' role='status'>
-                {loginMessage}
-              </p>
-            )}
           </div>
         </div>
 
@@ -53,27 +48,14 @@ function Login({ handleSubmit, message }) {
             <input id='remember-me' name='remember-me' type='checkbox' />
             <span>Remember me</span>
           </label>
-          <button
-            className='text-button'
-            type='button'
-            onClick={() =>
-              setLoginMessage(
-                'Password recovery is not available yet. Please check back soon.',
-              )
-            }
-          >
+          <Link className='text-button' to='/forgotPassword'>
             Forgot password?
-          </button>
+          </Link>
         </div>
 
         <button className='auth-submit' type='submit'>
           Log In
         </button>
-        {loginMessage && (
-          <p className='auth-message' role='status'>
-            {loginMessage}
-          </p>
-        )}
       </form>
     </section>
   );
