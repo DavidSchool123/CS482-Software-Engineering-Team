@@ -430,12 +430,15 @@ function Lobby({ tableSearch = '' }) {
 
         <div className="table-card-footer">
           <div className="table-actions">
-            {isInProgress && (
+            {/* Allow spectators to watch full or active public tables. */}
+            {(isInProgress || isFull) && (
               <button
                 type="button"
                 className="observe-btn"
-                disabled
-                title="Spectator functionality is coming soon."
+                onClick={() =>
+                  navigate(`/table/${table.id}?spectate=true`)
+                }
+                title="Watch this table without joining it."
               >
                 Observe
               </button>

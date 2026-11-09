@@ -5,6 +5,38 @@ const TABLE_LEVELS = require('../model/tableLevels');
 const UserDao = require('../model/UserDao');
 const crypto = require('crypto');
 
+// Format table information for the poker-table screen.
+// Public spectators do not need the table's private join code.
+function formatTableForViewing(table, userId, includeJoinCode = false) {
+  const isPlayer = Boolean(
+    userId &&
+    table.UserIds?.some(
+      (id) => id.toString() === userId.toString()
+    )
+  );
+
+  return {
+    id: table._id.toString(),
+    filledSeats:
+      (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
+    capacity: table.Capacity,
+    botCount: table.BotCount,
+    level: table.Level,
+    name: table.Name,
+    status: table.Status,
+    currentGameId: table.CurrentGameID
+      ? table.CurrentGameID.toString()
+      : null,
+
+    // The frontend uses this to distinguish players from spectators.
+    isPlayer,
+    isPublic: table.IsPublic,
+
+    // Only include the code when using the existing join-code lookup.
+    ...(includeJoinCode ? { joinCode: table.JoinCode } : {}),
+  };
+}
+
 // Get public tables and their betting information for the Lobby
 exports.getAllTables = async function(req, res) {
   try {
@@ -268,7 +300,7 @@ exports.joinTable = async function(req, res) {
   }
 };
 
-// Find a table using its join code
+// Find a table using its join code.
 exports.findTableByCode = async function(req, res) {
   try {
     const table = await TableDao.findTableByCode(req);
@@ -279,26 +311,13 @@ exports.findTableByCode = async function(req, res) {
       });
     }
 
-    const levelConfig = TABLE_LEVELS[table.Level];
-
-    return res.status(200).json({
-      id: table._id.toString(),
-      name: table.Name,
-      level: table.Level,
-      capacity: table.Capacity,
-      playerCount:
-        (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
-      status: table.Status,
-      joinCode: table.JoinCode,
-      stakes: levelConfig
-        ? {
-            smallBet: levelConfig.smallBet,
-            bigBet: levelConfig.bigBet,
-            minBuyIn: levelConfig.minBuyIn,
-            maxBuyIn: levelConfig.maxBuyIn,
-          }
-        : null,
-    });
+    return res.status(200).json(
+      formatTableForViewing(
+        table,
+        req.session?.userId,
+        true
+      )
+    );
   } catch (error) {
     console.error('Error finding table:', error);
 
@@ -308,3 +327,53 @@ exports.findTableByCode = async function(req, res) {
   }
 };
 
+// Retrieve a table by ID for spectator access.
+// Non-players may only observe public tables.
+exports.getTableForSpectating = async function(req, res) {
+  try {
+    const userId = req.session?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: 'You must be logged in to observe a table',
+      });
+    }
+
+    const { tableId } = req.params;
+
+    if (!mongoose.isValidObjectId(tableId)) {
+      return res.status(400).json({
+        message: 'Invalid table ID',
+      });
+    }
+
+    const table = await TableDao.findById(tableId);
+
+    if (!table) {
+      return res.status(404).json({
+        message: 'Table not found',
+      });
+    }
+
+    const isPlayer = table.UserIds.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    // Do not allow spectators to access private tables by guessing IDs.
+    if (!table.IsPublic && !isPlayer) {
+      return res.status(403).json({
+        message: 'You cannot observe this private table',
+      });
+    }
+
+    return res.status(200).json(
+      formatTableForViewing(table, userId)
+    );
+  } catch (error) {
+    console.error('Error retrieving table for spectating:', error);
+
+    return res.status(500).json({
+      message: 'Unable to retrieve table',
+    });
+  }
+};

@@ -126,22 +126,24 @@ exports.getGame = async function (req, res) {
       });
     }
 
-    // Only seated players can retrieve game information
+    // Determine whether the signed-in user is seated at this table.
     const isPlayer = table.UserIds.some(
       (id) => id.toString() === userId.toString()
     );
 
-    if (!isPlayer) {
+    // Non-players may observe public tables, but not private tables.
+    if (!isPlayer && !table.IsPublic) {
       return res.status(403).json({
-        error: 'You are not a player at this table',
+        error: 'You cannot observe this private table',
       });
     }
 
-    // Show the viewer's cards while protecting opponents' private cards
+    // Players see their own private cards.
+    // Spectators receive only publicly exposed cards.
     const winnerIds = game.WinnerIds || [];
     const players = getVisiblePlayers(
       game.Players,
-      userId,
+      userId ? userId : null,
       winnerIds
     );
 

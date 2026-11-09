@@ -1,18 +1,24 @@
 
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import {
+  Link,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import PlayingCard from '../components/PlayingCard';
 import './PokerTable.css';
 import './PokerChips.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const otherSeatPositions = [
+// All six possible seats around a Seven-Card Stud table.
+const seatPositions = [
   'top',
   'left',
   'left-lower',
   'right',
   'right-upper',
+  'bottom',
 ];
 
 const TABLE_BETS = {
@@ -158,11 +164,21 @@ function PokerSeat({
 function Table() {
   const { tableId: joinCode } = useParams();
 
+  // The lobby adds this query parameter when someone chooses Observe.
+  const [searchParams] = useSearchParams();
+
+  const requestedSpectatorMode =
+    searchParams.get('spectate') === 'true';
+
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
 
   const [table, setTable] = useState(null);
   const [game, setGame] = useState(null);
+
+  // Also recognize non-players who open a table directly by join code.
+  const isSpectator =
+    requestedSpectatorMode || table?.isPlayer === false;
 
   const [startingGame, setStartingGame] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -182,13 +198,16 @@ function Table() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `${API_URL}/api/tables/${encodeURIComponent(joinCode)}`,
-          {
-            credentials: 'include',
-            cache: 'no-store',
-          }
-        );
+        // Spectators navigate using the public table ID.
+        // Regular players continue using the existing join-code lookup.
+        const tableEndpoint = requestedSpectatorMode
+          ? `${API_URL}/api/tables/id/${encodeURIComponent(joinCode)}`
+          : `${API_URL}/api/tables/${encodeURIComponent(joinCode)}`;
+
+        const response = await fetch(tableEndpoint, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
 
         const data = await response.json();
 
@@ -246,7 +265,7 @@ function Table() {
     return () => {
       cancelled = true;
     };
-  }, [joinCode]);
+  }, [joinCode, requestedSpectatorMode]);
 
   function showNotImplemented(feature) {
     setGameNotice(`${feature} is not available yet.`);
@@ -293,8 +312,98 @@ function Table() {
     return data;
   }
 
+  // Spectators periodically refresh the table and game.
+  // This lets them see when a waiting table starts and when game
+  // information changes, without requiring a manual page refresh.
+  useEffect(() => {
+    if (!isSpectator) return undefined;
+
+    let cancelled = false;
+    let refreshing = false;
+
+    async function refreshSpectatorView() {
+      // Avoid overlapping requests if a previous refresh is still running.
+      if (refreshing) return;
+
+      refreshing = true;
+
+      try {
+        const tableEndpoint = requestedSpectatorMode
+          ? `${API_URL}/api/tables/id/${encodeURIComponent(joinCode)}`
+          : `${API_URL}/api/tables/${encodeURIComponent(joinCode)}`;
+
+        const tableResponse = await fetch(tableEndpoint, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        const tableData = await tableResponse.json();
+
+        if (!tableResponse.ok) {
+          throw new Error(
+            tableData.message || 'Unable to refresh table information.'
+          );
+        }
+
+        if (cancelled) return;
+
+        setTable(tableData);
+
+        // A game may not exist yet if the table is still waiting.
+        if (tableData.currentGameId) {
+          const gameResponse = await fetch(
+            `${API_URL}/api/games/${tableData.currentGameId}`,
+            {
+              credentials: 'include',
+              cache: 'no-store',
+            }
+          );
+
+          const gameData = await gameResponse.json();
+
+          if (!gameResponse.ok) {
+            throw new Error(
+              gameData.error ||
+                gameData.message ||
+                'Unable to refresh game information.'
+            );
+          }
+
+          if (!cancelled) {
+            setGame(gameData);
+            setGameNotice('Live spectator view updated.');
+          }
+        } else if (!cancelled) {
+          setGame(null);
+          setGameNotice('Waiting for the game to start.');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Spectator refresh failed:', err);
+          setGameNotice(
+            err.message || 'Unable to refresh spectator view.'
+          );
+        }
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    // Refresh every three seconds while observing.
+    const intervalId = window.setInterval(
+      refreshSpectatorView,
+      3000
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isSpectator, requestedSpectatorMode, joinCode]);
+
   async function handleStartGame() {
     if (
+      isSpectator ||
       !table?.id ||
       startingGame ||
       game ||
@@ -346,7 +455,7 @@ function Table() {
 
   // P16: Perform fold, check, call, bet, or raise.
   async function handleBettingAction(action) {
-    if (!game?.gameId || submittingAction) return;
+    if (isSpectator || !game?.gameId || submittingAction) return;
 
     setSubmittingAction(true);
 
@@ -440,6 +549,7 @@ function Table() {
   );
 
   const canAct =
+    !isSpectator &&
     game?.status === 'In Progress' &&
     !game?.bettingRoundComplete &&
     !me?.hasFolded &&
@@ -533,27 +643,31 @@ function Table() {
           <h1>Seven-Card Stud</h1>
 
           <p className="stud-subtitle">
-            Your seven-card stud table
+            {isSpectator
+              ? 'You are observing this Seven-Card Stud table'
+              : 'Your seven-card stud table'}
           </p>
         </div>
 
         <div className="stud-header-actions">
-          <button
-            type="button"
-            className="stud-start-button"
-            onClick={handleStartGame}
-            disabled={
-              startingGame ||
-              Boolean(game) ||
-              Boolean(table.currentGameId)
-            }
-          >
-            {startingGame
-              ? 'Starting Game...'
-              : game || table.currentGameId
-                ? 'Game Started'
-                : 'Start Game'}
-          </button>
+          {!isSpectator && (
+            <button
+              type="button"
+              className="stud-start-button"
+              onClick={handleStartGame}
+              disabled={
+                startingGame ||
+                Boolean(game) ||
+                Boolean(table.currentGameId)
+              }
+            >
+              {startingGame
+                ? 'Starting Game...'
+                : game || table.currentGameId
+                  ? 'Game Started'
+                  : 'Start Game'}
+            </button>
+          )}
 
           <Link to="/lobby" className="stud-back-link">
             ← Back to Lobby
@@ -595,7 +709,9 @@ function Table() {
               <div>
                 <dt>Join Code</dt>
                 <dd className="stud-table-id">
-                  {table.joinCode || 'Private tables only'}
+                  {isSpectator
+                    ? 'Public table'
+                    : table.joinCode || 'Private tables only'}
                 </dd>
               </div>
 
@@ -617,15 +733,17 @@ function Table() {
               </div>
             </dl>
 
-            <button
-              type="button"
-              className="stud-secondary-button"
-              onClick={() =>
-                showNotImplemented('Leaving the table')
-              }
-            >
-              Leave Table
-            </button>
+            {!isSpectator && (
+              <button
+                type="button"
+                className="stud-secondary-button"
+                onClick={() =>
+                  showNotImplemented('Leaving the table')
+                }
+              >
+                Leave Table
+              </button>
+            )}
           </section>
 
           <section className="stud-panel stud-chat-panel">
@@ -700,18 +818,39 @@ function Table() {
           </div>
 
           <div className="stud-felt">
-            {otherSeatPositions.map((position, index) => {
-              const player = opponents[index];
+            {/* Render all six seats.
+                Players see themselves at the bottom.
+                Spectators see every seated player around the table. */}
+            {seatPositions.map((position, index) => {
+              const player = isSpectator
+                ? players[index]
+                : position === 'bottom'
+                  ? me
+                  : opponents[index];
 
-              return player ? (
+              // Show an empty seat when nobody occupies this position.
+              if (!player) {
+                return (
+                  <EmptySeat
+                    key={position}
+                    position={position}
+                  />
+                );
+              }
+
+              const playerName = String(player.playerId).startsWith('bot-')
+                ? `Bot ${index + 1}`
+                : player.isCurrentPlayer
+                  ? 'You'
+                  : `Player ${isSpectator ? index + 1 : index + 2}`;
+
+              return (
                 <PokerSeat
                   key={player.playerId}
-                  name={
-                    String(player.playerId).startsWith('bot-')
-                      ? `Bot ${index + 1}`
-                      : `Player ${index + 2}`
-                  }
+                  name={playerName}
                   position={position}
+                  isYou={player.isCurrentPlayer}
+                  cards={player.cards}
                   chips={getPlayerChips(player.playerId)}
                   isBringIn={
                     String(game?.bringInPlayerId) ===
@@ -723,31 +862,9 @@ function Table() {
                   }
                   hasFolded={player.hasFolded}
                   contribution={player.roundContribution}
-                  cards={player.cards}
-                />
-              ) : (
-                <EmptySeat
-                  key={position}
-                  position={position}
                 />
               );
             })}
-
-            <PokerSeat
-              name="You"
-              position="bottom"
-              isYou
-              cards={me?.cards || []}
-              chips={myChips}
-              isBringIn={Boolean(
-                me &&
-                  String(game?.bringInPlayerId) ===
-                    String(me.playerId)
-              )}
-              isTurn={isMyTurn}
-              hasFolded={me?.hasFolded}
-              contribution={me?.roundContribution}
-            />
 
             <div className="stud-board stud-board-waiting poker-pot-area">
               {game && (
@@ -795,7 +912,7 @@ function Table() {
           </div>
 
           {/* P16: Betting actions with hover tooltips */}
-          <div className="stud-actions">
+          {!isSpectator && (<div className="stud-actions">
             {[
               'Fold',
               'Check',
@@ -833,7 +950,7 @@ function Table() {
                 </button>
               );
             })}
-          </div>
+          </div>)}
         </section>
 
         <aside className="stud-right-column">
@@ -847,51 +964,110 @@ function Table() {
             </h2>
 
             <ul>
-              <li>
-                <span
-                  className="stud-player-icon"
-                  aria-hidden="true"
-                >
-                  ♙
-                </span>
+              {isSpectator ? (
+                game && players.length > 0 ? (
+                  players.map((player, index) => {
+                    const playerName = String(player.playerId).startsWith('bot-')
+                      ? `Bot ${index + 1}`
+                      : `Player ${index + 1}`;
 
-                <span className="stud-player-name">
-                  You
-                </span>
+                    const isCurrentTurn =
+                      String(game.currentTurnPlayerId) ===
+                      String(player.playerId);
 
-                <strong>
-                  {me?.hasFolded
-                    ? 'Folded'
-                    : isMyTurn
-                      ? 'Your turn'
-                      : game
-                        ? 'Dealt'
-                        : 'Waiting'}
-                </strong>
-              </li>
+                    return (
+                      <li key={player.playerId}>
+                        <span
+                          className="stud-player-icon"
+                          aria-hidden="true"
+                        >
+                          ♙
+                        </span>
+
+                        <span className="stud-player-name">
+                          {playerName}
+                        </span>
+
+                        <strong>
+                          {player.hasFolded
+                            ? 'Folded'
+                            : isCurrentTurn
+                              ? 'Current turn'
+                              : 'Playing'}
+                        </strong>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li>
+                    <span className="stud-player-icon" aria-hidden="true">
+                      ♙
+                    </span>
+
+                    <span className="stud-player-name">
+                      Waiting for players
+                    </span>
+
+                    <strong>Waiting</strong>
+                  </li>
+                )
+              ) : (
+                <li>
+                  <span
+                    className="stud-player-icon"
+                    aria-hidden="true"
+                  >
+                    ♙
+                  </span>
+
+                  <span className="stud-player-name">
+                    You
+                  </span>
+
+                  <strong>
+                    {me?.hasFolded
+                      ? 'Folded'
+                      : isMyTurn
+                        ? 'Your turn'
+                        : game
+                          ? 'Dealt'
+                          : 'Waiting'}
+                  </strong>
+                </li>
+              )}
             </ul>
 
-            <div className="stud-spectators">
-              <h3>Spectators (0)</h3>
-              <p className="stud-empty-list">
-                No spectators yet.
-              </p>
-            </div>
+            {isSpectator && (
+              <div className="stud-spectators">
+                <h3>Spectator View</h3>
+
+                <p>
+                  You are watching this table. Your account is not
+                  seated and cannot place bets.
+                </p>
+              </div>
+            )}
           </section>
 
           <section className="stud-panel stud-waiting-panel">
             <h2>Waiting Room</h2>
 
             <p>
-              {game
-                ? 'The game has started.'
-                : 'Waiting for the game to start.'}
+              {isSpectator
+                ? game
+                  ? 'You are watching the game in progress.'
+                  : 'You are watching this table while it waits for a game.'
+                : game
+                  ? 'The game has started.'
+                  : 'Waiting for the game to start.'}
             </p>
 
             <p className="stud-waiting-muted">
-              {table.joinCode
-                ? 'Share the private table join code with friends.'
-                : 'Players can find this table in the public lobby.'}
+              {isSpectator
+                ? 'This spectator view refreshes automatically.'
+                : table.joinCode
+                  ? 'Share the private table join code with friends.'
+                  : 'Players can find this table in the public lobby.'}
             </p>
           </section>
         </aside>

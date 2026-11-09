@@ -76,6 +76,12 @@ app.post('/api/tables', TableController.createTable);
 // Join an existing table
 app.post('/api/tables/:tableId/join',  TableController.joinTable);
 
+// Retrieve a table by ID for spectator viewing.
+app.get(
+  '/api/tables/id/:tableId',
+  TableController.getTableForSpectating
+);
+
 //read table by joincode
 app.get('/api/tables/:joinCode', TableController.findTableByCode);
 

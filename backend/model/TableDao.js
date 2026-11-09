@@ -76,6 +76,14 @@ const tableSchema = new mongoose.Schema({
     ref: 'Game',
   },
 
+  SpectatorIds: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: [],
+    },
+  ],
+
 });
 
 const TableModel = mongoose.model('Table', tableSchema);
