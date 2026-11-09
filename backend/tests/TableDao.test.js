@@ -30,7 +30,6 @@ describe('TableDao - Public Table Queries', () => {
       },
     ];
 
-    // Fake the result of calling .select() on the query
     const selectMock = jest.fn().mockResolvedValue(mockTables);
 
     findSpy.mockReturnValue({
@@ -39,18 +38,15 @@ describe('TableDao - Public Table Queries', () => {
 
     const result = await TableDao.findPublicTables();
 
-    // Only public tables that are not closed should be requested
     expect(findSpy).toHaveBeenCalledWith({
       IsPublic: true,
       Status: { $ne: 'Closed' },
     });
 
-    // Check which fields the DAO requests
     expect(selectMock).toHaveBeenCalledWith(
       'Name Capacity UserIds BotCount Level Status'
     );
 
-    // Check that the DAO returns the query results
     expect(result).toEqual(mockTables);
   });
 
@@ -83,8 +79,6 @@ describe('TableDao - Public Table Queries', () => {
   });
 });
 
-
-
 describe('TableDao - Creation and Joining Operations', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -93,7 +87,6 @@ describe('TableDao - Creation and Joining Operations', () => {
   // TEST 4: Create a table using the provided transaction session
   test('create saves a table using the provided session', async () => {
     const session = { id: 'mock-session' };
-
     const testUserId = new mongoose.Types.ObjectId();
 
     const tableData = {
@@ -107,7 +100,7 @@ describe('TableDao - Creation and Joining Operations', () => {
       Status: 'Waiting',
       PlayerStacks: [
         {
-          PlayerId: 'user123',
+          PlayerId: testUserId.toString(),
           Chips: 500,
         },
       ],
@@ -120,8 +113,33 @@ describe('TableDao - Creation and Joining Operations', () => {
     const result = await TableDao.create(tableData, session);
 
     expect(saveSpy).toHaveBeenCalledWith({ session });
-    expect(result).toEqual(
-      expect.objectContaining(tableData)
+
+    // Convert the Mongoose document to a plain object
+    const savedTable = result.toObject();
+
+    expect(savedTable).toEqual(
+      expect.objectContaining({
+        Name: tableData.Name,
+        JoinCode: tableData.JoinCode,
+        Capacity: tableData.Capacity,
+        BotCount: tableData.BotCount,
+        IsPublic: tableData.IsPublic,
+        Level: tableData.Level,
+        Status: tableData.Status,
+      })
+    );
+
+    expect(savedTable.UserIds.map(String)).toEqual([
+      testUserId.toString(),
+    ]);
+
+    expect(savedTable.PlayerStacks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          PlayerId: testUserId.toString(),
+          Chips: 500,
+        }),
+      ])
     );
   });
 
