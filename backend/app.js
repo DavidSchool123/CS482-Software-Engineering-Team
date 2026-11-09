@@ -73,6 +73,9 @@ app.get('/api/tables', TableController.getAllTables);
 //create table
 app.post('/api/tables', TableController.createTable);
 
+// Join an existing table
+app.post('/api/tables/:tableId/join',  TableController.joinTable);
+
 //read table by joincode
 app.get('/api/tables/:joinCode', TableController.findTableByCode);
 

@@ -19,6 +19,8 @@ function Lobby({ tableSearch = '' }) {
 
   const [showPrivateModal, setShowPrivateModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [privateJoinError, setPrivateJoinError] = useState('');
+  const [lookingUpCode, setLookingUpCode] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
@@ -39,6 +41,9 @@ function Lobby({ tableSearch = '' }) {
   const [createBuyIn, setCreateBuyIn] = useState(400);
 
   const [chipBalance, setChipBalance] = useState(null);
+
+  const [joiningTable, setJoiningTable] = useState(false);
+  const [joinError, setJoinError] = useState('');
 
   // Load the signed-in player's actual chip balance.
   useEffect(() => {
@@ -188,13 +193,104 @@ function Lobby({ tableSearch = '' }) {
     setBuyIn(0);
   }
 
-  function handlePrivateJoin(event) {
+  async function handleJoinTable() {
+    if (!selectedTable || !Number.isInteger(buyIn)) return;
+
+    setJoiningTable(true);
+    setJoinError('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/tables/${selectedTable.id}/join`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ buyIn }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Unable to join table.');
+      }
+
+      navigate(`/table/${result.joinCode}`);
+
+    } catch (error) {
+      console.error('Join table failed:', error);
+      setJoinError(error.message);
+    } finally {
+      setJoiningTable(false);
+    }
+  }
+
+  async function handlePrivateJoin(event) {
     event.preventDefault();
 
-    if (!joinCode.trim()) return;
+    const code = joinCode.trim();
 
-    // Private-table lookup belongs to the Join Table feature.
-    alert('Private table lookup is not available yet.');
+    if (!code) {
+      setPrivateJoinError('Please enter a table code.');
+      return;
+    }
+
+    setLookingUpCode(true);
+    setPrivateJoinError('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/tables/${encodeURIComponent(code)}`,
+        {
+          credentials: 'include',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Table not found.');
+      }
+
+      // Build the same table structure used by the lobby.
+      const table = {
+        id: data.id,
+        name: data.name,
+        level: data.level,
+        capacity: data.capacity,
+        playerCount: data.playerCount,
+        status: data.status,
+        joinCode: data.joinCode,
+        stakes: data.stakes,
+      };
+
+      // Check whether this table can be joined.
+      if (table.status !== 'Waiting') {
+        throw new Error('This table is not accepting players.');
+      }
+
+      if (table.playerCount >= table.capacity) {
+        throw new Error('This table is full.');
+      }
+
+      if (!table.stakes) {
+        throw new Error('This table has invalid betting settings.');
+      }
+
+      // Reuse the same buy-in modal as normal table selection.
+      openJoinModal(table);
+
+      setShowPrivateModal(false);
+      setJoinCode('');
+      setJoinError('');
+    } catch (error) {
+      setPrivateJoinError(error.message);
+    } finally {
+      setLookingUpCode(false);
+    }
   }
 
   useEffect(() => {
@@ -671,12 +767,18 @@ function Lobby({ tableSearch = '' }) {
                 id="private-join-code"
                 type="text"
                 value={joinCode}
-                onChange={(event) =>
-                  setJoinCode(event.target.value)
-                }
+                onChange={(event) => {
+                  setJoinCode(event.target.value);
+                  setPrivateJoinError('');
+                }}
                 placeholder="Enter table code"
                 required
               />
+              {privateJoinError && (
+                <p className="modal-note" role="alert">
+                  {privateJoinError}
+                </p>
+              )}
 
               <div className="modal-actions">
                 <button
@@ -687,15 +789,17 @@ function Lobby({ tableSearch = '' }) {
                   Cancel
                 </button>
 
-                <button type="submit" className="join-btn">
-                  Find Table
+                <button
+                  type="submit"
+                  className="join-btn"
+                  disabled={lookingUpCode}
+                >
+                  {lookingUpCode ? 'Finding...' : 'Find Table'}
                 </button>
               </div>
             </form>
 
-            <p className="modal-note">
-              Private table lookup will be connected later.
-            </p>
+
           </div>
         </div>
       )}
@@ -787,6 +891,12 @@ function Lobby({ tableSearch = '' }) {
               </p>
             )}
 
+            {joinError && (
+              <p className="modal-note" role="alert">
+                {joinError}
+              </p>
+            )}
+
             <div className="modal-actions">
               <button
                 type="button"
@@ -799,17 +909,20 @@ function Lobby({ tableSearch = '' }) {
               <button
                 type="button"
                 className="join-btn"
-                disabled
-                title="Joining a table will be connected later."
+                disabled={
+                  joiningTable ||
+                  !canAffordTable ||
+                  !Number.isInteger(buyIn) ||
+                  buyIn < selectedTable.stakes.minBuyIn ||
+                  buyIn > maxAffordableBuyIn
+                }
+                onClick={handleJoinTable}
               >
-                Confirm Buy-In
+                {joiningTable ? 'Joining...' : 'Confirm Buy-In'}
               </button>
             </div>
 
-            <p className="modal-note">
-              Chip transfers and joining will be connected
-              when the account and gameplay features are ready.
-            </p>
+
           </div>
         </div>
       )}
