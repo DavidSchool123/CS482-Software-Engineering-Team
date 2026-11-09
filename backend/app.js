@@ -74,7 +74,7 @@ app.get('/api/tables', TableController.getAllTables);
 app.post('/api/tables', TableController.createTable);
 
 // Join an existing table
-app.post('/api/tables/:tableId/join', TableController.joinTable);
+app.post('/api/tables/:tableId/join',  TableController.joinTable);
 
 //read table by joincode
 app.get('/api/tables/:joinCode', TableController.findTableByCode);
@@ -124,6 +124,9 @@ app.post('/api/accounts/login', UserController.login);
 app.get('/api/accounts/me', UserController.loggedUser);
 app.post('/api/accounts/logout', UserController.logout);
 app.delete('/api/accounts/me', UserController.userDelete);
+
+app.post('/api/accounts/forgotPassword', UserController.forgotPassword);
+app.post('/api/accounts/resetPassword', UserController.resetPassword);
 
 // Start a new Seven-Card Stud game
 app.post('/api/tables/:tableId/start', GameController.startGame);

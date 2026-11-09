@@ -42,6 +42,16 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
 
+  resetPasswordToken: {
+    type: String,
+    default: null,
+  },
+
+  resetPasswordExpires: {
+    type: Date,
+    default: null,
+  },
+
   avatar: {
     type: String,
     default: '',
@@ -140,6 +150,42 @@ async function updateUser(userId, updatedUser) {
 async function deleteUser(userId) {
   const user = await User.findByIdAndDelete(userId);
   return user;
+}
+
+// Save a password-reset token and its expiration
+async function setPasswordResetToken(userId, tokenHash, expires) {
+  return await User.findByIdAndUpdate(
+    userId,
+    {
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: expires,
+    },
+    { returnDocument: 'after' },
+  );
+}
+
+async function findUserByResetToken(tokenHash) {
+  return await User.findOne({
+    resetPasswordToken: tokenHash,
+    resetPasswordExpires: { $gt: new Date() },
+  });
+}
+
+async function updatePasswordAndClearResetToken(userId, hashedPassword) {
+  return await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: { password: hashedPassword },
+      $unset: {
+        resetPasswordToken: 1,
+        resetPasswordExpires: 1,
+      },
+    },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    },
+  );
 }
 
 async function findUserByLogin(login) {
@@ -377,11 +423,9 @@ async function creditChips(userId, amount, session) {
       new: true,
       session,
       runValidators: true,
-    }
+    },
   );
 }
-
-
 
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
@@ -397,6 +441,9 @@ User.getSentFriendRequests = getSentFriendRequests;
 User.createUser = createUser;
 User.updateUser = updateUser;
 User.deleteUser = deleteUser;
+User.setPasswordResetToken = setPasswordResetToken;
+User.findUserByResetToken = findUserByResetToken;
+User.updatePasswordAndClearResetToken = updatePasswordAndClearResetToken;
 User.findUserByLogin = findUserByLogin;
 User.findUserByEmail = findUserByEmail;
 User.findUserByUsername = findUserByUsername;

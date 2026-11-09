@@ -177,6 +177,52 @@ exports.create = async function(tableData, session = null) {
 };
 
 /**
+ * Add a player to a waiting table.
+ * Prevents duplicate joins and joining a full table.
+ */
+exports.addPlayer = async function(
+  tableId,
+  userId,
+  buyIn,
+  session
+) {
+  return await TableModel.findOneAndUpdate(
+    {
+      _id: tableId,
+      Status: 'Waiting',
+      UserIds: { $ne: userId },
+      $expr: {
+        $lt: [
+          {
+            $add: [
+              { $size: '$UserIds' },
+              '$BotCount',
+            ],
+          },
+          '$Capacity',
+        ],
+      },
+    },
+    {
+      $addToSet: {
+        UserIds: userId,
+      },
+      $push: {
+        PlayerStacks: {
+          PlayerId: userId.toString(),
+          Chips: buyIn,
+        },
+      },
+    },
+    {
+      new: true,
+      session,
+      runValidators: true,
+    }
+  );
+};
+
+/**
  * Deduct chips from a player's table stack.
  * Used for antes, bring-ins, and future betting.
  *

@@ -2,6 +2,7 @@ const UserDao = require('../model/UserDao');
 const passUtil = require('../util/PasswordUtil.js');
 const crypto = require('node:crypto');
 const MessageEvents = require('../service/MessageEvents');
+const { sendEmail } = require('../service/EmailService');
 
 async function userCreateUpdate(req, res) {
   let username = req.body.username;
@@ -89,10 +90,7 @@ async function userDelete(req, res) {
   try {
     const MessageDao = require('../model/MessageDao');
     await MessageDao.deleteMany({
-      $or: [
-        { sender: userId },
-        { recipient: userId },
-      ],
+      $or: [{ sender: userId }, { recipient: userId }],
     });
     const user = await UserDao.deleteUser(userId);
 
@@ -185,6 +183,105 @@ async function logout(req, res) {
   });
 }
 
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    const response = {
+      message:
+        'If an account exists with that email, a reset link has been sent.',
+    };
+
+    if (!email || typeof email !== 'string') {
+      return res.status(200).json(response);
+    }
+
+    const user = await UserDao.findUserByEmail(email);
+
+    if (!user) {
+      return res.status(200).json(response);
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    await UserDao.setPasswordResetToken(user._id, tokenHash, expires);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/resetPassword?token=${resetToken}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Poker Face - Password Reset',
+      html: `
+                <h2>Password Reset Request</h2>
+                <p>We received a request to reset your Poker Face password.</p>
+                <p>Click the link below to choose a new password:</p>
+                <a href="${resetLink}">Reset My Password</a>
+                <p>This link expires in 15 minutes.</p>
+                <p>If you did not request this, you can ignore this email.</p>
+            `,
+    });
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Forgot password error:', error);
+
+    return res.status(500).json({
+      message: 'Unable to process your password reset request.',
+    });
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        message: 'All fields are required.',
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        message: 'Passwords do not match.',
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: 'Password must be at least 6 characters.',
+      });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await UserDao.findUserByResetToken(tokenHash);
+
+    if (!user) {
+      return res.status(400).json({
+        message: 'This password-reset link is invalid or has expired.',
+      });
+    }
+
+    const hashedPassword = passUtil.hashPassword(password);
+    await UserDao.updatePasswordAndClearResetToken(user._id, hashedPassword);
+
+    return res.status(200).json({
+      message: 'Your password has been reset successfully.',
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+
+    return res.status(500).json({
+      message: 'Unable to reset your password.',
+    });
+  }
+}
+
 function adminCheck(req) {
   return req.session.user && req.session.user.permission == 1;
 }
@@ -208,10 +305,9 @@ async function getUsers(req, res) {
   }
 }
 
-
 async function getProfile(userId) {
-  const user = await User.findById(userId).select(
-    '_id username email friends avatar userType chipBalance'
+  const user = await UserDao.findById(userId).select(
+    '_id username email friends avatar userType chipBalance',
   );
 
   if (!user) {
@@ -398,7 +494,6 @@ async function getSentFriendRequests(req, res) {
   }
 }
 
-
 async function guestLogin(req, res) {
   try {
     const guest = await UserDao.createUser({
@@ -425,7 +520,6 @@ async function guestLogin(req, res) {
   }
 }
 
-
 async function getCurrentUser(req, res) {
   try {
     const userId = req.session?.userId;
@@ -436,8 +530,9 @@ async function getCurrentUser(req, res) {
       });
     }
 
-    const user = await UserDao.findById(userId)
-      .select('_id username userType chipBalance');
+    const user = await UserDao.findById(userId).select(
+      '_id username userType chipBalance',
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -460,7 +555,6 @@ async function getCurrentUser(req, res) {
   }
 }
 
-
 module.exports = {
   userCreateUpdate,
   userDelete,
@@ -477,6 +571,8 @@ module.exports = {
   login,
   loggedUser,
   logout,
+  forgotPassword,
+  resetPassword,
   adminCheck,
   removeFriend,
   guestLogin,
