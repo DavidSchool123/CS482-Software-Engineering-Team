@@ -48,7 +48,7 @@ function Login({ handleSubmit, message }) {
             <input id='remember-me' name='remember-me' type='checkbox' />
             <span>Remember me</span>
           </label>
-          <Link className='text-button' to='/forgot-password'>
+          <Link className='text-button' to='/forgotPassword'>
             Forgot password?
           </Link>
         </div>

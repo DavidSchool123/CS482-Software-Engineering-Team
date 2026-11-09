@@ -1,6 +1,41 @@
+import { useState } from 'react';
 import './ForgotPassword.css';
 
-function ForgotPassword({ handleSubmit, message }) {
+function ForgotPassword() {
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const email = formData.get('email');
+
+    setMessage('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/accounts/forgotPassword`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        },
+      );
+
+      const data = await response.json();
+      setMessage(data.message);
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      setMessage('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className='forgot-password-page'>
       <aside className='forgot-password-ad' aria-label='Advertisement'>
@@ -31,9 +66,14 @@ function ForgotPassword({ handleSubmit, message }) {
               />
             </div>
 
-            <button className='forgot-password-submit' type='submit'>
-              Send Reset Link
+            <button
+              className='forgot-password-submit'
+              type='submit'
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
+
             {message && (
               <p className='forgot-password-message' role='status'>
                 {message}
