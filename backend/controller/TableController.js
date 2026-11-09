@@ -279,16 +279,25 @@ exports.findTableByCode = async function(req, res) {
       });
     }
 
+    const levelConfig = TABLE_LEVELS[table.Level];
+
     return res.status(200).json({
       id: table._id.toString(),
-      filledSeats: table.UserIds.length + table.BotCount,
-      capacity: table.Capacity,
-      botCount: table.BotCount,
-      level: table.Level,
       name: table.Name,
-      joinCode: table.JoinCode,
+      level: table.Level,
+      capacity: table.Capacity,
+      playerCount:
+        (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
       status: table.Status,
-      currentGameId: table.CurrentGameID,
+      joinCode: table.JoinCode,
+      stakes: levelConfig
+        ? {
+            smallBet: levelConfig.smallBet,
+            bigBet: levelConfig.bigBet,
+            minBuyIn: levelConfig.minBuyIn,
+            maxBuyIn: levelConfig.maxBuyIn,
+          }
+        : null,
     });
   } catch (error) {
     console.error('Error finding table:', error);
@@ -298,3 +307,4 @@ exports.findTableByCode = async function(req, res) {
     });
   }
 };
+
