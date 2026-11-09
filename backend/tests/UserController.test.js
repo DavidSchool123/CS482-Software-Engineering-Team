@@ -225,6 +225,116 @@ function mockResponse() {
   };
 }
 
+describe('Update User Account', () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    req = {
+      body: {
+        _id: 'user123',
+      },
+      session: {},
+    };
+
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+    };
+
+    userDao.updateUser.mockResolvedValue({
+      _id: 'user123',
+      username: 'newusername',
+      email: 'newemail@example.com',
+    });
+  });
+
+  test('Updates a user username', async () => {
+    req.body.username = 'newusername';
+
+    await controller.userCreateUpdate(req, res);
+
+    expect(userDao.updateUser).toHaveBeenCalledWith(
+      'user123',
+      expect.objectContaining({
+        username: 'newusername',
+      }),
+    );
+
+    expect(req.session.userId).toBe('user123');
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  test('Updates a user email', async () => {
+    req.body.email = 'newemail@example.com';
+
+    await controller.userCreateUpdate(req, res);
+
+    expect(userDao.updateUser).toHaveBeenCalledWith(
+      'user123',
+      expect.objectContaining({
+        email: 'newemail@example.com',
+      }),
+    );
+
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  test('Updates a user password', async () => {
+    req.body.password = 'newpassword123';
+    passUtil.hashPassword.mockReturnValue('hashed-password');
+
+    await controller.userCreateUpdate(req, res);
+
+    expect(passUtil.hashPassword).toHaveBeenCalledWith('newpassword123');
+
+    expect(userDao.updateUser).toHaveBeenCalledWith(
+      'user123',
+      expect.objectContaining({
+        password: 'hashed-password',
+      }),
+    );
+
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  test('Does not save the plain text password', async () => {
+    req.body.password = 'newpassword123';
+    passUtil.hashPassword.mockReturnValue('hashed-password');
+
+    await controller.userCreateUpdate(req, res);
+
+    const updatedUser = userDao.updateUser.mock.calls[0][1];
+
+    expect(updatedUser.password).toBe('hashed-password');
+    expect(updatedUser.password).not.toBe('newpassword123');
+  });
+
+  test('Returns the updated user', async () => {
+    const updatedUser = {
+      _id: 'user123',
+      username: 'newusername',
+      email: 'newemail@example.com',
+    };
+
+    userDao.updateUser.mockResolvedValue(updatedUser);
+
+    await controller.userCreateUpdate(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(updatedUser);
+  });
+
+  test('Handles an error when updating a user', async () => {
+    userDao.updateUser.mockRejectedValue(new Error('Database error'));
+
+    await expect(controller.userCreateUpdate(req, res)).rejects.toThrow(
+      'Database error',
+    );
+  });
+});
+
 describe('Additional account tests', () => {
   const validBody = {
     username: 'testuser',
@@ -370,9 +480,7 @@ describe('Additional account tests', () => {
     const req = {
       session: {
         userId: 'user123',
-        destroy: jest.fn((callback) =>
-          callback(new Error('Session error')),
-        ),
+        destroy: jest.fn((callback) => callback(new Error('Session error'))),
       },
     };
     const res = mockResponse();
@@ -438,9 +546,7 @@ describe('Additional session and profile tests', () => {
   test('Handles logout session errors', async () => {
     const req = {
       session: {
-        destroy: jest.fn((callback) =>
-          callback(new Error('Session error')),
-        ),
+        destroy: jest.fn((callback) => callback(new Error('Session error'))),
       },
     };
     const res = mockResponse();

@@ -1,5 +1,5 @@
 
-const { determineBringInPlayer } = require('./BringInService');
+const { determineBringInPlayer } = require('../service/BringInService');
 
 // Helper to create a player with two hidden cards
 // and one exposed card.
