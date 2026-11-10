@@ -183,6 +183,8 @@ function Table() {
   const [startingGame, setStartingGame] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
 
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -311,6 +313,25 @@ function Table() {
 
     return data;
   }
+
+  useEffect(() => {
+    if (!game?.turnDeadline) {
+      setRemainingSeconds(60);
+      return;
+    }
+
+    const deadline = new Date(game.turnDeadline).getTime();
+
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemainingSeconds(remaining);
+    };
+
+    updateCountdown();
+
+    const interval = setInterval(updateCountdown, 250);
+    return () => clearInterval(interval);
+  }, [game?.turnDeadline]);
 
   // Spectators periodically refresh the table and game.
   // This lets them see when a waiting table starts and when game
@@ -884,6 +905,8 @@ function Table() {
                 </span>
               </div>
 
+
+
               {game ? (
                 <div className="stud-betting-info">
                   <span>Ante: {game.ante}</span>
@@ -898,8 +921,13 @@ function Table() {
                       : game.bettingRoundComplete
                         ? 'Betting round complete'
                         : isMyTurn
-                          ? 'Your turn'
+                          ? 'Your turn: ' + remainingSeconds + ' sec remaining'
                           : 'Waiting for another player'}
+                    {game?.turnDeadline && remainingSeconds !== null && (
+                      <div className="turn-timer">
+                        Turn timer: {remainingSeconds}s
+                      </div>
+                    )}
                   </span>
                 </div>
               ) : (
@@ -908,6 +936,8 @@ function Table() {
                   and one exposed card.
                 </p>
               )}
+
+
             </div>
           </div>
 

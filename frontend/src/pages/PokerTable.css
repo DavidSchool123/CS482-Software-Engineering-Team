@@ -1110,3 +1110,9 @@
 .stud-card-corner-bottom {
   transition: opacity 0.15s ease;
 }
+
+.turn-timer {
+  font-weight: bold;
+  color: #facc15;
+  margin-top: 8px;
+}
