@@ -6,6 +6,7 @@ const GameDao = require('../model/GameDao');
 const { performBettingAction } = require('../service/BettingService');
 const { runBotTurns } = require('../service/BotService');
 const { getVisiblePlayers } = require('../service/GameViewService');
+const { scheduleTurnTimer } = require('../service/PlayerActivityService');
 
 // Start a new Seven-Card Stud game
 exports.startGame = async function (req, res) {
@@ -52,6 +53,9 @@ exports.startGame = async function (req, res) {
     const game = await GameService.startGame(tableId);
     const { game: activeGame, actions: botActions } =
       await runBotTurns(game._id);
+
+    // Start the current player's turn timer.
+    scheduleTurnTimer(activeGame);
 
     return res.status(201).json({
       message: 'Game started successfully',
@@ -253,6 +257,9 @@ exports.performBettingAction = async function (req, res) {
     );
     const { game: activeGame, actions: botActions } =
       await runBotTurns(gameId);
+
+    // Reset the timer for the next human player's turn.
+    scheduleTurnTimer(activeGame);
 
     return res.status(200).json({
       message: 'Betting action completed successfully',
