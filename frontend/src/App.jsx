@@ -14,6 +14,7 @@ import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
 import PokerTable from './pages/PokerTable';
 import Tutorial from './pages/Tutorial';
+import TablePrototype from './pages/TablePrototype';
 
 import './App.css';
 
@@ -34,6 +35,8 @@ function App() {
         <Route path='/resetPassword' element={<ResetPassword />} />
 
         <Route path='/lobby' element={<Lobby tableSearch={tableSearch} />} />
+
+        <Route path='/lobby-preview' element={<TablePrototype />} />
 
         <Route path='/table/:tableId' element={<PokerTable />} />
 
