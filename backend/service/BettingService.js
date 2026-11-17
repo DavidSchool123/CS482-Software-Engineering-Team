@@ -167,28 +167,19 @@ async function performBettingAction(gameId, playerId, action) {
           break;
       }
 
-      // Deduct chips and update contributions.
+      // Deduct chips once through TableDao.
       if (amount > 0) {
-        const result = await TableDao.deductPlayerChips(
+        const updatedTable = await TableDao.deductPlayerChips(
           game.TableId,
           playerId,
           amount,
           session
         );
 
-        if (!result) {
+        if (!updatedTable) {
           throw new Error('Insufficient chips');
         }
 
-        const tableStack = table.PlayerStacks.find(
-          stack => stack.PlayerId === playerId
-        );
-
-        if (!tableStack || tableStack.Chips < amount) {
-          throw new Error('Player chip stack is inconsistent');
-        }
-
-        tableStack.Chips -= amount;
         player.RoundContribution += amount;
         player.TotalContribution += amount;
         game.Pot += amount;
@@ -209,6 +200,7 @@ async function performBettingAction(gameId, playerId, action) {
       const activePlayers = game.Players.filter(
         p => !p.HasFolded
       );
+
       let winnerIds = null;
 
       if (activePlayers.length === 1) {
@@ -227,13 +219,10 @@ async function performBettingAction(gameId, playerId, action) {
           game.BettingRoundComplete = true;
 
           if (game.Street === 7) {
+            // Showdown: determine the winning hand.
             winnerIds = findWinners(game.Players);
-            
-
-        console.log('WINNER IDS:', winnerIds);
           } else {
-            // P49: Deal the next street and initialize
-            // betting inside this same transaction.
+            // Deal the next street and initialize betting.
             advanceRoundInGame(game);
           }
         } else {
@@ -249,24 +238,39 @@ async function performBettingAction(gameId, playerId, action) {
       }
 
       if (winnerIds) {
-        await settleHand(game, table, winnerIds, session);
+        // Reload the table after any chip deductions
+        // so settlement uses the latest balances.
+        const currentTable = await TableDao.findById(
+          game.TableId,
+          session
+        );
+
+        if (!currentTable) {
+          throw new Error('Table not found during settlement');
+        }
+
+        await settleHand(
+          game,
+          currentTable,
+          winnerIds,
+          session
+        );
       }
 
-      // Save betting action and any street progression
-      // together in the same transaction.
+      // Save the game within the same transaction.
       await game.save({ session });
 
       updatedGame = game;
     });
 
     console.log(
-        `[GAME ${gameId}]` +
-        `Street ${updatedGame.Street} |` +
-        `${playerId.startsWith('bot-') ? 'Bot' : 'Human'} `+
-        `${playerId} -> ${action} | ` +
-        `Pot: ${updatedGame.Pot} | ` +
-        `Next: ${updatedGame.CurrentTurnPlayerId || 'None'} | ` +
-        `Status: ${updatedGame.Status}`
+      `[GAME ${gameId}] ` +
+      `Street ${updatedGame.Street} | ` +
+      `${playerId.startsWith('bot-') ? 'Bot' : 'Human'} ` +
+      `${playerId} -> ${action} | ` +
+      `Pot: ${updatedGame.Pot} | ` +
+      `Next: ${updatedGame.CurrentTurnPlayerId || 'None'} | ` +
+      `Status: ${updatedGame.Status}`
     );
 
     return updatedGame;

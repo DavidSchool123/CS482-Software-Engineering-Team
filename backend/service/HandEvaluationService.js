@@ -14,6 +14,34 @@ const RANK_VALUES = {
   A: 14,
 };
 
+
+const HAND_NAMES = [
+  'High Card',
+  'One Pair',
+  'Two Pair',
+  'Three of a Kind',
+  'Straight',
+  'Flush',
+  'Full House',
+  'Four of a Kind',
+  'Straight Flush'
+];
+
+function getHandName(handRank) {
+  if (!Array.isArray(handRank)) {
+    throw new Error('Invalid hand rank');
+  }
+
+  const category = handRank[0];
+  const name = HAND_NAMES[category];
+
+  if (!name) {
+    throw new Error('Invalid hand category');
+  }
+
+  return name;
+}
+
 function getStraightHigh(ranks) {
   const uniqueRanks = [...new Set(ranks)].sort((a, b) => b - a);
 
@@ -168,4 +196,5 @@ module.exports = {
   compareHandRanks,
   evaluateSevenCardHand,
   findWinners,
+  getHandName
 };
