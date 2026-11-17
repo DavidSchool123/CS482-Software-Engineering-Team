@@ -390,6 +390,10 @@ async function getSentFriendRequests(userId) {
  * Only succeeds if the user has enough chips.
  */
 async function deductChips(userId, amount, session) {
+  if (!Number.isInteger(amount) || amount < 0) {
+    throw new Error('Invalid chip amount');
+  }
+  
   return await User.findOneAndUpdate(
     {
       _id: userId,

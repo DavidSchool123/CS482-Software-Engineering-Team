@@ -111,7 +111,10 @@ describe('Betting Service - P16 and P49', () => {
     TableDao.deductPlayerChips.mockResolvedValue({
       _id: tableId
     });
-    UserDao.creditChips.mockResolvedValue({ _id: 'user' });
+
+    UserDao.creditChips.mockResolvedValue({
+      _id: 'user'
+    });
   });
 
   // ----------------------------------------
@@ -237,6 +240,8 @@ describe('Betting Service - P16 and P49', () => {
   });
 
   test('fold marks the player as folded', async () => {
+    const table = await TableDao.findById(tableId);
+
     const game = await performBettingAction(
       gameId, 'user2', 'fold'
     );
@@ -247,18 +252,21 @@ describe('Betting Service - P16 and P49', () => {
     expect(game.BettingRoundComplete).toBe(true);
     expect(game.WinnerIds).toEqual(['user1']);
     expect(game.save).toHaveBeenCalledTimes(1);
-    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
-      1,
-      'user1',
-      104,
-      expect.anything()
-    );
-    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
-      2,
-      'user2',
-      100,
-      expect.anything()
-    );
+
+    // Winner receives the 4-chip pot at the table.
+    expect(table.PlayerStacks[0].Chips).toBe(104);
+    expect(table.PlayerStacks[1].Chips).toBe(100);
+
+    expect(game.HandResults).toEqual([
+      {
+        PlayerId: 'user1',
+        AmountWon: 4,
+        HandName: null
+      }
+    ]);
+
+    expect(table.save).toHaveBeenCalledTimes(1);
+    expect(UserDao.creditChips).not.toHaveBeenCalled();
   });
 
   test('check succeeds when nothing is owed', async () => {
@@ -463,6 +471,7 @@ describe('Betting Service - P16 and P49', () => {
       { rank: '8', suit: 'Clubs', faceUp: true },
       { rank: '9', suit: 'Spades', faceUp: false }
     ];
+
     game.Players[1].Cards = [
       { rank: 'K', suit: 'Hearts', faceUp: false },
       { rank: 'K', suit: 'Spades', faceUp: false },
@@ -478,6 +487,8 @@ describe('Betting Service - P16 and P49', () => {
 
     GameDao.findById.mockResolvedValue(game);
 
+    const table = await TableDao.findById(tableId);
+
     const result = await performBettingAction(
       gameId, 'user2', 'call'
     );
@@ -488,18 +499,22 @@ describe('Betting Service - P16 and P49', () => {
     expect(result.CurrentTurnPlayerId).toBeNull();
     expect(result.WinnerIds).toEqual(['user2']);
     expect(result.Deck).toHaveLength(52);
-    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
-      1,
-      'user1',
-      100,
-      expect.anything()
-    );
-    expect(UserDao.creditChips).toHaveBeenNthCalledWith(
-      2,
-      'user2',
-      104,
-      expect.anything()
-    );
+
+    // The mocked deduction does not change the stack.
+    // User2 receives the full 14-chip pot.
+    expect(table.PlayerStacks[0].Chips).toBe(100);
+    expect(table.PlayerStacks[1].Chips).toBe(114);
+
+    expect(game.HandResults).toEqual([
+      {
+        PlayerId: 'user2',
+        AmountWon: 14,
+        HandName: 'Straight'
+      }
+    ]);
+
+    expect(table.save).toHaveBeenCalledTimes(1);
+    expect(UserDao.creditChips).not.toHaveBeenCalled();
   });
 
   test('folding to one player ends game without dealing', async () => {
@@ -663,9 +678,13 @@ describe('Betting Service - P16 and P49', () => {
         { rank: '10', suit: 'Diamonds', faceUp: true }
       ])
     );
+
     const table = await TableDao.findById(tableId);
     table.UserIds.push('user3');
-    table.PlayerStacks.push({ PlayerId: 'user3', Chips: 100 });
+    table.PlayerStacks.push({
+      PlayerId: 'user3',
+      Chips: 100
+    });
 
     GameDao.findById.mockResolvedValue(game);
 
@@ -718,8 +737,9 @@ describe('Betting Service - P16 and P49', () => {
     expect(result.Pot).toBe(33);
     expect(result.Deck).toHaveLength(49);
 
-    expect(result.Players.every(p => p.Cards.length === 4))
-      .toBe(true);
+    expect(
+      result.Players.every(p => p.Cards.length === 4)
+    ).toBe(true);
 
     expect(game.save).toHaveBeenCalledTimes(4);
     expect(TableDao.deductPlayerChips)

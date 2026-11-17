@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import PlayingCard from '../components/PlayingCard';
+import ViewResults from '../components/ViewResults';
 import './PokerTable.css';
 import './PokerChips.css';
 
@@ -152,7 +153,7 @@ function PokerSeat({
             <PlayingCard
               key={index}
               card={card}
-              hidden={!isYou && !card.faceUp}
+              hidden={card.rank == null || card.suit == null}
             />
           ))}
         </div>
@@ -184,6 +185,9 @@ function Table() {
   const [submittingAction, setSubmittingAction] = useState(false);
 
   const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const [nextHandSeconds, setNextHandSeconds] = useState(null);
+  const [showResultsOverlay, setShowResultsOverlay] = useState(true);
+  const [revealDelayElapsed, setRevealDelayElapsed] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -333,19 +337,14 @@ function Table() {
     return () => clearInterval(interval);
   }, [game?.turnDeadline]);
 
-  // Spectators periodically refresh the table and game.
-  // This lets them see when a waiting table starts and when game
-  // information changes, without requiring a manual page refresh.
+  // P53: Refresh for both seated players and spectators.
+  // The backend scheduler advances hands; this only observes changes.
   useEffect(() => {
-    if (!isSpectator) return undefined;
-
     let cancelled = false;
     let refreshing = false;
 
-    async function refreshSpectatorView() {
-      // Avoid overlapping requests if a previous refresh is still running.
+    async function refreshTableAndGame() {
       if (refreshing) return;
-
       refreshing = true;
 
       try {
@@ -355,72 +354,87 @@ function Table() {
 
         const tableResponse = await fetch(tableEndpoint, {
           credentials: 'include',
-          cache: 'no-store',
+          cache: 'no-store'
         });
-
         const tableData = await tableResponse.json();
-
         if (!tableResponse.ok) {
-          throw new Error(
-            tableData.message || 'Unable to refresh table information.'
-          );
+          throw new Error(tableData.error || 'Unable to refresh table.');
         }
-
         if (cancelled) return;
 
         setTable(tableData);
 
-        // A game may not exist yet if the table is still waiting.
-        if (tableData.currentGameId) {
-          const gameResponse = await fetch(
-            `${API_URL}/api/games/${tableData.currentGameId}`,
-            {
-              credentials: 'include',
-              cache: 'no-store',
-            }
-          );
-
-          const gameData = await gameResponse.json();
-
-          if (!gameResponse.ok) {
-            throw new Error(
-              gameData.error ||
-                gameData.message ||
-                'Unable to refresh game information.'
-            );
-          }
-
-          if (!cancelled) {
-            setGame(gameData);
-            setGameNotice('Live spectator view updated.');
-          }
-        } else if (!cancelled) {
+        if (!tableData.currentGameId) {
           setGame(null);
-          setGameNotice('Waiting for the game to start.');
+          return;
         }
+
+        const gameResponse = await fetch(
+          `${API_URL}/api/games/${tableData.currentGameId}`,
+          { credentials: 'include', cache: 'no-store' }
+        );
+        const gameData = await gameResponse.json();
+        if (!gameResponse.ok) {
+          throw new Error(gameData.error || 'Unable to refresh game.');
+        }
+        if (!cancelled) setGame(gameData);
       } catch (err) {
-        if (!cancelled) {
-          console.error('Spectator refresh failed:', err);
-          setGameNotice(
-            err.message || 'Unable to refresh spectator view.'
-          );
-        }
+        if (!cancelled) console.error('Live game refresh failed:', err);
       } finally {
         refreshing = false;
       }
     }
 
-    // Refresh every three seconds while observing.
-    const intervalId = window.setInterval(
-      refreshSpectatorView,
-      3000
-    );
-
+    const intervalId = window.setInterval(refreshTableAndGame, 2000);
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [isSpectator, requestedSpectatorMode, joinCode]);
+  }, [requestedSpectatorMode, joinCode]);
+
+  // P53: The countdown is based on the server's persisted deadline.
+  useEffect(() => {
+    if (game?.status !== 'Completed' || !game?.nextHandAt) {
+      setNextHandSeconds(null);
+      return undefined;
+    }
+
+    const deadline = new Date(game.nextHandAt).getTime();
+    const update = () => {
+      setNextHandSeconds(
+        Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      );
+    };
+    update();
+    const intervalId = window.setInterval(update, 250);
+    return () => window.clearInterval(intervalId);
+  }, [game?.status, game?.nextHandAt]);
+
+  // The first 3 seconds of a completed showdown reveal cards at the seats.
+  // Based on the server timestamp, so refreshes do not restart the animation.
+  useEffect(() => {
+    if (game?.status !== 'Completed') {
+      setShowResultsOverlay(true);
+      setRevealDelayElapsed(false);
+      return undefined;
+    }
+
+    const revealDelayMs = game.isShowdown ? 3000 : 0;
+    const completedAtMs = game.completedAt
+      ? new Date(game.completedAt).getTime()
+      : 0;
+
+    const update = () => {
+      setRevealDelayElapsed(
+        !Number.isFinite(completedAtMs) ||
+        Date.now() >= completedAtMs + revealDelayMs
+      );
+    };
+
+    update();
+    const intervalId = window.setInterval(update, 250);
+    return () => window.clearInterval(intervalId);
+  }, [game?.gameId, game?.status, game?.completedAt, game?.isShowdown]);
 
   async function handleStartGame() {
     if (
@@ -538,20 +552,35 @@ function Table() {
     (player) => !player.isCurrentPlayer
   );
 
-  const winnerNames = (game?.winnerIds || []).map((playerId) => {
-    if (String(playerId) === String(me?.playerId)) return 'You';
-    if (String(playerId).startsWith('bot-')) {
-      return `Bot ${String(playerId).split('-').pop()}`;
-    }
-    return 'Another player';
-  });
+  // Names supplied by the backend for human players and bots.
+  const playerNamesById = new Map(
+    (game?.playerNames || []).map(({ playerId, username }) => [
+      String(playerId),
+      username,
+    ])
+  );
 
-  const completionMessage =
-    winnerNames.length > 1
-      ? `Tie: ${winnerNames.join(' and ')} split the ${game?.pot ?? 0}-chip pot.`
-      : winnerNames.length === 1
-        ? `${winnerNames[0]} won the ${game?.pot ?? 0}-chip pot.`
-        : 'The hand is complete.';
+  const displayPlayerName = (playerId) => {
+    const id = String(playerId);
+    if (me && id === String(me.playerId) && !isSpectator) return 'You';
+    if (playerNamesById.has(id)) return playerNamesById.get(id);
+    if (id.startsWith('bot-')) return `Bot ${id.split('-').pop()}`;
+    return 'Unknown player';
+  };
+
+  const handResults = game?.handResults || [];
+  const completionMessage = handResults.length > 0
+    ? handResults.map((result) => {
+        const hand = result.handName ? ` with ${result.handName}` : '';
+        return `${displayPlayerName(result.playerId)} won ${result.amountWon} chips${hand}`;
+      }).join(' · ')
+    : 'The hand is complete.';
+
+  // A seated player absent from the new hand is sitting out.
+  // The backend excludes players who cannot cover ante + bring-in.
+  const isSittingOut = Boolean(
+    game && !isSpectator && table?.isPlayer && !me
+  );
 
   const getPlayerChips = (playerId) => {
     return game?.playerStacks?.find(
@@ -715,9 +744,23 @@ function Table() {
 
           <p>
             {game?.status === 'Completed'
-              ? `${completionMessage} Remaining player chips were returned to their account balances.`
+              ? completionMessage
               : gameNotice}
           </p>
+          {game?.status === 'Completed' && (
+            <p role="timer" style={{ marginTop: 8, fontWeight: 700 }}>
+              {nextHandSeconds > 0
+                ? `Next hand in ${nextHandSeconds}s`
+                : 'Waiting for the next hand to start...'}
+            </p>
+          )}
+          {isSittingOut && (
+            <p role="status" style={{ marginTop: 8 }}>
+              You are sitting out this hand. If you do not have enough
+              chips, you can watch ads to earn more chips once that
+              feature becomes available.
+            </p>
+          )}
         </div>
       </div>
 
@@ -859,11 +902,7 @@ function Table() {
                 );
               }
 
-              const playerName = String(player.playerId).startsWith('bot-')
-                ? `Bot ${index + 1}`
-                : player.isCurrentPlayer
-                  ? 'You'
-                  : `Player ${isSpectator ? index + 1 : index + 2}`;
+              const playerName = displayPlayerName(player.playerId);
 
               return (
                 <PokerSeat
@@ -917,7 +956,7 @@ function Table() {
 
                   <span>
                     {game.status === 'Completed'
-                      ? 'Game completed'
+                      ? 'Hand complete — next hand pending'
                       : game.bettingRoundComplete
                         ? 'Betting round complete'
                         : isMyTurn
@@ -997,9 +1036,7 @@ function Table() {
               {isSpectator ? (
                 game && players.length > 0 ? (
                   players.map((player, index) => {
-                    const playerName = String(player.playerId).startsWith('bot-')
-                      ? `Bot ${index + 1}`
-                      : `Player ${index + 1}`;
+                    const playerName = displayPlayerName(player.playerId);
 
                     const isCurrentTurn =
                       String(game.currentTurnPlayerId) ===
@@ -1085,10 +1122,10 @@ function Table() {
             <p>
               {isSpectator
                 ? game
-                  ? 'You are watching the game in progress.'
+                  ? 'You are watching this table.'
                   : 'You are watching this table while it waits for a game.'
                 : game
-                  ? 'The game has started.'
+                  ? 'The table stays open between hands.'
                   : 'Waiting for the game to start.'}
             </p>
 
@@ -1105,11 +1142,19 @@ function Table() {
 
       <p className="stud-footer-note">
         {game?.status === 'Completed'
-          ? 'This table is closed. Create or join another table to play again.'
+          ? 'Hand complete. Your chips remain at this table for the next hand.'
           : game
             ? 'Use the betting controls when it is your turn.'
             : 'Cards will appear after the game starts.'}
       </p>
+      {game?.status === 'Completed' && revealDelayElapsed && showResultsOverlay && (
+        <ViewResults
+          game={game}
+          nextHandSeconds={nextHandSeconds}
+          getPlayerName={displayPlayerName}
+          onClose={() => setShowResultsOverlay(false)}
+        />
+      )}
     </main>
   );
 }

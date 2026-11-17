@@ -1,19 +1,15 @@
 
 const request = require('supertest');
-const mongoose = require('mongoose');
 const app = require('../app');
 const TableDao = require('../model/TableDao');
-const UserDao = require('../model/UserDao');
 const TableController = require('../controller/TableController');
+const JoinTableService = require('../service/JoinTableService');
 const TABLE_LEVELS = require('../model/tableLevels');
 
-// Mock the database functions so tests don't access MongoDB
 jest.mock('../model/TableDao');
-jest.mock('../model/UserDao');
+jest.mock('../service/JoinTableService');
 
 describe('P9 - View Available Tables', () => {
-
-  // Sample public tables returned by the DAO
   const mockTables = [
     {
       _id: 'table1',
@@ -48,40 +44,24 @@ describe('P9 - View Available Tables', () => {
   ];
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('Joining a table', () => {
-    let session;
-    let table;
     let req;
     let res;
 
     beforeEach(() => {
-      session = {
-        withTransaction: jest.fn(async (callback) => callback()),
-        endSession: jest.fn(),
-      };
-      jest.spyOn(mongoose, 'startSession').mockResolvedValue(session);
-
-      table = {
-        UserIds: [],
-        PlayerStacks: [],
-        BotCount: 0,
-        Capacity: 6,
-        Status: 'Waiting',
-        Level: 'Low',
-        JoinCode: 'ABCD1234',
-        save: jest.fn().mockResolvedValue(true),
-      };
-      TableDao.findById.mockResolvedValue(table);
-      UserDao.deductChips.mockResolvedValue({ _id: 'player-1' });
-
       req = {
         session: { userId: 'player-1' },
-        params: { tableId: '507f1f77bcf86cd799439011' },
-        body: { buyIn: TABLE_LEVELS.Low.minBuyIn },
+        params: {
+          tableId: '507f1f77bcf86cd799439011'
+        },
+        body: {
+          buyIn: TABLE_LEVELS.Low.minBuyIn
+        },
       };
+
       res = {
         status: jest.fn(function(statusCode) {
           this.statusCode = statusCode;
@@ -94,46 +74,64 @@ describe('P9 - View Available Tables', () => {
       };
     });
 
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
+    test('joins a table and returns the table code', async () => {
+      JoinTableService.joinTable.mockResolvedValue({
+        joinCode: 'ABCD1234',
+        alreadySeated: false
+      });
 
-    test('deducts the buy-in, seats the player, and returns the table code', async () => {
       await TableController.joinTable(req, res);
 
-      expect(UserDao.deductChips).toHaveBeenCalledWith(
+      expect(JoinTableService.joinTable).toHaveBeenCalledWith(
+        req.params.tableId,
         'player-1',
-        TABLE_LEVELS.Low.minBuyIn,
-        session
+        TABLE_LEVELS.Low.minBuyIn
       );
-      expect(table.UserIds).toContain('player-1');
-      expect(table.PlayerStacks).toContainEqual({
-        PlayerId: 'player-1',
-        Chips: TABLE_LEVELS.Low.minBuyIn,
-      });
-      expect(table.save).toHaveBeenCalledWith({ session });
+
       expect(res.statusCode).toBe(200);
-      expect(res.body.joinCode).toBe('ABCD1234');
+      expect(res.body).toEqual({
+        joinCode: 'ABCD1234',
+        alreadySeated: false
+      });
     });
 
-    test('rejects invalid buy-ins without charging the player', async () => {
+    test('rejects invalid buy-ins', async () => {
       req.body.buyIn = 1;
 
+      JoinTableService.joinTable.mockRejectedValue(
+        new Error(
+          `Buy-in must be between ${TABLE_LEVELS.Low.minBuyIn} ` +
+          `and ${TABLE_LEVELS.Low.maxBuyIn} chips`
+        )
+      );
+
       await TableController.joinTable(req, res);
 
-      expect(UserDao.deductChips).not.toHaveBeenCalled();
+      expect(JoinTableService.joinTable).toHaveBeenCalledWith(
+        req.params.tableId,
+        'player-1',
+        1
+      );
+
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Invalid buy-in amount');
+      expect(res.body.message).toBe(
+        `Buy-in must be between ${TABLE_LEVELS.Low.minBuyIn} ` +
+        `and ${TABLE_LEVELS.Low.maxBuyIn} chips`
+      );
     });
 
-    test('does not charge a player who is already seated', async () => {
-      table.UserIds.push('player-1');
+    test('returns alreadySeated without joining again', async () => {
+      JoinTableService.joinTable.mockResolvedValue({
+        joinCode: 'ABCD1234',
+        alreadySeated: true
+      });
 
       await TableController.joinTable(req, res);
 
-      expect(UserDao.deductChips).not.toHaveBeenCalled();
+      expect(JoinTableService.joinTable).toHaveBeenCalledTimes(1);
       expect(res.statusCode).toBe(200);
       expect(res.body.alreadySeated).toBe(true);
+      expect(res.body.joinCode).toBe('ABCD1234');
     });
   });
 
@@ -290,7 +288,6 @@ describe('P9 - View Available Tables', () => {
       const response = await request(app).get('/api/tables');
 
       expect(response.statusCode).toBe(500);
-
       expect(response.body).toEqual({
         message: 'Unable to retrieve tables',
       });
@@ -335,5 +332,4 @@ describe('P9 - View Available Tables', () => {
     expect(fullTable.capacity).toBe(2);
     expect(fullTable.status).toBe('In Progress');
   });
-
 });

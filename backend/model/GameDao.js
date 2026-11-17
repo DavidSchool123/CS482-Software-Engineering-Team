@@ -85,6 +85,41 @@ const gameSchema = new mongoose.Schema({
     default: []
   },
 
+  // P53: Results shown after a completed
+  
+  HandResults: {
+    type: [
+      {
+        PlayerId: {
+          type: String,
+          required: true
+        },
+        AmountWon: {
+          type: Number,
+          required: true,
+          min: 0
+        },
+        HandName: {
+          type: String,
+          default: null
+        }
+      }
+    ],
+    default: []
+  },
+
+   // P53: Deadline for automatically starting the next hand
+   NextHandAt: {
+    type: Date,
+    default: null
+  },
+
+  // P53: Time the current hand finished
+  CompletedAt: {
+    type: Date,
+    default: null
+  },
+
   Deck: {
     type: [deckCardSchema],
     default: []

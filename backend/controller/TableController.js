@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
 const UserDao = require('../model/UserDao');
+const { joinTable } = require('../service/JoinTableService');
 const crypto = require('crypto');
 
 // Format table information for the poker-table screen.
@@ -24,20 +25,18 @@ function formatTableForViewing(table, userId, includeJoinCode = false) {
     level: table.Level,
     name: table.Name,
     status: table.Status,
+    playerCount: table.UserIds.length + table.BotCount,
+    stakes: TABLE_LEVELS[table.Level],
     currentGameId: table.CurrentGameID
       ? table.CurrentGameID.toString()
       : null,
-
-    // The frontend uses this to distinguish players from spectators.
     isPlayer,
     isPublic: table.IsPublic,
-
-    // Only include the code when using the existing join-code lookup.
     ...(includeJoinCode ? { joinCode: table.JoinCode } : {}),
   };
 }
 
-// Get public tables and their betting information for the Lobby
+// Get public tables and their betting information for the Lobby.
 exports.getAllTables = async function(req, res) {
   try {
     const tables = await TableDao.findPublicTables();
@@ -74,7 +73,7 @@ exports.getAllTables = async function(req, res) {
   }
 };
 
-// Create a new table
+// Create a new table.
 exports.createTable = async function(req, res) {
   const hostId = req.session?.userId;
 
@@ -94,7 +93,11 @@ exports.createTable = async function(req, res) {
 
   const { Capacity: capacity, BotCount: botCount } = req.body;
 
-  if (!Number.isInteger(capacity) || capacity < 2 || capacity > 6) {
+  if (
+    !Number.isInteger(capacity) ||
+    capacity < 2 ||
+    capacity > 6
+  ) {
     return res.status(400).json({
       message: 'Table capacity must be between 2 and 6 players',
     });
@@ -118,7 +121,9 @@ exports.createTable = async function(req, res) {
     buyIn > levelConfig.maxBuyIn
   ) {
     return res.status(400).json({
-      message: `Buy-in must be between ${levelConfig.minBuyIn} and ${levelConfig.maxBuyIn} chips`,
+      message:
+        `Buy-in must be between ${levelConfig.minBuyIn} ` +
+        `and ${levelConfig.maxBuyIn} chips`,
     });
   }
 
@@ -128,7 +133,6 @@ exports.createTable = async function(req, res) {
     let table;
 
     await session.withTransaction(async () => {
-      // Deduct the host's buy-in from their account.
       const updatedUser = await UserDao.deductChips(
         hostId,
         buyIn,
@@ -143,13 +147,11 @@ exports.createTable = async function(req, res) {
         throw error;
       }
 
-      // Generate a join code.
       const generatedJoinCode = crypto
         .randomBytes(4)
         .toString('hex')
         .toUpperCase();
 
-      // Create the table with the host's chip stack.
       const tableData = {
         Name: req.body.Name,
         JoinCode: generatedJoinCode,
@@ -188,7 +190,9 @@ exports.createTable = async function(req, res) {
   }
 };
 
-// Join a waiting table and transfer the requested buy-in into the player's stack.
+// Join a waiting table.
+// The service handles validation, chip deduction,
+// and adding the player in one transaction.
 exports.joinTable = async function(req, res) {
   const userId = req.session?.userId;
 
@@ -206,97 +210,40 @@ exports.joinTable = async function(req, res) {
     });
   }
 
-  const buyIn = req.body?.buyIn;
-  const session = await mongoose.startSession();
-
   try {
-    let result;
-
-    await session.withTransaction(async () => {
-      const table = await TableDao.findById(tableId, session);
-
-      if (!table) {
-        const error = new Error('Table not found');
-        error.status = 404;
-        throw error;
-      }
-
-      const isAlreadySeated = table.UserIds.some(
-        (id) => id.toString() === userId.toString()
-      );
-
-      if (isAlreadySeated) {
-        result = {
-          joinCode: table.JoinCode,
-          alreadySeated: true,
-        };
-        return;
-      }
-
-      if (table.Status !== 'Waiting') {
-        const error = new Error('This table is no longer waiting for players');
-        error.status = 409;
-        throw error;
-      }
-
-      if (table.UserIds.length + table.BotCount >= table.Capacity) {
-        const error = new Error('This table is full');
-        error.status = 409;
-        throw error;
-      }
-
-      const levelConfig = TABLE_LEVELS[table.Level];
-
-      if (
-        !levelConfig ||
-        !Number.isInteger(buyIn) ||
-        buyIn < levelConfig.minBuyIn ||
-        buyIn > levelConfig.maxBuyIn
-      ) {
-        const error = new Error('Invalid buy-in amount');
-        error.status = 400;
-        throw error;
-      }
-
-      const updatedUser = await UserDao.deductChips(
-        userId,
-        buyIn,
-        session
-      );
-
-      if (!updatedUser) {
-        const error = new Error('Insufficient chips or user not found');
-        error.status = 400;
-        throw error;
-      }
-
-      table.UserIds.push(userId);
-      table.PlayerStacks.push({
-        PlayerId: userId.toString(),
-        Chips: buyIn,
-      });
-      await table.save({ session });
-
-      result = {
-        joinCode: table.JoinCode,
-        alreadySeated: false,
-      };
-    });
+    const result = await joinTable(
+      tableId,
+      userId,
+      req.body?.buyIn
+    );
 
     return res.status(200).json(result);
   } catch (error) {
-    if (error.status) {
-      return res.status(error.status).json({
-        message: error.message,
-      });
+    const knownErrors = {
+      'Table not found': 404,
+      'Invalid buy-in amount': 400,
+      'Invalid table level': 400,
+      'Insufficient account chips': 400,
+      'Cannot join a game already in progress': 409,
+      'Unable to join table. It may be full or already started.': 409,
+    };
+
+    const status =
+      error.status ||
+      (error.message.startsWith('Buy-in must be between')
+        ? 400
+        : knownErrors[error.message] || 500);
+
+    if (status === 500) {
+      console.error('Error joining table:', error);
     }
 
-    console.error('Error joining table:', error);
-    return res.status(500).json({
-      message: 'Unable to join table',
+    return res.status(status).json({
+      message:
+        status === 500
+          ? 'Unable to join table'
+          : error.message,
     });
-  } finally {
-    await session.endSession();
   }
 };
 
@@ -359,7 +306,6 @@ exports.getTableForSpectating = async function(req, res) {
       (id) => id.toString() === userId.toString()
     );
 
-    // Do not allow spectators to access private tables by guessing IDs.
     if (!table.IsPublic && !isPlayer) {
       return res.status(403).json({
         message: 'You cannot observe this private table',
@@ -370,7 +316,10 @@ exports.getTableForSpectating = async function(req, res) {
       formatTableForViewing(table, userId)
     );
   } catch (error) {
-    console.error('Error retrieving table for spectating:', error);
+    console.error(
+      'Error retrieving table for spectating:',
+      error
+    );
 
     return res.status(500).json({
       message: 'Unable to retrieve table',

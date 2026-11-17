@@ -1,74 +1,140 @@
+
 const {
   evaluateSevenCardHand,
-  findWinners,
+  compareHandRanks,
+  findWinners
 } = require('../service/HandEvaluationService');
 
+// Helper to create a card
 const card = (rank, suit) => ({ rank, suit });
 
-describe('HandEvaluationService', () => {
-  test('selects a seven-card straight flush over other cards', () => {
-    const hand = [
-      card('10', 'Hearts'),
-      card('J', 'Hearts'),
-      card('Q', 'Hearts'),
-      card('K', 'Hearts'),
-      card('A', 'Hearts'),
-      card('2', 'Clubs'),
-      card('3', 'Spades'),
+describe('P50 - Winning Hand Determination', () => {
+  test('straight flush beats four of a kind', () => {
+    const straightFlush = [
+      card('9', 'hearts'),
+      card('10', 'hearts'),
+      card('J', 'hearts'),
+      card('Q', 'hearts'),
+      card('K', 'hearts'),
+      card('2', 'clubs'),
+      card('3', 'diamonds')
     ];
 
-    expect(evaluateSevenCardHand(hand)).toEqual([8, 14]);
-  });
-
-  test('recognizes an ace-low straight', () => {
-    const hand = [
-      card('A', 'Hearts'),
-      card('2', 'Clubs'),
-      card('3', 'Diamonds'),
-      card('4', 'Spades'),
-      card('5', 'Hearts'),
-      card('9', 'Clubs'),
-      card('K', 'Spades'),
+    const fourOfAKind = [
+      card('A', 'clubs'),
+      card('A', 'diamonds'),
+      card('A', 'hearts'),
+      card('A', 'spades'),
+      card('K', 'clubs'),
+      card('2', 'diamonds'),
+      card('3', 'hearts')
     ];
 
-    expect(evaluateSevenCardHand(hand)).toEqual([4, 5]);
+    expect(
+      compareHandRanks(
+        evaluateSevenCardHand(straightFlush),
+        evaluateSevenCardHand(fourOfAKind)
+      )
+    ).toBeGreaterThan(0);
   });
 
-  test('splits the pot for tied hands and ignores folded players', () => {
+  test('ace-low straight is recognized', () => {
+    const cards = [
+      card('A', 'spades'),
+      card('2', 'clubs'),
+      card('3', 'hearts'),
+      card('4', 'diamonds'),
+      card('5', 'spades'),
+      card('9', 'clubs'),
+      card('J', 'hearts')
+    ];
+
+    expect(evaluateSevenCardHand(cards)).toEqual([4, 5]);
+  });
+
+  test('folded players cannot win', () => {
     const players = [
       {
         PlayerId: 'player-1',
-        HasFolded: false,
+        HasFolded: true,
         Cards: [
-          card('5', 'Hearts'),
-          card('6', 'Clubs'),
-          card('7', 'Diamonds'),
-          card('8', 'Spades'),
-          card('9', 'Hearts'),
-          card('A', 'Clubs'),
-          card('2', 'Spades'),
-        ],
+          card('A', 'hearts'),
+          card('K', 'hearts'),
+          card('Q', 'hearts'),
+          card('J', 'hearts'),
+          card('10', 'hearts'),
+          card('2', 'clubs'),
+          card('3', 'diamonds')
+        ]
       },
       {
         PlayerId: 'player-2',
         HasFolded: false,
         Cards: [
-          card('5', 'Clubs'),
-          card('6', 'Diamonds'),
-          card('7', 'Spades'),
-          card('8', 'Hearts'),
-          card('9', 'Clubs'),
-          card('Q', 'Diamonds'),
-          card('3', 'Hearts'),
-        ],
-      },
-      {
-        PlayerId: 'folded-player',
-        HasFolded: true,
-        Cards: [],
-      },
+          card('2', 'hearts'),
+          card('4', 'clubs'),
+          card('6', 'diamonds'),
+          card('8', 'spades'),
+          card('10', 'clubs'),
+          card('J', 'diamonds'),
+          card('K', 'spades')
+        ]
+      }
     ];
 
-    expect(findWinners(players)).toEqual(['player-1', 'player-2']);
+    expect(findWinners(players)).toEqual(['player-2']);
+  });
+
+  test('players with equal hands split the win', () => {
+    const players = [
+      {
+        PlayerId: 'player-1',
+        HasFolded: false,
+        Cards: [
+          card('A', 'hearts'),
+          card('A', 'clubs'),
+          card('K', 'spades'),
+          card('Q', 'diamonds'),
+          card('J', 'clubs'),
+          card('9', 'hearts'),
+          card('2', 'spades')
+        ]
+      },
+      {
+        PlayerId: 'player-2',
+        HasFolded: false,
+        Cards: [
+          card('A', 'diamonds'),
+          card('A', 'spades'),
+          card('K', 'hearts'),
+          card('Q', 'clubs'),
+          card('J', 'diamonds'),
+          card('8', 'clubs'),
+          card('3', 'spades')
+        ]
+      }
+    ];
+
+    expect(findWinners(players)).toEqual([
+      'player-1',
+      'player-2'
+    ]);
+  });
+
+  test('remaining player wins when everyone else folds', () => {
+    const players = [
+      {
+        PlayerId: 'player-1',
+        HasFolded: true,
+        Cards: []
+      },
+      {
+        PlayerId: 'player-2',
+        HasFolded: false,
+        Cards: []
+      }
+    ];
+
+    expect(findWinners(players)).toEqual(['player-2']);
   });
 });

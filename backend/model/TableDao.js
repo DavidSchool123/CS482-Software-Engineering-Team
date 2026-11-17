@@ -150,6 +150,39 @@ exports.setCurrentGame = async function(tableId, gameId, session) {
   );
 };
 
+
+/**
+ * P53 - Atomically link the next hand to an existing table.
+ *
+ * Only replaces the expected completed game.
+ * Prevents two requests from advancing the same table
+ * to different games.
+ */
+exports.setNextGame = async function(
+  tableId,
+  previousGameId,
+  nextGameId,
+  session = null
+) {
+  return await TableModel.findOneAndUpdate(
+    {
+      _id: tableId,
+      Status: 'In Progress',
+      CurrentGameID: previousGameId
+    },
+    {
+      $set: {
+        CurrentGameID: nextGameId
+      }
+    },
+    {
+      new: true,
+      session,
+      runValidators: true
+    }
+  );
+};
+
 /**
  * Reserve a waiting table before starting a game.
  * Only one request can change Waiting to In Progress.

@@ -3,10 +3,14 @@ const mongoose = require('mongoose');
 const TableDao = require('../model/TableDao');
 const UserDao = require('../model/UserDao');
 const TABLE_LEVELS = require('../model/tableLevels');
+const { joinTable } = require('../service/JoinTableService');
 const TableController = require('../controller/TableController');
 
 jest.mock('../model/TableDao');
 jest.mock('../model/UserDao');
+jest.mock('../service/JoinTableService', () => ({
+  joinTable: jest.fn()
+}));
 
 describe('TableController - Creation and Joining', () => {
   let mockSession;
@@ -21,7 +25,7 @@ describe('TableController - Creation and Joining', () => {
     BotCount: 0,
     IsPublic: true,
     Level: 'Low',
-    buyIn: 500,
+    buyIn: 500
   };
 
   const waitingTable = {
@@ -34,12 +38,14 @@ describe('TableController - Creation and Joining', () => {
     BotCount: 0,
     Level: 'Low',
     Status: 'Waiting',
+    IsPublic: true,
+    CurrentGameID: null
   };
 
   function mockResponse() {
     return {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis()
     };
   }
 
@@ -47,8 +53,8 @@ describe('TableController - Creation and Joining', () => {
     jest.clearAllMocks();
 
     mockSession = {
-      withTransaction: jest.fn(async (callback) => callback()),
-      endSession: jest.fn().mockResolvedValue(undefined),
+      withTransaction: jest.fn(async callback => callback()),
+      endSession: jest.fn().mockResolvedValue(undefined)
     };
 
     jest.spyOn(mongoose, 'startSession')
@@ -62,12 +68,14 @@ describe('TableController - Creation and Joining', () => {
     jest.restoreAllMocks();
   });
 
+  // --------------------------------------------------
   // TABLE CREATION TESTS
+  // --------------------------------------------------
 
-  test('rejects table creation when the user is not logged in', async () => {
+  test('rejects table creation when user is not logged in', async () => {
     const req = {
       body: validTableBody,
-      session: {},
+      session: {}
     };
     const res = mockResponse();
 
@@ -75,7 +83,7 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'You must be logged in to create a table',
+      message: 'You must be logged in to create a table'
     });
 
     expect(TableDao.create).not.toHaveBeenCalled();
@@ -86,9 +94,9 @@ describe('TableController - Creation and Joining', () => {
     const req = {
       body: {
         ...validTableBody,
-        Level: 'Invalid',
+        Level: 'Invalid'
       },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -96,7 +104,7 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Invalid table level',
+      message: 'Invalid table level'
     });
 
     expect(mongoose.startSession).not.toHaveBeenCalled();
@@ -106,9 +114,9 @@ describe('TableController - Creation and Joining', () => {
     const req = {
       body: {
         ...validTableBody,
-        buyIn: TABLE_LEVELS.Low.minBuyIn - 1,
+        buyIn: TABLE_LEVELS.Low.minBuyIn - 1
       },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -122,9 +130,9 @@ describe('TableController - Creation and Joining', () => {
     const req = {
       body: {
         ...validTableBody,
-        buyIn: TABLE_LEVELS.Low.maxBuyIn + 1,
+        buyIn: TABLE_LEVELS.Low.maxBuyIn + 1
       },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -138,9 +146,9 @@ describe('TableController - Creation and Joining', () => {
     const req = {
       body: {
         ...validTableBody,
-        buyIn: 500.5,
+        buyIn: 500.5
       },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -150,19 +158,55 @@ describe('TableController - Creation and Joining', () => {
     expect(TableDao.create).not.toHaveBeenCalled();
   });
 
-  test('creates a table and deducts the host buy-in successfully', async () => {
+  test('rejects invalid table capacity', async () => {
+    const req = {
+      body: {
+        ...validTableBody,
+        Capacity: 7
+      },
+      session: { userId }
+    };
+    const res = mockResponse();
+
+    await TableController.createTable(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(TableDao.create).not.toHaveBeenCalled();
+  });
+
+  test('rejects bot count exceeding available seats', async () => {
+    const req = {
+      body: {
+        ...validTableBody,
+        BotCount: 6
+      },
+      session: { userId }
+    };
+    const res = mockResponse();
+
+    await TableController.createTable(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(TableDao.create).not.toHaveBeenCalled();
+  });
+
+  test('creates a table and deducts host buy-in', async () => {
     const createdTable = {
       _id: new mongoose.Types.ObjectId(),
       Name: validTableBody.Name,
-      JoinCode: 'ABC12345',
+      JoinCode: 'ABC12345'
     };
 
-    UserDao.deductChips.mockResolvedValue({ _id: userId });
+    UserDao.deductChips.mockResolvedValue({
+      _id: userId,
+      chipBalance: 500
+    });
+
     TableDao.create.mockResolvedValue(createdTable);
 
     const req = {
       body: validTableBody,
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -185,9 +229,9 @@ describe('TableController - Creation and Joining', () => {
         PlayerStacks: [
           {
             PlayerId: userId,
-            Chips: validTableBody.buyIn,
-          },
-        ],
+            Chips: validTableBody.buyIn
+          }
+        ]
       }),
       mockSession
     );
@@ -197,18 +241,18 @@ describe('TableController - Creation and Joining', () => {
       id: createdTable._id.toString(),
       name: validTableBody.Name,
       joinCode: 'ABC12345',
-      buyIn: validTableBody.buyIn,
+      buyIn: validTableBody.buyIn
     });
 
     expect(mockSession.endSession).toHaveBeenCalled();
   });
 
-  test('does not create a table when the host has insufficient chips', async () => {
+  test('does not create table with insufficient chips', async () => {
     UserDao.deductChips.mockResolvedValue(null);
 
     const req = {
       body: validTableBody,
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -217,36 +261,106 @@ describe('TableController - Creation and Joining', () => {
     expect(TableDao.create).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Insufficient chips or user not found',
+      message: 'Insufficient chips or user not found'
     });
 
     expect(mockSession.endSession).toHaveBeenCalled();
   });
 
+  // --------------------------------------------------
   // TABLE JOINING TESTS
+  // --------------------------------------------------
 
-  test('rejects joining when the user is not logged in', async () => {
+  test('rejects joining when user is not logged in', async () => {
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: {},
+      session: {}
     };
     const res = mockResponse();
 
     await TableController.joinTable(req, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(TableDao.findById).not.toHaveBeenCalled();
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
+    expect(joinTable).not.toHaveBeenCalled();
   });
 
-  test('returns 404 when the table does not exist', async () => {
-    TableDao.findById.mockResolvedValue(null);
+  test('rejects an invalid table ID', async () => {
+    const req = {
+      params: { tableId: 'invalid-id' },
+      body: { buyIn: 500 },
+      session: { userId }
+    };
+    const res = mockResponse();
+
+    await TableController.joinTable(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Invalid table ID'
+    });
+    expect(joinTable).not.toHaveBeenCalled();
+  });
+
+  test('joins a table successfully', async () => {
+    joinTable.mockResolvedValue({
+      joinCode: 'ABC12345',
+      alreadySeated: false
+    });
 
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: { userId },
+      session: { userId }
+    };
+    const res = mockResponse();
+
+    await TableController.joinTable(req, res);
+
+    expect(joinTable).toHaveBeenCalledWith(
+      tableId,
+      userId,
+      500
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      joinCode: 'ABC12345',
+      alreadySeated: false
+    });
+  });
+
+  test('allows an already-seated player to rejoin', async () => {
+    joinTable.mockResolvedValue({
+      joinCode: 'ABC12345',
+      alreadySeated: true
+    });
+
+    const req = {
+      params: { tableId },
+      body: { buyIn: 500 },
+      session: { userId }
+    };
+    const res = mockResponse();
+
+    await TableController.joinTable(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      joinCode: 'ABC12345',
+      alreadySeated: true
+    });
+  });
+
+  test('returns 404 when table does not exist', async () => {
+    joinTable.mockRejectedValue(
+      new Error('Table not found')
+    );
+
+    const req = {
+      params: { tableId },
+      body: { buyIn: 500 },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -254,22 +368,19 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Table not found',
+      message: 'Table not found'
     });
-
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
-  test('rejects joining a table that is not waiting', async () => {
-    TableDao.findById.mockResolvedValue({
-      ...waitingTable,
-      Status: 'In Progress',
-    });
+  test('rejects joining a game already in progress', async () => {
+    joinTable.mockRejectedValue(
+      new Error('Cannot join a game already in progress')
+    );
 
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -277,76 +388,36 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'This table is no longer waiting for players',
+      message: 'Cannot join a game already in progress'
     });
-
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
-  test('allows an already-seated user to rejoin without another deduction', async () => {
-    TableDao.findById.mockResolvedValue({
-      ...waitingTable,
-      UserIds: [userId],
-    });
+  test('rejects invalid buy-in', async () => {
+    joinTable.mockRejectedValue(
+      new Error('Buy-in must be between 200 and 1000 chips')
+    );
 
     const req = {
       params: { tableId },
-      body: { buyIn: 500 },
-      session: { userId },
-    };
-    const res = mockResponse();
-
-    await TableController.joinTable(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      joinCode: waitingTable.JoinCode,
-      alreadySeated: true,
-    });
-
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
-  });
-
-  test('rejects a buy-in below the table minimum', async () => {
-    TableDao.findById.mockResolvedValue(waitingTable);
-
-    const req = {
-      params: { tableId },
-      body: { buyIn: TABLE_LEVELS.Low.minBuyIn - 1 },
-      session: { userId },
+      body: { buyIn: 100 },
+      session: { userId }
     };
     const res = mockResponse();
 
     await TableController.joinTable(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
-  test('rejects a buy-in above the table maximum', async () => {
-    TableDao.findById.mockResolvedValue(waitingTable);
-
-    const req = {
-      params: { tableId },
-      body: { buyIn: TABLE_LEVELS.Low.maxBuyIn + 1 },
-      session: { userId },
-    };
-    const res = mockResponse();
-
-    await TableController.joinTable(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
-  });
-
-  test('rejects joining when the user has insufficient chips', async () => {
-    TableDao.findById.mockResolvedValue(waitingTable);
-    UserDao.deductChips.mockResolvedValue(null);
+  test('rejects insufficient account chips', async () => {
+    joinTable.mockRejectedValue(
+      new Error('Insufficient account chips')
+    );
 
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
@@ -354,100 +425,65 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Insufficient chips or user not found',
+      message: 'Insufficient account chips'
     });
-
-    expect(TableDao.addPlayer).not.toHaveBeenCalled();
   });
 
-  test('rejects joining if the table is full', async () => {
-    TableDao.findById.mockResolvedValue({
-      ...waitingTable,
-      UserIds: [new mongoose.Types.ObjectId().toString()],
-      BotCount: 5,
-    });
+  test('rejects a failed table join', async () => {
+    joinTable.mockRejectedValue(
+      new Error(
+        'Unable to join table. It may be full or already started.'
+      )
+    );
 
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
     await TableController.joinTable(req, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(res.json).toHaveBeenCalledWith({
-      message: 'This table is full',
-    });
-
-    expect(UserDao.deductChips).not.toHaveBeenCalled();
   });
 
-  test('joins a table and deducts the buy-in successfully', async () => {
-    const table = {
-      ...waitingTable,
-      UserIds: [new mongoose.Types.ObjectId().toString()],
-      PlayerStacks: [],
-      save: jest.fn().mockResolvedValue(undefined),
-    };
-
-    TableDao.findById.mockResolvedValue(table);
-    UserDao.deductChips.mockResolvedValue({ _id: userId });
+  test('handles unexpected service errors', async () => {
+    joinTable.mockRejectedValue(
+      new Error('Database connection failed')
+    );
 
     const req = {
       params: { tableId },
       body: { buyIn: 500 },
-      session: { userId },
+      session: { userId }
     };
     const res = mockResponse();
 
     await TableController.joinTable(req, res);
 
-    expect(TableDao.findById).toHaveBeenCalledWith(
-      tableId,
-      mockSession
-    );
-
-    expect(UserDao.deductChips).toHaveBeenCalledWith(
-      userId,
-      500,
-      mockSession
-    );
-
-    expect(table.UserIds).toContain(userId);
-    expect(table.PlayerStacks).toContainEqual({
-      PlayerId: userId,
-      Chips: 500,
-    });
-
-    expect(table.save).toHaveBeenCalledWith({
-      session: mockSession,
-    });
-
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      joinCode: waitingTable.JoinCode,
-      alreadySeated: false,
+      message: 'Unable to join table'
     });
 
-    expect(mockSession.endSession).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
+  // --------------------------------------------------
   // JOIN-CODE LOOKUP TESTS
+  // --------------------------------------------------
 
-  test('finds a table by join code and returns its joining information', async () => {
+  test('finds a table by join code', async () => {
     TableDao.findTableByCode.mockResolvedValue({
       ...waitingTable,
       UserIds: ['user1', 'user2'],
-      BotCount: 1,
-      _id: {
-        toString: () => tableId,
-      },
+      BotCount: 1
     });
 
     const req = {
       params: { joinCode: 'ABC12345' },
+      session: {}
     };
     const res = mockResponse();
 
@@ -462,24 +498,24 @@ describe('TableController - Creation and Joining', () => {
         name: 'Test Poker Table',
         level: 'Low',
         capacity: 6,
+        filledSeats: 3,
         playerCount: 3,
         status: 'Waiting',
         joinCode: 'ABC12345',
-        stakes: {
-          smallBet: TABLE_LEVELS.Low.smallBet,
-          bigBet: TABLE_LEVELS.Low.bigBet,
-          minBuyIn: TABLE_LEVELS.Low.minBuyIn,
-          maxBuyIn: TABLE_LEVELS.Low.maxBuyIn,
-        },
+        isPlayer: false,
+        isPublic: true,
+        currentGameId: null,
+        stakes: TABLE_LEVELS.Low
       })
     );
   });
 
-  test('returns 404 when a join code does not match a table', async () => {
+  test('returns 404 when join code does not match', async () => {
     TableDao.findTableByCode.mockResolvedValue(null);
 
     const req = {
       params: { joinCode: 'NOTFOUND' },
+      session: {}
     };
     const res = mockResponse();
 
@@ -487,7 +523,7 @@ describe('TableController - Creation and Joining', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Table not found',
+      message: 'Table not found'
     });
   });
 });
