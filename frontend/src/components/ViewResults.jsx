@@ -1,68 +1,26 @@
-
+import { bestFiveIndices } from '../utils/BestFiveCards';
 import './ViewResults.css';
 
-const SUITS = {
-  Hearts: '♥',
-  Diamonds: '♦',
-  Clubs: '♣',
-  Spades: '♠'
-};
+const SUITS = { Hearts: '♥', Diamonds: '♦', Clubs: '♣', Spades: '♠' };
+const RANKS = { Ace: 'A', King: 'K', Queen: 'Q', Jack: 'J', '1': 'A', '11': 'J', '12': 'Q', '13': 'K' };
 
-const RANKS = {
-  Ace: 'A',
-  King: 'K',
-  Queen: 'Q',
-  Jack: 'J',
-  '1': 'A',
-  '11': 'J',
-  '12': 'Q',
-  '13': 'K'
-};
-
-function ResultCards({ cards = [] }) {
+function ResultCards({ cards = [], highlight = false }) {
+  const winningIndices = highlight ? bestFiveIndices(cards) : null;
   return (
-    <div
-      className="view-results-cards"
-      aria-label="Revealed cards"
-    >
+    <div className="view-results-cards" aria-label="Revealed cards">
       {cards.map((card, index) => {
-        const visible =
-          card?.rank != null && card?.suit != null;
-
+        const visible = card?.rank != null && card?.suit != null;
         const symbol = SUITS[card?.suit] || card?.suit || '';
-
-        const rank = visible
-          ? RANKS[String(card.rank)] || String(card.rank)
-          : '';
-
-        const red =
-          card?.suit === 'Hearts' ||
-          card?.suit === 'Diamonds';
+        const rank = visible ? (RANKS[String(card.rank)] || String(card.rank)) : '';
+        const red = card?.suit === 'Hearts' || card?.suit === 'Diamonds';
 
         return (
           <span
             key={index}
-            className={`view-results-card ${
-              visible
-                ? red
-                  ? 'is-red'
-                  : ''
-                : 'is-hidden'
-            }`}
-            aria-label={
-              visible
-                ? `${rank} of ${card.suit}`
-                : 'Face-down card'
-            }
+            className={`view-results-card ${visible ? (red ? 'is-red' : '') : 'is-hidden'} ${winningIndices ? (winningIndices.includes(index) ? 'is-winning-five' : 'is-not-winning-five') : ''}`}
+            aria-label={visible ? `${rank} of ${card.suit}` : 'Face-down card'}
           >
-            {visible ? (
-              <>
-                {rank}
-                <span>{symbol}</span>
-              </>
-            ) : (
-              '♠'
-            )}
+            {visible ? <>{rank}<span>{symbol}</span></> : '♠'}
           </span>
         );
       })}
@@ -70,41 +28,22 @@ function ResultCards({ cards = [] }) {
   );
 }
 
-export default function ViewResults({
-  game,
-  nextHandSeconds,
-  getPlayerName,
-  onClose
-}) {
-  if (game?.status !== 'Completed') {
-    return null;
-  }
+function winnerLabel(name) {
+  return name === 'You' ? 'You Win!' : `${name} Wins!`;
+}
+
+export default function ViewResults({ game, nextHandSeconds, getPlayerName, onClose }) {
+  if (game?.status !== 'Completed') return null;
 
   const results = game.handResults || [];
   const players = game.players || [];
-
   const showdownPlayers = game.isShowdown
     ? players.filter(player => !player.hasFolded)
     : [];
-
   const multipleWinners = results.length > 1;
 
-  // Use correct grammar for the current player.
-  const getWinnerMessage = (playerId) => {
-    const name = getPlayerName(playerId);
-
-    if (name === 'You') {
-      return 'You Win!';
-    }
-
-    return `${name} Wins!`;
-  };
-
   return (
-    <div
-      className="view-results-backdrop"
-      role="presentation"
-    >
+    <div className="view-results-backdrop" role="presentation">
       <section
         className="view-results-modal"
         role="dialog"
@@ -120,38 +59,23 @@ export default function ViewResults({
           ×
         </button>
 
-        <div className="view-results-eyebrow">
-          HAND COMPLETE
-        </div>
-
-        <h2 id="view-results-title">
-          {multipleWinners
-            ? '🏆 Split Pot!'
-            : '🏆 Hand Results'}
-        </h2>
+        <div className="view-results-eyebrow">HAND COMPLETE</div>
+        <h2 id="view-results-title">{multipleWinners ? '🏆 Split Pot!' : '🏆 Hand Results'}</h2>
 
         {results.length > 0 ? (
           <div className="view-results-winners">
-            {results.map((result, index) => (
-              <div
-                className="view-results-winner"
-                key={`${String(result.playerId)}-${index}`}
-              >
-                <strong>
-                  {getWinnerMessage(result.playerId)}
-                </strong>
-
-                <span className="view-results-payout">
-                  +{result.amountWon} chips
-                </span>
-
-                {result.handName && (
-                  <span className="view-results-hand">
-                    {result.handName}
-                  </span>
-                )}
-              </div>
-            ))}
+            {results.map((result, index) => {
+              const name = getPlayerName(result.playerId);
+              return (
+                <div className="view-results-winner" key={`${String(result.playerId)}-${index}`}>
+                  <strong>{multipleWinners ? `${name}:` : winnerLabel(name)}</strong>
+                  <span className="view-results-payout">+{result.amountWon} chips</span>
+                  {result.handName && (
+                    <span className="view-results-hand">{result.handName}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p>The hand is complete.</p>
@@ -160,35 +84,19 @@ export default function ViewResults({
         {game.isShowdown && showdownPlayers.length > 0 ? (
           <div className="view-results-showdown">
             <h3>Showdown</h3>
-
-            <p>
-              All players who reached showdown
-              revealed their cards.
-            </p>
-
+            <p>Here's how everyone's cards looked at the end of the hand.</p>
             {showdownPlayers.map(player => (
-              <div
-                className="view-results-player"
-                key={String(player.playerId)}
-              >
-                <strong>
-                  {getPlayerName(player.playerId)}
-                </strong>
-
-                <ResultCards cards={player.cards} />
+              <div className="view-results-player" key={String(player.playerId)}>
+                <strong>{getPlayerName(player.playerId)}</strong>
+                <ResultCards cards={player.cards} highlight={results.some(result => String(result.playerId) === String(player.playerId))} />
               </div>
             ))}
           </div>
         ) : (
-          <p className="view-results-no-showdown">
-            Everyone else folded. No showdown required.
-          </p>
+          <p className="view-results-no-showdown">All other players folded. No showdown needed.</p>
         )}
 
-        <div
-          className="view-results-countdown"
-          role="timer"
-        >
+        <div className="view-results-countdown" role="timer">
           {nextHandSeconds == null
             ? 'Waiting for next hand...'
             : nextHandSeconds > 0
@@ -196,11 +104,7 @@ export default function ViewResults({
               : 'Starting next hand...'}
         </div>
 
-        <button
-          type="button"
-          className="view-results-view-table"
-          onClick={onClose}
-        >
+        <button type="button" className="view-results-view-table" onClick={onClose}>
           View Table
         </button>
       </section>

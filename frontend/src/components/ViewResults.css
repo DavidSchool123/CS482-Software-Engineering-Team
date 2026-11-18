@@ -181,3 +181,8 @@
   .view-results-modal h2 { font-size: 24px; }
   .view-results-card { width: 33px; height: 47px; }
 }
+
+/* Showdown: highlight exactly five cards in each winning hand. */
+.view-results-card.is-winning-five { border: 2px solid #f4c95d; box-shadow: 0 0 0 2px rgba(244,201,93,.28), 0 0 16px rgba(244,201,93,.55); transform: translateY(-4px); }
+.view-results-card.is-not-winning-five { opacity: .48; filter: saturate(.6); }
+@media (prefers-reduced-motion: reduce) { .view-results-card.is-winning-five { transform: none; } }

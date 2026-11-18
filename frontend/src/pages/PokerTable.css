@@ -1060,3 +1060,285 @@
   color: #facc15;
   margin-top: 8px;
 }
+/* ============================================================
+   Issue #69 — compact perimeter seating (replaces prior patch)
+   ============================================================ */
+.stud-game-area { min-width: 0; padding-bottom: 54px; }
+.stud-felt {
+  position: relative;
+  isolation: isolate;
+  height: clamp(390px, 38vw, 505px);
+  min-height: 0;
+  overflow: visible;
+  border-radius: 50% / 44%;
+}
+.stud-felt::before { border-radius: inherit; pointer-events: none; }
+.stud-felt::after { border-radius: inherit; pointer-events: none; }
+.stud-felt > .stud-board { z-index: 2; }
+.stud-felt > .stud-seat { z-index: 4; }
+
+/* All six seats are small anchor points; cards extend inward. */
+.stud-felt .stud-seat-floating,
+.stud-felt .stud-seat-empty {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  width: 138px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.stud-floating-identity { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stud-avatar-frame {
+  width: 43px;
+  height: 43px;
+  overflow: hidden;
+  border: 3px solid #b997e4;
+  border-radius: 50%;
+  background: #28183f;
+  box-shadow: 0 4px 12px #0008;
+}
+.stud-avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.stud-floating-player-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 138px;
+  padding: 3px 8px;
+  border: 1px solid #8e6bb0a8;
+  border-radius: 20px;
+  background: #1b1229f2;
+  box-shadow: 0 3px 8px #0005;
+}
+.stud-floating-player-info .stud-seat-name { max-width: 70px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stud-floating-player-info .stud-seat-balance { font-size: 10px; color: #f1ddff; white-space: nowrap; }
+.stud-floating-status { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.stud-action-badge { padding: 2px 6px; border-radius: 12px; background: #68449b; color: white; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.stud-action-badge.active { background: #a36aeb; }
+.stud-action-badge.folded { background: #42314f; color: #d2c4dc; }
+.stud-action-badge.bet { background: #241735; border: 1px solid #8e69b4; }
+.stud-seat-active .stud-avatar-frame { border-color: #e1baff; box-shadow: 0 0 0 3px #b16fff45, 0 0 14px #b16fff9c; }
+.stud-seat-folded { opacity: .72; }
+
+/* A hand is compact even when seven cards are present. */
+.stud-felt .stud-seat-floating .stud-hole-cards {
+  --card-width: 34px;
+  --card-step: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: center;
+  width: max-content;
+  max-width: none;
+  min-width: 0;
+  gap: 0;
+  padding: 1px 0;
+  overflow: visible;
+}
+.stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(4)) { --card-step: 22px; }
+.stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(5)) { --card-step: 17px; }
+.stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(6)) { --card-step: 14px; }
+.stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(7)) { --card-step: 12px; }
+.stud-felt .stud-seat-floating .stud-hole-cards .stud-card {
+  position: relative;
+  flex: 0 0 var(--card-width);
+  width: var(--card-width);
+  height: 49px;
+  margin-left: calc(var(--card-step) - var(--card-width));
+}
+.stud-felt .stud-seat-floating .stud-hole-cards .stud-card:first-child { margin-left: 0; }
+.stud-felt .stud-seat-floating .stud-hole-cards .stud-card:not(:last-child) .stud-card-corner-bottom { opacity: 0; }
+.stud-felt .stud-seat-floating .stud-hole-cards .stud-card:hover .stud-card-corner-bottom { opacity: 1; }
+
+/* Perimeter: identity on the rail, cards extending toward felt. */
+.stud-felt .seat-top { top: -32px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%); }
+.stud-felt .seat-bottom {
+  top: auto; bottom: -45px; left: 50%; right: auto;
+  transform: translateX(-50%);
+  flex-direction: column-reverse;
+}
+.stud-felt .seat-left { top: 18%; left: -46px; right: auto; bottom: auto; transform: none; }
+.stud-felt .seat-left-lower { top: 56%; left: -46px; right: auto; bottom: auto; transform: none; }
+.stud-felt .seat-right { top: 18%; right: -46px; left: auto; bottom: auto; transform: none; }
+.stud-felt .seat-right-upper { top: 56%; right: -46px; left: auto; bottom: auto; transform: none; }
+
+.stud-felt .stud-seat-empty { gap: 4px; opacity: .6; }
+.stud-empty-avatar { display: grid; place-items: center; width: 40px; height: 40px; border: 2px dashed #a989c9; border-radius: 50%; color: #dfc7ff; background: #25163470; font-size: 22px; }
+.stud-empty-label { color: #d1b9ed; font-size: 10px; }
+
+/* Keep the pot clear and eliminate the large duplicate turn bar. */
+.stud-board.poker-pot-area { width: 215px; max-width: 215px; gap: 6px; }
+.stud-betting-info { gap: 4px; }
+.stud-betting-info span { font-size: 9px; padding: 4px 6px; }
+.stud-betting-info span:last-child { max-width: 215px; white-space: normal; }
+.turn-timer { display: none; }
+
+@media (max-width: 1180px) {
+  .stud-felt { height: 450px; }
+  .stud-felt .seat-left, .stud-felt .seat-left-lower { left: -28px; }
+  .stud-felt .seat-right, .stud-felt .seat-right-upper { right: -28px; }
+}
+@media (max-width: 760px) {
+  .stud-game-area { padding-bottom: 45px; }
+  .stud-felt { height: 420px; min-height: 0; }
+  .stud-felt .stud-seat-floating, .stud-felt .stud-seat-empty { width: 105px; }
+  .stud-avatar-frame { width: 36px; height: 36px; }
+  .stud-floating-player-info { max-width: 105px; gap: 3px; padding: 2px 5px; }
+  .stud-floating-player-info .stud-seat-name { max-width: 47px; font-size: 9px; }
+  .stud-floating-player-info .stud-seat-balance { font-size: 9px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards { --card-width: 27px; --card-step: 27px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards .stud-card { height: 41px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(4)) { --card-step: 17px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(5)) { --card-step: 13px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(6)) { --card-step: 11px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(7)) { --card-step: 9px; }
+  .stud-felt .seat-left, .stud-felt .seat-left-lower { left: -16px; }
+  .stud-felt .seat-right, .stud-felt .seat-right-upper { right: -16px; }
+}
+@media (max-width: 430px) {
+  .stud-felt { height: 370px; }
+  .stud-felt .stud-seat-floating, .stud-felt .stud-seat-empty { width: 86px; }
+  .stud-avatar-frame { width: 30px; height: 30px; }
+  .stud-floating-player-info { flex-direction: column; gap: 0; }
+  .stud-felt .seat-left, .stud-felt .seat-left-lower { left: -12px; }
+  .stud-felt .seat-right, .stud-felt .seat-right-upper { right: -12px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards { --card-width: 23px; --card-step: 23px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards .stud-card { height: 35px; }
+  .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(7)) { --card-step: 8px; }
+}
+
+/* Avatar countdown ring */
+.stud-avatar-frame {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.stud-avatar-image {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.stud-avatar-timer-ring {
+  position: absolute;
+  inset: -5px;
+  z-index: 2;
+  border-radius: 50%;
+
+  background: conic-gradient(
+    var(--timer-color, #b77aff) var(--timer-progress, 100%),
+    rgba(255, 255, 255, 0.15) 0
+  );
+
+  /* Cut out the middle to create a ring */
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    black calc(100% - 4px)
+  );
+
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    black calc(100% - 4px)
+  );
+
+  pointer-events: none;
+}
+/* Poker Face action and street animation layer */
+.stud-felt .stud-seat-floating { isolation: isolate; }
+.stud-action-popup {
+  position: absolute; left: 50%; top: -42px; z-index: 25;
+  transform: translateX(-50%); border-radius: 9px; padding: 7px 12px;
+  background: #6242a0; color: #fff; font-size: 12px; font-weight: 800;
+  letter-spacing: .06em; white-space: nowrap; pointer-events: none;
+  box-shadow: 0 5px 15px #0009; animation: stud-action-float 1.65s ease-out both;
+}
+.stud-action-popup.action-check { background: #2563eb; }
+.stud-action-popup.action-call { background: #168a52; }
+.stud-action-popup.action-bet, .stud-action-popup.action-raise { background: #b87614; }
+.stud-action-popup.action-fold { background: #ba354a; }
+@keyframes stud-action-float {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(.88); }
+  18%, 70% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+.stud-seat-active .stud-avatar-frame { box-shadow: 0 0 0 4px #b77aff44, 0 0 20px #b77aff88; }
+.stud-seat-new-deal .stud-hole-cards .stud-card { animation: stud-card-deal .6s cubic-bezier(.2,.7,.3,1) both; }
+.stud-seat-new-deal .stud-hole-cards .stud-card:nth-child(2n) { animation-delay: 90ms; }
+@keyframes stud-card-deal {
+  from { opacity: 0; transform: translateY(-25px) scale(.84); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stud-seat-winner .stud-avatar-frame { box-shadow: 0 0 0 4px #f4c55a, 0 0 28px #f4c55aaa; }
+.stud-winner-crown { position: absolute; top: -32px; left: 50%; transform: translateX(-50%); z-index: 26; padding: 4px 8px; border-radius: 6px; background: #6b4a0c; color: #fff0bb; font-weight: 900; font-size: 11px; white-space: nowrap; }
+.stud-street-announcement, .stud-payout-flash {
+  position: absolute; top: 39%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 20; padding: 10px 22px; border-radius: 12px;
+  background: #201431eb; border: 1px solid #c69afa;
+  color: #fff; font-weight: 900; font-size: clamp(16px, 2.3vw, 26px);
+  white-space: nowrap; pointer-events: none;
+  box-shadow: 0 10px 30px #0009; animation: stud-overlay-pop 1.5s ease-out both;
+}
+.stud-payout-flash { top: 62%; color: #ffe39a; border-color: #f4c55a; animation-duration: 2.5s; }
+@keyframes stud-overlay-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.8); }
+  20%, 75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -65%) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stud-action-popup, .stud-seat-new-deal .stud-hole-cards .stud-card,
+  .stud-street-announcement, .stud-payout-flash { animation: none; }
+}
+
+/* Poker Face: animated cards, chips, and optional sound toggle */
+.stud-sound-toggle { padding: 10px 13px; border: 1px solid #7653a6; border-radius: 8px; background: #302044; color: #f5eaff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.stud-sound-toggle:hover { background: #473163; }
+.stud-sound-toggle:focus-visible { outline: 2px solid #d8a7ff; outline-offset: 3px; }
+/* Animate only cards newly added to the hand, never all previously dealt cards. */
+.stud-seat-new-deal .stud-hole-cards .stud-card:not(.stud-card-dealing) { animation: none; }
+.stud-seat-new-deal .stud-hole-cards .stud-card.stud-card-dealing {
+  animation: stud-fly-card 650ms cubic-bezier(.17,.78,.25,1) both;
+  animation-delay: calc(var(--deal-order, 0) * 115ms);
+}
+@keyframes stud-fly-card {
+  0% { opacity: 0; transform: translate(var(--deal-x, 0px),var(--deal-y, 0px)) rotate(-15deg) scale(.55); }
+  65% { opacity: 1; }
+  100% { opacity: 1; transform: translate(0,0) rotate(0) scale(1); }
+}
+.stud-chip-flight-layer { position: absolute; inset: 0; pointer-events: none; z-index: 21; overflow: visible; }
+.stud-flying-chip {
+  position: absolute; left: var(--chip-x); top: var(--chip-y);
+  width: 19px; height: 19px; border-radius: 50%; border: 3px dashed #fff2b6;
+  background: radial-gradient(circle at 35% 30%, #f8d67b, #b98116 75%);
+  box-shadow: 0 2px 8px #0009;
+  animation: stud-chip-travel 760ms cubic-bezier(.25,.7,.4,1) var(--chip-delay,0ms) both;
+}
+@keyframes stud-chip-travel {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.65); }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--chip-dx)),calc(-50% + var(--chip-dy))) scale(.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stud-seat-new-deal .stud-hole-cards .stud-card.stud-card-dealing, .stud-flying-chip { animation: none; }
+  .stud-flying-chip { display: none; }
+}
+
+/* Completed showdown: five cards that form each winning hand. */
+.stud-felt .stud-hole-cards .stud-card.stud-winning-five-card { z-index: 8; border-color: #f4c95d; box-shadow: 0 0 0 2px rgba(244,201,93,.35), 0 0 13px rgba(244,201,93,.65); }
+.stud-felt .stud-hole-cards .stud-card.stud-other-card { opacity: .48; filter: saturate(.6); }
