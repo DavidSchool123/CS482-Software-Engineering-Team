@@ -1,0 +1,583 @@
+/* Issue #69 — compact in-game sidebar, no overlay.
+
+   Keep PokerTable.css and PokerChips.css; import this file last. */
+
+
+
+.stud-layout.stud-layout-focused.stud-layout-sidebar {
+
+  display: block;
+
+  width: 100%;
+
+  max-width: 1680px;
+
+  margin-inline: auto;
+
+}
+
+.stud-layout-sidebar .stud-play-row {
+
+  display: grid;
+
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 315px);
+
+  align-items: start;
+
+  gap: clamp(14px, 1.6vw, 26px);
+
+}
+
+.stud-layout-sidebar .stud-game-area {
+
+  width: 100%;
+
+  min-width: 0;
+
+  padding: 0 18px 0;
+
+}
+
+.stud-layout-sidebar .stud-felt {
+
+  width: 100%;
+
+  height: clamp(445px, 37vw, 570px);
+
+  min-height: 0;
+
+  overflow: visible; /* Allow perimeter avatars to extend beyond rail. */
+
+}
+
+.stud-layout-sidebar .stud-felt .seat-top { top: -3%; }
+
+.stud-layout-sidebar .stud-felt .seat-bottom { bottom: -7%; }
+
+.stud-layout-sidebar .stud-felt .seat-left,
+
+.stud-layout-sidebar .stud-felt .seat-left-lower { left: -4%; }
+
+.stud-layout-sidebar .stud-felt .seat-right,
+
+.stud-layout-sidebar .stud-felt .seat-right-upper { right: -4%; }
+
+.stud-layout-sidebar .stud-felt .seat-left,
+
+.stud-layout-sidebar .stud-felt .seat-right { top: 15%; }
+
+.stud-layout-sidebar .stud-felt .seat-left-lower,
+
+.stud-layout-sidebar .stud-felt .seat-right-upper { top: 56%; }
+
+
+
+/* Keep the larger avatar rings; restore the earlier 39px card width. */
+
+.stud-layout-sidebar .stud-avatar-frame { width: 62px; height: 62px; border-width: 4px; }
+
+.stud-layout-sidebar .stud-empty-avatar { width: 52px; height: 52px; }
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards {
+
+  --card-width: 39px;
+
+  --card-step: 39px;
+
+  display: flex;
+
+  gap: 0;
+
+}
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(4)) { --card-step: 24px; }
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(5)) { --card-step: 19px; }
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(6)) { --card-step: 16px; }
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards:has(.stud-card:nth-child(7)) { --card-step: 14px; }
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards .stud-card {
+
+  position: relative;
+
+  width: var(--card-width);
+
+  min-width: var(--card-width);
+
+  flex: 0 0 var(--card-width);
+
+  margin-left: calc(var(--card-step) - var(--card-width));
+
+}
+
+.stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards .stud-card:first-child { margin-left: 0; }
+
+.stud-layout-sidebar .stud-actions {
+
+  display: grid;
+
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+
+  gap: 9px;
+
+  margin-top: 76px;
+
+}
+
+.stud-layout-sidebar .stud-actions button { min-width: 0; }
+
+.stud-layout-sidebar .stud-action-help {
+
+  margin: 10px 0 0;
+
+  color: #bfaad9;
+
+  font-size: 13px;
+
+  text-align: center;
+
+}
+
+
+
+/* All auxiliary UI is now in one useful, compact right column. */
+
+.stud-layout-sidebar .stud-game-sidebar {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+
+  min-width: 0;
+
+  padding-top: 40px;
+
+}
+
+.stud-layout-sidebar .stud-game-sidebar .stud-panel {
+
+  width: 100%;
+
+  min-width: 0;
+
+  padding: 14px;
+
+}
+
+.stud-layout-sidebar .stud-game-sidebar .stud-panel h2 {
+
+  font-size: 17px;
+
+  margin-bottom: 9px;
+
+}
+
+.stud-layout-sidebar .stud-table-info dl { margin: 0 0 10px; }
+
+.stud-layout-sidebar .stud-table-info dl > div { padding-block: 3px; }
+
+.stud-layout-sidebar .stud-table-leave { width: 100%; }
+
+.stud-layout-sidebar .stud-sidebar-status {
+
+  margin: 0 0 10px;
+
+  font-size: 12px;
+
+  color: #c5b1dd;
+
+}
+
+.stud-layout-sidebar .stud-players-panel ul { margin: 0; }
+
+.stud-layout-sidebar .stud-players-panel li { padding-block: 5px; }
+
+.stud-layout-sidebar .stud-chat-column { min-width: 0; width: 100%; }
+
+.stud-layout-sidebar .stud-chat-panel {
+
+  display: flex;
+
+  flex-direction: column;
+
+  height: clamp(230px, 29vh, 315px);
+
+  min-height: 0;
+
+  max-height: none;
+
+}
+
+.stud-layout-sidebar .stud-chat-messages {
+
+  flex: 1;
+
+  min-height: 0;
+
+  overflow-y: auto;
+
+}
+
+.stud-layout-sidebar .stud-chat-form { flex-shrink: 0; }
+
+.stud-layout-sidebar .stud-chat-note { font-size: 11px; }
+
+.stud-header-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+
+
+
+/* Shorter laptop viewports: prioritize keeping chat within view. */
+
+@media (max-height: 850px) and (min-width: 1001px) {
+
+  .stud-layout-sidebar .stud-game-sidebar { padding-top: 0; gap: 8px; }
+
+  .stud-layout-sidebar .stud-game-sidebar .stud-panel { padding: 11px; }
+
+  .stud-layout-sidebar .stud-chat-panel { height: 215px; }
+
+  .stud-layout-sidebar .stud-game-sidebar .stud-panel h2 { margin-bottom: 6px; }
+
+}
+
+
+
+/* Smaller screens: full-width table first, chat directly below. */
+
+@media (max-width: 1000px) {
+
+  .stud-layout-sidebar .stud-play-row { grid-template-columns: minmax(0,1fr); }
+
+  .stud-layout-sidebar .stud-game-area { padding-inline: 18px; }
+
+  .stud-layout-sidebar .stud-game-sidebar {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(0,1fr));
+
+    padding-top: 0;
+
+  }
+
+  .stud-layout-sidebar .stud-chat-column { grid-column: 1 / -1; }
+
+  .stud-layout-sidebar .stud-chat-panel { height: 260px; }
+
+}
+
+@media (max-width: 600px) {
+
+  .stud-layout-sidebar .stud-felt { height: 430px; }
+
+  .stud-layout-sidebar .stud-game-sidebar { grid-template-columns: 1fr; }
+
+  .stud-layout-sidebar .stud-chat-column { grid-column: auto; }
+
+  .stud-layout-sidebar .stud-actions { grid-template-columns: repeat(3,minmax(0,1fr)); }
+
+  .stud-layout-sidebar .stud-avatar-frame { width: 40px; height: 40px; }
+
+  .stud-layout-sidebar .stud-felt .stud-seat-floating .stud-hole-cards { --card-width: 30px; --card-step: 30px; }
+
+}
+
+
+
+/* Cleaner table: game metadata lives above, only the pot remains centered. */
+
+.stud-layout-sidebar .stud-round-summary {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  justify-content: center;
+
+  align-items: center;
+
+  gap: 6px 12px;
+
+  width: fit-content;
+
+  max-width: 100%;
+
+  margin: 0 auto 22px;
+
+  padding: 8px 14px;
+
+  font-size: 12px;
+
+}
+
+.stud-layout-sidebar .stud-round-summary span { color: #d7c4ec; font-weight: 500; }
+
+.stud-layout-sidebar .stud-seat-countdown { background: #6843a4; color: white; }
+
+/* Realistic casino poker chips */
+
+
+
+.stud-layout-sidebar .stud-board.poker-pot-area {
+
+  gap: 8px;
+
+  width: 220px;
+
+  max-width: 220px;
+
+}
+
+
+
+.stud-layout-sidebar .casino-pot-chips {
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  align-items: flex-end;
+
+  min-height: 79px;
+
+  flex-wrap: wrap;
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-stack {
+
+  --chip-base: #f1eee8;
+
+  --chip-dark: #b9b4ab;
+
+  --chip-light: #fff;
+
+
+
+  position: relative;
+
+  display: inline-block;
+
+  width: 42px;
+
+  height: 76px;
+
+  filter: drop-shadow(0 5px 3px rgba(0,0,0,.45));
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-green {
+
+  --chip-base: #23744d;
+
+  --chip-dark: #0c3c29;
+
+  --chip-light: #d9f5df;
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-blue {
+
+  --chip-base: #2768b8;
+
+  --chip-dark: #15355d;
+
+  --chip-light: #dceeff;
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-red {
+
+  --chip-base: #b93445;
+
+  --chip-dark: #681925;
+
+  --chip-light: #ffe0e0;
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-white {
+
+  --chip-base: #e9e4d8;
+
+  --chip-dark: #918a7d;
+
+  --chip-light: #fff;
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip {
+
+  position: absolute;
+
+  left: 1px;
+
+  bottom: calc(20px + var(--layer) * 7px);
+
+  width: 39px;
+
+  height: 16px;
+
+  border-radius: 50%;
+
+  border: 1px solid var(--chip-light);
+
+
+
+  background: radial-gradient(
+
+    ellipse at 48% 40%,
+
+    var(--chip-base) 0 28%,
+
+    var(--chip-light) 29% 34%,
+
+    var(--chip-dark) 35% 38%,
+
+    var(--chip-base) 39% 100%
+
+  );
+
+
+
+  box-shadow:
+
+    0 3px 0 var(--chip-dark),
+
+    0 5px 0 var(--chip-light),
+
+    0 7px 2px rgba(0,0,0,.42);
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip::before {
+
+  content: "";
+
+  position: absolute;
+
+  inset: 1px;
+
+  border-radius: 50%;
+
+
+
+  background: repeating-conic-gradient(
+
+    from 12deg,
+
+    transparent 0 28deg,
+
+    var(--chip-light) 28deg 40deg,
+
+    transparent 40deg 90deg
+
+  );
+
+
+
+  -webkit-mask: radial-gradient(
+
+    ellipse,
+
+    transparent 0 62%,
+
+    #000 68% 100%
+
+  );
+
+
+
+  mask: radial-gradient(
+
+    ellipse,
+
+    transparent 0 62%,
+
+    #000 68% 100%
+
+  );
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-value {
+
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  z-index: 2;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  color: white;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+
+}
+
+
+
+.stud-layout-sidebar .casino-chip-white .casino-chip-value {
+
+  color: #292331;
+
+  text-shadow: none;
+
+}
+
+
+/* Visible, shrinking countdown ring for the active seat. */
+.stud-layout-sidebar .stud-avatar-frame {
+  position: relative;
+  isolation: isolate;
+}
+
+.stud-layout-sidebar .stud-avatar-timer-ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--timer-color, #b77aff) var(--timer-progress, 100%),
+    rgba(255, 255, 255, 0.15) 0
+  );
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+}
+
+.stud-layout-sidebar .stud-avatar-frame .stud-avatar-image {
+  position: relative;
+  z-index: 1;
+}

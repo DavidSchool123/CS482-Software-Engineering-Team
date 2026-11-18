@@ -3,11 +3,12 @@ const mongoose = require('mongoose');
 const GameService = require('../service/GameService');
 const TableDao = require('../model/TableDao');
 const GameDao = require('../model/GameDao');
+const GameActionEvent = require('../model/GameActionEvent');
 const UserDao = require('../model/UserDao');
 const { performBettingAction } = require('../service/BettingService');
 const { runBotTurns } = require('../service/BotService');
 const { getVisiblePlayers } = require('../service/GameViewService');
-const { scheduleTurnTimer } = require('../service/PlayerActivityService');
+const { scheduleTurnTimer, cancelTurnTimer, getTurnDeadline } = require('../service/PlayerActivityService');
 
 // --------------------------------------------------
 // P15 / P42 - Start a new Seven-Card Stud game
@@ -238,6 +239,18 @@ exports.getGame = async function (req, res) {
       .map(id => String(id))
       .filter(id => !activePlayerIds.has(id));
 
+    // Recent, committed actions shared by players and spectators.
+    // Limit history and return in chronological order for the UI.
+    const actionEvents = (await GameActionEvent.find({ gameId: game._id })
+      .sort({ _id: -1 }).limit(40).lean()).reverse().map(event => ({
+        id: String(event._id),
+        playerId: event.playerId,
+        action: event.action,
+        amount: event.amount,
+        street: event.street,
+        at: event.createdAt
+      }));
+
     // ----------------------------------------------
     // Return game state
     // ----------------------------------------------
@@ -258,6 +271,7 @@ exports.getGame = async function (req, res) {
       currentBet: game.CurrentBet,
       currentTurnPlayerId: game.CurrentTurnPlayerId,
       lastRaiseAmount: game.LastRaiseAmount,
+      turnDeadline: getTurnDeadline(game._id),
       raiseCount: game.RaiseCount,
       bettingRoundComplete: game.BettingRoundComplete,
 
@@ -269,6 +283,7 @@ exports.getGame = async function (req, res) {
 
       // View Results - Player names
       playerNames,
+      actionEvents,
 
       // P50 / P51 - Winning hands and payouts
       handResults: (game.HandResults || []).map(
@@ -382,6 +397,9 @@ exports.performBettingAction = async function (req, res) {
       action
     );
 
+    // The player has acted, so their previous turn is over.
+    cancelTurnTimer(gameId);
+
     // Continue any bot turns.
     const { game: activeGame, actions: botActions } =
       await runBotTurns(gameId);
@@ -399,6 +417,7 @@ exports.performBettingAction = async function (req, res) {
       pot: activeGame.Pot,
       currentBet: activeGame.CurrentBet,
       currentTurnPlayerId: activeGame.CurrentTurnPlayerId,
+      turnDeadline: getTurnDeadline(activeGame._id),
       bettingRoundComplete: activeGame.BettingRoundComplete,
       raiseCount: activeGame.RaiseCount,
       botActions,

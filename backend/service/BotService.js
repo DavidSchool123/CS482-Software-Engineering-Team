@@ -1,3 +1,4 @@
+
 const GameDao = require('../model/GameDao');
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
@@ -48,9 +49,14 @@ function chooseBotAction(game, player, table) {
   const strength = getHandStrength(player.Cards);
 
   if (amountToCall > 0) {
-    const potOdds = amountToCall / Math.max(1, game.Pot + amountToCall);
+    const potOdds = amountToCall / Math.max(
+      1,
+      game.Pot + amountToCall
+    );
 
-    return strength >= 2 || potOdds <= 0.22 ? 'call' : 'fold';
+    return strength >= 2 || potOdds <= 0.22
+      ? 'call'
+      : 'fold';
   }
 
   const stakes = TABLE_LEVELS[table.Level];
@@ -59,7 +65,9 @@ function chooseBotAction(game, player, table) {
     throw new Error('Invalid table level');
   }
 
-  const betSize = game.Street <= 4 ? stakes.smallBet : stakes.bigBet;
+  const betSize = game.Street <= 4
+    ? stakes.smallBet
+    : stakes.bigBet;
 
   if (
     game.CurrentBet === 0 &&
@@ -73,6 +81,10 @@ function chooseBotAction(game, player, table) {
   return 'check';
 }
 
+/**
+ * Bots act immediately until the game reaches
+ * a human turn or the hand stops.
+ */
 async function runBotTurns(gameId) {
   const maxActions = 36;
   const actions = [];
@@ -88,6 +100,8 @@ async function runBotTurns(gameId) {
 
     if (
       game.Status !== 'In Progress' ||
+      game.BettingRoundComplete ||
+      game.AwaitingNextRound ||
       typeof currentPlayerId !== 'string' ||
       !currentPlayerId.startsWith('bot-')
     ) {
@@ -109,8 +123,13 @@ async function runBotTurns(gameId) {
     }
 
     const action = chooseBotAction(game, player, table);
+
     await performBettingAction(gameId, currentPlayerId, action);
-    actions.push({ playerId: currentPlayerId, action });
+
+    actions.push({
+      playerId: currentPlayerId,
+      action,
+    });
   }
 
   throw new Error('Automated player action limit exceeded');
