@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const UserDao = require('../model/UserDao');
 const TableDao = require('../model/TableDao');
+const GameDao = require('../model/GameDao');
 const TABLE_LEVELS = require('../model/tableLevels');
 
 async function joinTable(tableId, userId, buyIn) {
@@ -18,12 +19,12 @@ async function joinTable(tableId, userId, buyIn) {
         throw new Error('Table not found');
       }
 
-      // If already seated, do not deduct chips again.
+      // Reconnecting players keep their existing seat and chips.
       const isAlreadySeated = table.UserIds.some(
         id => id.toString() === userId.toString()
       );
 
-      if (isAlreadySeated) {
+      if (isAlreadySeated && table.Status !== 'Closed') {
         result = {
           joinCode: table.JoinCode,
           alreadySeated: true
@@ -31,9 +32,28 @@ async function joinTable(tableId, userId, buyIn) {
         return;
       }
 
-      // Players can only join waiting tables.
-      if (table.Status !== 'Waiting') {
-        throw new Error('Cannot join a game already in progress');
+      if (table.Status === 'Closed') {
+        throw new Error('Table is closed');
+      }
+
+      if (table.Status === 'In Progress') {
+        const game = await GameDao.findById(
+          table.CurrentGameID,
+          session
+        );
+
+        if (
+          !game ||
+          game.Status !== 'Completed' ||
+          !game.NextHandAt ||
+          new Date(game.NextHandAt).getTime() <= Date.now()
+        ) {
+          throw new Error(
+            'Please wait until the current hand finishes'
+          );
+        }
+      } else if (table.Status !== 'Waiting') {
+        throw new Error('Table is not available');
       }
 
       const stakes = TABLE_LEVELS[table.Level];
@@ -42,7 +62,6 @@ async function joinTable(tableId, userId, buyIn) {
         throw new Error('Invalid table level');
       }
 
-      // Validate the requested buy-in.
       if (
         !Number.isInteger(buyIn) ||
         buyIn < stakes.minBuyIn ||
@@ -53,7 +72,12 @@ async function joinTable(tableId, userId, buyIn) {
         );
       }
 
-      // Deduct chips from the user's account.
+      // Check whether any human seat is available.
+      // Bots may be replaced when the table is full.
+      if (table.UserIds.length >= table.Capacity) {
+        throw new Error('Table is full');
+      }
+
       const updatedUser = await UserDao.deductChips(
         userId,
         buyIn,
@@ -64,7 +88,6 @@ async function joinTable(tableId, userId, buyIn) {
         throw new Error('Insufficient account chips');
       }
 
-      // Add player and create their table chip stack.
       const updatedTable = await TableDao.addPlayer(
         tableId,
         userId,
@@ -74,7 +97,7 @@ async function joinTable(tableId, userId, buyIn) {
 
       if (!updatedTable) {
         throw new Error(
-          'Unable to join table. It may be full or already started.'
+          'Unable to join table. Please try again between hands.'
         );
       }
 

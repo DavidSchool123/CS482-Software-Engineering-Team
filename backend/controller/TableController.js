@@ -1,4 +1,13 @@
 
+
+const { leaveTable } = require('../service/LeaveTableService');
+const { runBotTurns } = require('../service/BotService');
+const {
+  cancelTurnTimer,
+  scheduleTurnTimer
+} = require('../service/PlayerActivityService');
+
+
 const mongoose = require('mongoose');
 const TableDao = require('../model/TableDao');
 const TABLE_LEVELS = require('../model/tableLevels');
@@ -226,6 +235,11 @@ exports.joinTable = async function(req, res) {
       'Insufficient account chips': 400,
       'Cannot join a game already in progress': 409,
       'Unable to join table. It may be full or already started.': 409,
+      'Table is closed': 409,
+      'Table is not available': 409,
+      'Table is full': 409,
+      'Please wait until the current hand finishes': 409,
+      'Unable to join table. Please try again between hands.': 409,
     };
 
     const status =
@@ -273,6 +287,60 @@ exports.findTableByCode = async function(req, res) {
     });
   }
 };
+
+// Leave a table. If the player is in a game, the game may continue with bots.
+exports.leaveTable = async function(req, res) {
+  const userId = req.session?.userId;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: 'You must be logged in to leave a table'
+    });
+  }
+
+  const { tableId } = req.params;
+
+  if (!mongoose.isValidObjectId(tableId)) {
+    return res.status(400).json({
+      message: 'Invalid table ID'
+    });
+  }
+
+  try {
+    const result = await leaveTable(tableId, userId);
+
+    if (result.gameId) {
+      cancelTurnTimer(result.gameId);
+
+      if (!result.tableClosed &&
+          result.gameStatus === 'In Progress') {
+        try {
+          const { game } = await runBotTurns(result.gameId);
+
+          if (game.Status === 'In Progress') {
+            scheduleTurnTimer(game);
+          }
+        } catch (error) {
+          console.error(
+            'Unable to resume game after departure:',
+            error
+          );
+        }
+      }
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error leaving table:', error);
+
+    return res.status(error.status || 500).json({
+      message: error.status
+        ? error.message
+        : 'Unable to leave table'
+    });
+  }
+};
+
 
 // Retrieve a table by ID for spectator access.
 // Non-players may only observe public tables.
@@ -323,6 +391,46 @@ exports.getTableForSpectating = async function(req, res) {
 
     return res.status(500).json({
       message: 'Unable to retrieve table',
+    });
+  }
+};
+
+exports.heartbeat = async function(req, res) {
+  const userId = req.session?.userId;
+  const { tableId } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: 'You must be logged in.'
+    });
+  }
+
+  if (!mongoose.isValidObjectId(tableId)) {
+    return res.status(400).json({
+      message: 'Invalid table ID.'
+    });
+  }
+
+  try {
+    const table = await TableDao.updatePlayerPresence(
+      tableId,
+      userId
+    );
+
+    if (!table) {
+      return res.status(403).json({
+        message: 'You are not seated at this table.'
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Heartbeat received.'
+    });
+  } catch (error) {
+    console.error('Heartbeat failed:', error);
+
+    return res.status(500).json({
+      message: 'Unable to update player presence.'
     });
   }
 };

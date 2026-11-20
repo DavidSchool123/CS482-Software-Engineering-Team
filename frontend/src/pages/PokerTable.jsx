@@ -8,6 +8,7 @@ import {
   Link,
 
   useParams,
+  useNavigate,
 
   useSearchParams,
 
@@ -348,6 +349,7 @@ function PokerSeat({
 function Table() {
 
   const { tableId: joinCode } = useParams();
+  const navigate = useNavigate();
 
 
 
@@ -370,7 +372,50 @@ function Table() {
 
 
   const [table, setTable] = useState(null);
+  const [leavingTable, setLeavingTable] = useState(false);
 
+  // Keep the player's seat reserved while their table page is open.
+  useEffect(() => {
+    if (!table?.id || !table?.isPlayer) return undefined;
+
+    let stopped = false;
+    let sending = false;
+
+    async function sendHeartbeat() {
+      if (stopped || sending) return;
+
+      sending = true;
+
+      try {
+        const response = await fetch(
+          `${API_URL}/api/tables/${table.id}/heartbeat`,
+          { method: 'POST', credentials: 'include' }
+        );
+
+        if (!response.ok && !stopped) {
+          console.warn('Table Heartbeat failed:', response.status);
+        }
+      } catch (error) {
+        if(!stopped) {
+          console.error('Unable to send heartbeat:', error);
+        }
+      } finally {
+        sending = false;
+      }
+    }
+
+    // Send immediately, then every 10 seconds.
+    sendHeartbeat();
+
+    const intervalId = window.setInterval(sendHeartbeat, 10000);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(intervalId);
+    };
+  }, [table?.id, table?.isPlayer]);
+
+    
   const [game, setGame] = useState(null);
 
 
@@ -620,10 +665,30 @@ function Table() {
 
 
 
-  function showNotImplemented(feature) {
+  async function handleLeaveTable() {
+    if (!table?.id || leavingTable || !table.isPlayer) return;
 
-    setGameNotice(`${feature} is not available yet.`);
+    setLeavingTable(true);
 
+    try {
+      const response = await fetch(`${API_URL}/api/tables/${table.id}/leave`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Unable to leave table.');
+      }
+
+      // The server has removed our seat and refunded remaining table chips.
+      navigate('/lobby', { replace: true });
+    } catch (error) {
+      console.error('Unable to leave table:', error);
+      setGameNotice(error.message || 'Unable to leave table.');
+      setLeavingTable(false);
+    }
   }
 
 
@@ -2070,11 +2135,12 @@ function Table() {
 
               className="stud-secondary-button stud-table-leave"
 
-              onClick={() => showNotImplemented('Leaving the table')}
+              onClick={handleLeaveTable}
+              disabled={leavingTable}
 
             >
 
-              Leave Table
+              {leavingTable ? 'Leaving...' : 'Leave Table'}
 
             </button>
 

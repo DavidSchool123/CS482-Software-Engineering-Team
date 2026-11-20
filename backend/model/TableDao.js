@@ -27,6 +27,27 @@ const tableSchema = new mongoose.Schema({
     },
   ],
 
+  // Tracks when each seated human player was last active.
+  // Used for the 60-second reconnect grace period.
+  PlayerPresence: {
+    type: [
+      {
+        _id: false,
+
+        PlayerId: { 
+          type: String,
+          required: true, 
+        },
+
+        LastSeenAt: {
+          type: Date,
+          required: true,
+        },
+      },
+    ],
+    default: [],
+  },
+
   // Tracks each player's remaining chips at the table.
   // Supports both registered/guest players and bots.
   PlayerStacks: {
@@ -221,46 +242,87 @@ exports.create = async function(tableData, session = null) {
  * Add a player to a waiting table.
  * Prevents duplicate joins and joining a full table.
  */
+
 exports.addPlayer = async function(
   tableId,
   userId,
   buyIn,
   session
 ) {
-  return await TableModel.findOneAndUpdate(
-    {
-      _id: tableId,
-      Status: 'Waiting',
-      UserIds: { $ne: userId },
-      $expr: {
-        $lt: [
-          {
-            $add: [
-              { $size: '$UserIds' },
-              '$BotCount',
-            ],
-          },
-          '$Capacity',
-        ],
-      },
-    },
-    {
-      $addToSet: {
-        UserIds: userId,
-      },
-      $push: {
-        PlayerStacks: {
-          PlayerId: userId.toString(),
-          Chips: buyIn,
-        },
-      },
-    },
-    {
-      new: true,
-      session,
-      runValidators: true,
-    }
+  const table = await TableModel.findById(tableId).session(session);
+
+  if (!table || table.Status === 'Closed') {
+    return null;
+  }
+
+  const isAlreadySeated = table.UserIds.some(
+    id => id.toString() === userId.toString()
   );
+
+  if (isAlreadySeated) {
+    return null;
+  }
+
+  // Only allow joining a waiting table or between hands.
+  if (table.Status === 'In Progress') {
+    const GameDao = require('./GameDao');
+
+    const game = await GameDao.findById(
+      table.CurrentGameID,
+      session
+    );
+
+    if (
+      !game ||
+      game.Status !== 'Completed' ||
+      !game.NextHandAt ||
+      new Date(game.NextHandAt).getTime() <= Date.now()
+    ) {
+      return null;
+    }
+  } else if (table.Status !== 'Waiting') {
+    return null;
+  }
+
+  const humanCount = table.UserIds.length;
+  const totalSeats = humanCount + table.BotCount;
+
+  if (humanCount >= table.Capacity) {
+    return null;
+  }
+
+  // If a seat is empty, use it first.
+  // Otherwise, replace the highest-numbered bot.
+  if (totalSeats >= table.Capacity) {
+    if (table.BotCount === 0) {
+      return null;
+    }
+
+    const removedBotId =
+      `bot-${table._id}-${table.BotCount}`;
+
+    table.PlayerStacks = table.PlayerStacks.filter(
+      stack => stack.PlayerId !== removedBotId
+    );
+
+    table.BotCount -= 1;
+  }
+
+  table.UserIds.push(userId);
+
+  table.PlayerStacks.push({
+    PlayerId: userId.toString(),
+    Chips: buyIn
+  });
+
+  table.PlayerPresence.push({
+    PlayerId: userId.toString(),
+    LastSeenAt: new Date()
+  });
+
+  await table.save({ session });
+
+  return table;
 };
 
 /**
@@ -302,5 +364,68 @@ exports.deductPlayerChips = async function(
     }
   );
 };
+
+/**
+ * Update a seated player's last-seen timestamp.
+ * Returns null if the player is no longer seated.
+ */
+exports.updatePlayerPresence = async function(tableId, userId) {
+  const playerId = String(userId);
+  const now = new Date();
+
+  const updated = await TableModel.findOneAndUpdate(
+    {
+      _id: tableId,
+      UserIds: userId,
+      'PlayerPresence.PlayerId': playerId,
+      Status: { $ne: 'Closed' }
+    },
+    {
+      $set: {
+        'PlayerPresence.$.LastSeenAt': now
+      }
+    },
+    { new: true }
+  );
+
+  if (updated) return updated;
+
+  // Initialize presence for existing tables created
+  // before this field was introduced.
+  return await TableModel.findOneAndUpdate(
+    {
+      _id: tableId,
+      UserIds: userId,
+      Status: { $ne: 'Closed' },
+      'PlayerPresence.PlayerId': { $ne: playerId }
+    },
+    {
+      $push: {
+        PlayerPresence: {
+          PlayerId: playerId,
+          LastSeenAt: now
+        }
+      }
+    },
+    { new: true }
+  );
+};
+
+
+/**
+ * Find active tables containing at least one
+ * expired player presence timestamp.
+ */
+exports.findTablesWithInactivePlayers = async function(cutoff) {
+  return await TableModel.find({
+    Status: { $ne: 'Closed' },
+    PlayerPresence: {
+      $elemMatch: {
+        LastSeenAt: { $lte: cutoff }
+      }
+    }
+  });
+};
+
 
 module.exports.TableModel = TableModel;
