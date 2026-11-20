@@ -16,17 +16,33 @@ async function checkCompletedHands() {
   checking = true;
 
   try {
+    const startTime = Date.now();
     const now = new Date();
 
-    // Find completed hands whose countdown has expired.
+    // Only consider tables that are currently running.
+    const activeTables = await TableDao.TableModel.find({
+      Status: 'In Progress',
+      CurrentGameID: { $ne: null }
+    }).select('_id CurrentGameID');
+
+    if (activeTables.length === 0) {
+      return;
+    }
+
+    // Check only the current games of active tables.
+    const currentGameIds = activeTables.map(
+      table => table.CurrentGameID
+    );
+
     const completedGames = await GameDao.GameModel.find({
+      _id: { $in: currentGameIds },
       Status: 'Completed',
       NextHandAt: { $lte: now }
-    }).select('_id TableId');
+    }).select('_id TableId NextHandAt');
 
     for (const completedGame of completedGames) {
       try {
-        // Only advance the game currently linked to its table.
+        // Confirm that the table still references this game.
         const table = await TableDao.findById(
           completedGame.TableId
         );
@@ -40,25 +56,48 @@ async function checkCompletedHands() {
           continue;
         }
 
-        // The service validates the countdown and
-        // creates the next hand transactionally.
+        const handStartTime = Date.now();
+
+        console.log(
+          '[Next Hand] Countdown expired:',
+          completedGame._id.toString()
+        );
+
+        // Create the next hand transactionally.
         const { game } = await GameService.startNextHand(
           table._id
         );
 
-        // Allow bots to take their turns.
+        console.log(
+          '[Next Hand] New game created:',
+          game._id.toString(),
+          '| Time:',
+          `${Date.now() - handStartTime}ms`
+        );
+
+        // Allow bots to act until a human turn or hand completion.
+        const botStartTime = Date.now();
+
         const { game: activeGame } = await runBotTurns(
           game._id
         );
 
-        // Start the timer for the human player's turn.
+        console.log(
+          '[Next Hand] Bot processing completed:',
+          `${Date.now() - botStartTime}ms`
+        );
+
+        // Schedule the next human turn.
         if (activeGame.Status === 'In Progress') {
           scheduleTurnTimer(activeGame);
         }
 
+        console.log(
+          '[Next Hand] Total hand processing:',
+          `${Date.now() - handStartTime}ms`
+        );
+
       } catch (error) {
-        // If there are insufficient eligible players,
-        // the completed hand remains available.
         if (
           error.message ===
           'Not enough players with chips to start another hand'
@@ -66,8 +105,6 @@ async function checkCompletedHands() {
           continue;
         }
 
-        // Another scheduler instance may have already
-        // advanced this table.
         if (
           error.message ===
           'Another request has already started the next hand'
@@ -76,16 +113,26 @@ async function checkCompletedHands() {
         }
 
         console.error(
-          'Error advancing hand:',
+          '[Next Hand] Error advancing game:',
           completedGame._id,
           error
         );
       }
     }
 
-  } catch (error) {
-    console.error('Next-hand scheduler error:', error);
+    // Log only when there was work to process.
+    if (completedGames.length > 0) {
+      console.log(
+        '[SCHEDULER] Total cycle time:',
+        `${Date.now() - startTime}ms`
+      );
+    }
 
+  } catch (error) {
+    console.error(
+      '[SCHEDULER] Error:',
+      error
+    );
   } finally {
     checking = false;
   }
@@ -96,9 +143,11 @@ function startNextHandScheduler() {
 
   scheduler = setInterval(() => {
     checkCompletedHands().catch(error => {
-      console.error('Next-hand scheduler error:', error);
+      console.error('[SCHEDULER] Error:', error);
     });
   }, CHECK_INTERVAL_MS);
+
+  console.log('[SCHEDULER] Started');
 }
 
 function stopNextHandScheduler() {
@@ -106,6 +155,8 @@ function stopNextHandScheduler() {
     clearInterval(scheduler);
     scheduler = null;
   }
+
+  console.log('[SCHEDULER] Stopped');
 }
 
 module.exports = {

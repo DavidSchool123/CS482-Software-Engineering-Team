@@ -2106,139 +2106,67 @@ function Table() {
 
             <ul>
 
-              {isSpectator ? (
+              {game && players.length > 0 ? (
 
-                game && players.length > 0 ? (
+                players.map((player) => {
 
-                  players.map((player, index) => {
+                  const playerId = String(player.playerId);
 
-                    const playerName = displayPlayerName(player.playerId);
+                  const isBot = playerId.startsWith('bot-');
 
+                  const isYou = !isSpectator && me && playerId === String(me.playerId);
 
+                  const isCurrentTurn = playerId === String(game.currentTurnPlayerId);
 
-                    const isCurrentTurn =
+                  const chips = getPlayerChips(player.playerId);
 
-                      String(game.currentTurnPlayerId) ===
+                  return (
 
-                      String(player.playerId);
+                    <li key={playerId}>
 
+                      <span className="stud-player-icon" aria-hidden="true">
 
+                        {isBot ? '🤖' : '♙'}
 
-                    return (
+                      </span>
 
-                      <li key={player.playerId}>
+                      <span className="stud-player-name">
 
-                        <span
+                        {displayPlayerName(player.playerId)}{isBot ? ' (Bot)' : ''}
 
-                          className="stud-player-icon"
+                        {chips != null && ` · 🪙 ${chips}`}
 
-                          aria-hidden="true"
+                      </span>
 
-                        >
+                      <strong>
 
-                          ♙
+                        {player.hasFolded
 
-                        </span>
+                          ? 'Folded'
 
+                          : isCurrentTurn
 
+                            ? isYou ? 'Your turn' : 'Current turn'
 
-                        <span className="stud-player-name">
+                            : 'Playing'}
 
-                          {playerName}
+                      </strong>
 
-                        </span>
+                    </li>
 
+                  );
 
-
-                        <strong>
-
-                          {player.hasFolded
-
-                            ? 'Folded'
-
-                            : isCurrentTurn
-
-                              ? 'Current turn'
-
-                              : 'Playing'}
-
-                        </strong>
-
-                      </li>
-
-                    );
-
-                  })
-
-                ) : (
-
-                  <li>
-
-                    <span className="stud-player-icon" aria-hidden="true">
-
-                      ♙
-
-                    </span>
-
-
-
-                    <span className="stud-player-name">
-
-                      Waiting for players
-
-                    </span>
-
-
-
-                    <strong>Waiting</strong>
-
-                  </li>
-
-                )
+                })
 
               ) : (
 
                 <li>
 
-                  <span
+                  <span className="stud-player-icon" aria-hidden="true">♙</span>
 
-                    className="stud-player-icon"
+                  <span className="stud-player-name">Waiting for players</span>
 
-                    aria-hidden="true"
-
-                  >
-
-                    ♙
-
-                  </span>
-
-
-
-                  <span className="stud-player-name">
-
-                    You
-
-                  </span>
-
-
-
-                  <strong>
-
-                    {me?.hasFolded
-
-                      ? 'Folded'
-
-                      : isMyTurn
-
-                        ? 'Your turn'
-
-                        : game
-
-                          ? 'Dealt'
-
-                          : 'Waiting'}
-
-                  </strong>
+                  <strong>Waiting</strong>
 
                 </li>
 
