@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 
 const UserDao = require('../model/UserDao');
 const TableDao = require('../model/TableDao');
-const GameDao = require('../model/GameDao');
 const TABLE_LEVELS = require('../model/tableLevels');
 
 async function joinTable(tableId, userId, buyIn) {
@@ -19,12 +18,18 @@ async function joinTable(tableId, userId, buyIn) {
         throw new Error('Table not found');
       }
 
-      // Reconnecting players keep their existing seat and chips.
-      const isAlreadySeated = table.UserIds.some(
-        id => id.toString() === userId.toString()
+      if (table.Status === 'Closed') {
+        throw new Error('Table is closed');
+      }
+
+      const playerId = String(userId);
+
+      // Reconnecting does not require another buy-in.
+      const alreadySeated = table.UserIds.some(
+        id => String(id) === playerId
       );
 
-      if (isAlreadySeated && table.Status !== 'Closed') {
+      if (alreadySeated) {
         result = {
           joinCode: table.JoinCode,
           alreadySeated: true
@@ -32,27 +37,10 @@ async function joinTable(tableId, userId, buyIn) {
         return;
       }
 
-      if (table.Status === 'Closed') {
-        throw new Error('Table is closed');
-      }
-
-      if (table.Status === 'In Progress') {
-        const game = await GameDao.findById(
-          table.CurrentGameID,
-          session
-        );
-
-        if (
-          !game ||
-          game.Status !== 'Completed' ||
-          !game.NextHandAt ||
-          new Date(game.NextHandAt).getTime() <= Date.now()
-        ) {
-          throw new Error(
-            'Please wait until the current hand finishes'
-          );
-        }
-      } else if (table.Status !== 'Waiting') {
+      if (
+        table.Status !== 'Waiting' &&
+        table.Status !== 'In Progress'
+      ) {
         throw new Error('Table is not available');
       }
 
@@ -68,12 +56,12 @@ async function joinTable(tableId, userId, buyIn) {
         buyIn > stakes.maxBuyIn
       ) {
         throw new Error(
-          `Buy-in must be between ${stakes.minBuyIn} and ${stakes.maxBuyIn} chips`
+          `Buy-in must be between ${stakes.minBuyIn} ` +
+          `and ${stakes.maxBuyIn} chips`
         );
       }
 
-      // Check whether any human seat is available.
-      // Bots may be replaced when the table is full.
+      // Human capacity is independent of bot occupancy.
       if (table.UserIds.length >= table.Capacity) {
         throw new Error('Table is full');
       }
@@ -96,14 +84,14 @@ async function joinTable(tableId, userId, buyIn) {
       );
 
       if (!updatedTable) {
-        throw new Error(
-          'Unable to join table. Please try again between hands.'
-        );
+        throw new Error('Unable to join table');
       }
 
       result = {
         joinCode: updatedTable.JoinCode,
-        alreadySeated: false
+        alreadySeated: false,
+        waitingForNextHand:
+          updatedTable.Status === 'In Progress'
       };
     });
 

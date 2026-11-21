@@ -1,12 +1,10 @@
 
-
 const { leaveTable } = require('../service/LeaveTableService');
 const { runBotTurns } = require('../service/BotService');
 const {
   cancelTurnTimer,
   scheduleTurnTimer
 } = require('../service/PlayerActivityService');
-
 
 const mongoose = require('mongoose');
 const TableDao = require('../model/TableDao');
@@ -30,11 +28,13 @@ function formatTableForViewing(table, userId, includeJoinCode = false) {
     filledSeats:
       (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
     capacity: table.Capacity,
-    botCount: table.BotCount,
+    humanCount: table.UserIds?.length ?? 0,
+    botCount: table.BotCount ?? 0,
     level: table.Level,
     name: table.Name,
     status: table.Status,
-    playerCount: table.UserIds.length + table.BotCount,
+    playerCount:
+      (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
     stakes: TABLE_LEVELS[table.Level],
     currentGameId: table.CurrentGameID
       ? table.CurrentGameID.toString()
@@ -58,6 +58,8 @@ exports.getAllTables = async function(req, res) {
         name: table.Name,
         level: table.Level,
         capacity: table.Capacity,
+        humanCount: table.UserIds?.length ?? 0,
+        botCount: table.BotCount ?? 0,
         playerCount:
           (table.UserIds?.length ?? 0) + (table.BotCount ?? 0),
         status: table.Status,
@@ -199,7 +201,7 @@ exports.createTable = async function(req, res) {
   }
 };
 
-// Join a waiting table.
+// Join a table.
 // The service handles validation, chip deduction,
 // and adding the player in one transaction.
 exports.joinTable = async function(req, res) {
@@ -240,6 +242,7 @@ exports.joinTable = async function(req, res) {
       'Table is full': 409,
       'Please wait until the current hand finishes': 409,
       'Unable to join table. Please try again between hands.': 409,
+      'Unable to join table': 409,
     };
 
     const status =
@@ -288,7 +291,8 @@ exports.findTableByCode = async function(req, res) {
   }
 };
 
-// Leave a table. If the player is in a game, the game may continue with bots.
+// Leave a table. If the player is in a game,
+// the game may continue with bots.
 exports.leaveTable = async function(req, res) {
   const userId = req.session?.userId;
 
@@ -312,8 +316,10 @@ exports.leaveTable = async function(req, res) {
     if (result.gameId) {
       cancelTurnTimer(result.gameId);
 
-      if (!result.tableClosed &&
-          result.gameStatus === 'In Progress') {
+      if (
+        !result.tableClosed &&
+        result.gameStatus === 'In Progress'
+      ) {
         try {
           const { game } = await runBotTurns(result.gameId);
 
@@ -340,7 +346,6 @@ exports.leaveTable = async function(req, res) {
     });
   }
 };
-
 
 // Retrieve a table by ID for spectator access.
 // Non-players may only observe public tables.
@@ -395,6 +400,7 @@ exports.getTableForSpectating = async function(req, res) {
   }
 };
 
+// Update player presence for the reconnect grace period.
 exports.heartbeat = async function(req, res) {
   const userId = req.session?.userId;
   const { tableId } = req.params;

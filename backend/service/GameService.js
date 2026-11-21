@@ -242,6 +242,7 @@ async function startGame(tableId) {
 }
 
 // P53: Start another hand after the countdown.
+
 async function startNextHand(tableId) {
   const session = await mongoose.startSession();
 
@@ -250,7 +251,10 @@ async function startNextHand(tableId) {
     let sittingOutPlayerIds = [];
 
     await session.withTransaction(async () => {
-      const table = await TableDao.findById(tableId, session);
+      const table = await TableDao.findById(
+        tableId,
+        session
+      );
 
       if (!table) {
         throw new Error('Table not found');
@@ -269,7 +273,10 @@ async function startNextHand(tableId) {
         session
       );
 
-      if (!previousGame || previousGame.Status !== 'Completed') {
+      if (
+        !previousGame ||
+        previousGame.Status !== 'Completed'
+      ) {
         throw new Error('Previous hand is not completed');
       }
 
@@ -278,7 +285,9 @@ async function startNextHand(tableId) {
         new Date(previousGame.NextHandAt).getTime() >
           Date.now()
       ) {
-        throw new Error('Next hand countdown has not finished');
+        throw new Error(
+          'Next hand countdown has not finished'
+        );
       }
 
       const stakes = TABLE_LEVELS[table.Level];
@@ -287,14 +296,41 @@ async function startNextHand(tableId) {
         throw new Error('Invalid table level');
       }
 
+      // Apply deferred bot replacements now that
+      // the previous hand has completed.
+      const availableBotSeats = Math.max(
+        0,
+        table.Capacity - table.UserIds.length
+      );
+
+      if (table.BotCount > availableBotSeats) {
+        const previousBotCount = table.BotCount;
+
+        for (
+          let number = previousBotCount;
+          number > availableBotSeats;
+          number--
+        ) {
+          const botId =
+            `bot-${table._id}-${number}`;
+
+          table.PlayerStacks =
+            table.PlayerStacks.filter(
+              stack => stack.PlayerId !== botId
+            );
+        }
+
+        table.BotCount = availableBotSeats;
+
+        await table.save({ session });
+      }
+
       const allPlayers = getTablePlayers(table);
 
-      // Players need enough chips for both the ante
-      // and a possible bring-in.
-      const minimumRequired = stakes.ante + stakes.bringIn;
+      const minimumRequired =
+        stakes.ante + stakes.bringIn;
 
       const eligiblePlayers = [];
-
       sittingOutPlayerIds = [];
 
       for (const player of allPlayers) {
@@ -302,17 +338,25 @@ async function startNextHand(tableId) {
           item => item.PlayerId === player.id
         );
 
-        if (stack && stack.Chips >= minimumRequired) {
+        if (
+          stack &&
+          stack.Chips >= minimumRequired
+        ) {
           eligiblePlayers.push(player);
         } else {
           sittingOutPlayerIds.push(player.id);
         }
       }
 
-      // Do not start a hand with fewer than two players.
       if (eligiblePlayers.length < 2) {
         throw new Error(
           'Not enough players with chips to start another hand'
+        );
+      }
+
+      if (eligiblePlayers.length > table.Capacity) {
+        throw new Error(
+          'Player count exceeds table capacity'
         );
       }
 
@@ -323,7 +367,6 @@ async function startNextHand(tableId) {
         session
       );
 
-      // Only advance if the previous game is still current.
       const linkedTable = await TableDao.setNextGame(
         tableId,
         previousGame._id,

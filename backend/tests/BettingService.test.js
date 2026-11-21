@@ -1,9 +1,39 @@
 
 const mongoose = require('mongoose');
 
+jest.mock('../model/GameDao');
+jest.mock('../model/TableDao');
+jest.mock('../model/GameActionEvent', () => ({
+  create: jest.fn()
+}));
+
+jest.mock('../service/NextStreetService', () => ({
+  advanceRoundInGame: jest.fn()
+}));
+
+jest.mock('../service/HandEvaluationService', () => ({
+  findWinners: jest.fn()
+}));
+
+jest.mock('../service/SettlementService', () => ({
+  settleHand: jest.fn()
+}));
+
 const GameDao = require('../model/GameDao');
 const TableDao = require('../model/TableDao');
-const UserDao = require('../model/UserDao');
+const GameActionEvent = require('../model/GameActionEvent');
+
+const {
+  advanceRoundInGame
+} = require('../service/NextStreetService');
+
+const {
+  findWinners
+} = require('../service/HandEvaluationService');
+
+const {
+  settleHand
+} = require('../service/SettlementService');
 
 const {
   performBettingAction,
@@ -12,48 +42,23 @@ const {
   isBettingRoundComplete
 } = require('../service/BettingService');
 
-jest.mock('../model/GameDao');
-jest.mock('../model/TableDao');
-jest.mock('../model/UserDao');
-
-// Mock database sessions, but use the real
-// dealing and turn progression logic.
-jest.spyOn(mongoose, 'startSession').mockImplementation(
-  async () => ({
-    withTransaction: async callback => callback(),
-    endSession: jest.fn().mockResolvedValue(undefined)
-  })
-);
-
-describe('Betting Service - P16 and P49', () => {
+describe('BettingService - P16 and P49', () => {
   const gameId = '507f1f77bcf86cd799439011';
-  const tableId = '507f191e810c19729de860ea';
+  const tableId = '507f1f77bcf86cd799439012';
 
-  function createDeck() {
-    const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
-    const ranks = [
-      '2', '3', '4', '5', '6', '7', '8',
-      '9', '10', 'J', 'Q', 'K', 'A'
-    ];
+  let session;
+  let startSessionSpy;
+  let consoleSpy;
 
-    return suits.flatMap(suit =>
-      ranks.map(rank => ({ rank, suit }))
-    );
-  }
-
-  function createPlayer(
-    playerId,
-    roundContribution,
-    totalContribution,
-    cards
-  ) {
+  function createPlayer(id, overrides = {}) {
     return {
-      PlayerId: playerId,
-      Cards: cards,
-      RoundContribution: roundContribution,
-      TotalContribution: totalContribution,
+      PlayerId: id,
+      Cards: [],
       HasFolded: false,
-      HasActed: false
+      HasActed: false,
+      RoundContribution: 0,
+      TotalContribution: 0,
+      ...overrides
     };
   }
 
@@ -65,27 +70,35 @@ describe('Betting Service - P16 and P49', () => {
       Street: 3,
       CurrentBet: 2,
       CurrentTurnPlayerId: 'user2',
+      RaiseCount: 0,
+      Pot: 4,
       BettingRoundComplete: false,
       AwaitingNextRound: false,
-      RaiseCount: 0,
-      LastRaiseAmount: 0,
-      Pot: 4,
-      Deck: createDeck(),
-
       Players: [
-        createPlayer('user1', 2, 3, [
-          { rank: '2', suit: 'Hearts', faceUp: false },
-          { rank: '3', suit: 'Hearts', faceUp: false },
-          { rank: '4', suit: 'Hearts', faceUp: true }
-        ]),
-        createPlayer('user2', 0, 1, [
-          { rank: '5', suit: 'Clubs', faceUp: false },
-          { rank: '6', suit: 'Clubs', faceUp: false },
-          { rank: '7', suit: 'Clubs', faceUp: true }
-        ])
+        createPlayer('user1', {
+          RoundContribution: 2,
+          TotalContribution: 3,
+          HasActed: true
+        }),
+        createPlayer('user2', {
+          RoundContribution: 0,
+          TotalContribution: 1
+        })
       ],
-
       save: jest.fn().mockResolvedValue(undefined),
+      ...overrides
+    };
+  }
+
+  function createMockTable(overrides = {}) {
+    return {
+      _id: tableId,
+      Level: 'Low',
+      Status: 'In Progress',
+      PlayerStacks: [
+        { PlayerId: 'user1', Chips: 200 },
+        { PlayerId: 'user2', Chips: 200 }
+      ],
       ...overrides
     };
   }
@@ -93,656 +106,828 @@ describe('Betting Service - P16 and P49', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    session = {
+      withTransaction: jest.fn(async callback => {
+        await callback();
+      }),
+      endSession: jest.fn().mockResolvedValue(undefined)
+    };
+
+    startSessionSpy = jest.spyOn(
+      mongoose,
+      'startSession'
+    ).mockResolvedValue(session);
+
+    consoleSpy = jest.spyOn(
+      console,
+      'log'
+    ).mockImplementation(() => {});
+
     GameDao.findById.mockImplementation(
       async () => createMockGame()
     );
 
-    TableDao.findById.mockResolvedValue({
-      _id: tableId,
-      Level: 'Low',
-      UserIds: ['user1', 'user2'],
-      PlayerStacks: [
-        { PlayerId: 'user1', Chips: 100 },
-        { PlayerId: 'user2', Chips: 100 }
-      ],
-      save: jest.fn().mockResolvedValue(undefined)
-    });
-
-    TableDao.deductPlayerChips.mockResolvedValue({
-      _id: tableId
-    });
-
-    UserDao.creditChips.mockResolvedValue({
-      _id: 'user'
-    });
-  });
-
-  // ----------------------------------------
-  // Turn progression and betting round rules
-  // ----------------------------------------
-
-  test('player must act again after another player raises', async () => {
-    const game = createMockGame({
-      CurrentBet: 5,
-      CurrentTurnPlayerId: 'user2'
-    });
-
-    game.Players[0].RoundContribution = 5;
-    game.Players[0].HasActed = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'raise'
+    TableDao.findById.mockResolvedValue(
+      createMockTable()
     );
 
-    expect(result.CurrentBet).toBe(10);
-    expect(result.Players[0].HasActed).toBe(false);
-    expect(result.CurrentTurnPlayerId).toBe('user1');
-    expect(result.BettingRoundComplete).toBe(false);
-    expect(result.Street).toBe(3);
-  });
+    TableDao.deductPlayerChips.mockResolvedValue({});
 
-  test('rejects a fourth full raise', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({
-        CurrentBet: 20,
-        RaiseCount: 3
-      })
-    );
+    GameActionEvent.create.mockResolvedValue([]);
 
-    await expect(
-      performBettingAction(gameId, 'user2', 'raise')
-    ).rejects.toThrow('Maximum raises reached');
-  });
+    advanceRoundInGame.mockImplementation(game => {
+      game.Street += 1;
+      game.CurrentBet = 0;
+      game.RaiseCount = 0;
+      game.BettingRoundComplete = false;
+      game.AwaitingNextRound = false;
 
-  test('automatically advances when everyone has acted and matched', async () => {
-    const game = createMockGame();
+      game.Players.forEach(player => {
+        player.RoundContribution = 0;
+        player.HasActed = false;
+      });
 
-    game.Players[0].HasActed = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(result.Street).toBe(4);
-    expect(result.Status).toBe('In Progress');
-    expect(result.BettingRoundComplete).toBe(false);
-    expect(result.AwaitingNextRound).toBe(false);
-    expect(result.CurrentBet).toBe(0);
-    expect(result.CurrentTurnPlayerId).toBe('user1');
-
-    expect(result.Players[0].RoundContribution).toBe(0);
-    expect(result.Players[1].RoundContribution).toBe(0);
-    expect(result.Players.every(p => !p.HasActed)).toBe(true);
-
-    expect(result.Players[0].Cards).toHaveLength(4);
-    expect(result.Players[1].Cards).toHaveLength(4);
-    expect(result.Players[0].Cards[3].faceUp).toBe(true);
-    expect(result.Players[1].Cards[3].faceUp).toBe(true);
-
-    expect(result.Deck).toHaveLength(50);
-    expect(result.Pot).toBe(6);
-    expect(game.save).toHaveBeenCalledTimes(1);
-  });
-
-  test('folded players are skipped when advancing turns', async () => {
-    const game = createMockGame();
-
-    game.Players.push(
-      createPlayer('user3', 0, 1, [
-        { rank: '8', suit: 'Diamonds', faceUp: false },
-        { rank: '9', suit: 'Diamonds', faceUp: false },
-        { rank: '10', suit: 'Diamonds', faceUp: true }
-      ])
-    );
-
-    game.Players[2].HasFolded = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(result.CurrentTurnPlayerId).toBe('user1');
-    expect(result.Players[2].HasFolded).toBe(true);
-    expect(result.Players[2].Cards).toHaveLength(3);
-    expect(result.Street).toBe(3);
-  });
-
-  test('completing the bring-in does not count toward raise cap', async () => {
-    const game = await performBettingAction(
-      gameId, 'user2', 'raise'
-    );
-
-    expect(game.CurrentBet).toBe(5);
-    expect(game.RaiseCount).toBe(0);
-    expect(game.Players[1].RoundContribution).toBe(5);
-  });
-
-  // ----------------------------------------
-  // Existing betting action tests
-  // ----------------------------------------
-
-  test('uses small bet on Third Street', () => {
-    expect(
-      getBetSize({ smallBet: 5, bigBet: 10 }, 3)
-    ).toBe(5);
-  });
-
-  test('uses big bet on Fifth Street', () => {
-    expect(
-      getBetSize({ smallBet: 5, bigBet: 10 }, 5)
-    ).toBe(10);
-  });
-
-  test('fold marks the player as folded', async () => {
-    const table = await TableDao.findById(tableId);
-
-    const game = await performBettingAction(
-      gameId, 'user2', 'fold'
-    );
-
-    expect(game.Players[1].HasFolded).toBe(true);
-    expect(game.Status).toBe('Completed');
-    expect(game.CurrentTurnPlayerId).toBeNull();
-    expect(game.BettingRoundComplete).toBe(true);
-    expect(game.WinnerIds).toEqual(['user1']);
-    expect(game.save).toHaveBeenCalledTimes(1);
-
-    // Winner receives the 4-chip pot at the table.
-    expect(table.PlayerStacks[0].Chips).toBe(104);
-    expect(table.PlayerStacks[1].Chips).toBe(100);
-
-    expect(game.HandResults).toEqual([
-      {
-        PlayerId: 'user1',
-        AmountWon: 4,
-        HandName: null
-      }
-    ]);
-
-    expect(table.save).toHaveBeenCalledTimes(1);
-    expect(UserDao.creditChips).not.toHaveBeenCalled();
-  });
-
-  test('check succeeds when nothing is owed', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({ CurrentBet: 0 })
-    );
-
-    const game = await performBettingAction(
-      gameId, 'user2', 'check'
-    );
-
-    expect(game.Players[1].HasActed).toBe(true);
-    expect(game.Pot).toBe(4);
-    expect(TableDao.deductPlayerChips)
-      .not.toHaveBeenCalled();
-  });
-
-  test('check fails when facing a bet', async () => {
-    await expect(
-      performBettingAction(gameId, 'user2', 'check')
-    ).rejects.toThrow(
-      'Cannot check when facing a bet'
-    );
-  });
-
-  test('call deducts chips and updates contributions', async () => {
-    const game = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(TableDao.deductPlayerChips)
-      .toHaveBeenCalledWith(
-        tableId, 'user2', 2, expect.anything()
+      const nextActive = game.Players.find(
+        player => !player.HasFolded
       );
 
-    expect(game.Players[1].RoundContribution).toBe(2);
-    expect(game.Players[1].TotalContribution).toBe(3);
-    expect(game.Pot).toBe(6);
-  });
-
-  test('call fails when there is nothing to call', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({ CurrentBet: 0 })
-    );
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Nothing to call');
-  });
-
-  test('bet opens betting when CurrentBet is zero', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({ CurrentBet: 0 })
-    );
-
-    const game = await performBettingAction(
-      gameId, 'user2', 'bet'
-    );
-
-    expect(game.CurrentBet).toBe(5);
-    expect(game.Pot).toBe(9);
-    expect(game.Players[1].RoundContribution).toBe(5);
-  });
-
-  test('bet fails when betting is already open', async () => {
-    await expect(
-      performBettingAction(gameId, 'user2', 'bet')
-    ).rejects.toThrow(
-      'Cannot bet when a bet already exists'
-    );
-  });
-
-  test('raise completes the Third Street bring-in', async () => {
-    const game = await performBettingAction(
-      gameId, 'user2', 'raise'
-    );
-
-    expect(game.CurrentBet).toBe(5);
-    expect(game.Players[1].RoundContribution).toBe(5);
-    expect(game.Pot).toBe(9);
-  });
-
-  test('raise increases an existing full bet', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({ CurrentBet: 5 })
-    );
-
-    const game = await performBettingAction(
-      gameId, 'user2', 'raise'
-    );
-
-    expect(game.CurrentBet).toBe(10);
-    expect(game.Players[1].RoundContribution).toBe(10);
-    expect(game.Pot).toBe(14);
-  });
-
-  test('rejects an invalid action', async () => {
-    await expect(
-      performBettingAction(gameId, 'user2', 'dance')
-    ).rejects.toThrow('Invalid betting action');
-  });
-
-  test('rejects an action from the wrong player', async () => {
-    await expect(
-      performBettingAction(gameId, 'user1', 'call')
-    ).rejects.toThrow(
-      'It is not this player’s turn'
-    );
-  });
-
-  test('rejects actions when the game is completed', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({ Status: 'Completed' })
-    );
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Game is not in progress');
-  });
-
-  test('rejects an action from a folded player', async () => {
-    const game = createMockGame();
-    game.Players[1].HasFolded = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Player cannot act');
-  });
-
-  test('rejects a call when player has insufficient chips', async () => {
-    TableDao.deductPlayerChips.mockResolvedValue(null);
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Insufficient chips');
-  });
-
-  test('rejects an unknown game', async () => {
-    GameDao.findById.mockResolvedValue(null);
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Game not found');
-  });
-
-  test('rejects an unknown table', async () => {
-    TableDao.findById.mockResolvedValue(null);
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow('Table not found');
-  });
-
-  // ----------------------------------------
-  // P49: Additional progression tests
-  // ----------------------------------------
-
-  test('does not advance when betting is incomplete', async () => {
-    const game = createMockGame();
-
-    GameDao.findById.mockResolvedValue(game);
-
-    await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(game.Street).toBe(3);
-    expect(game.BettingRoundComplete).toBe(false);
-    expect(game.CurrentTurnPlayerId).toBe('user1');
-    expect(game.Players[0].Cards).toHaveLength(3);
-    expect(game.Players[1].Cards).toHaveLength(3);
-  });
-
-  test('rejects betting when next round is pending', async () => {
-    GameDao.findById.mockResolvedValue(
-      createMockGame({
-        AwaitingNextRound: true
-      })
-    );
-
-    await expect(
-      performBettingAction(gameId, 'user2', 'call')
-    ).rejects.toThrow(
-      'Betting round is not accepting actions'
-    );
-  });
-
-  test('seventh street finishes at showdown', async () => {
-    const game = createMockGame({
-      Street: 7,
-      CurrentBet: 10
+      game.CurrentTurnPlayerId =
+        nextActive?.PlayerId || null;
     });
 
-    game.Players[0].Cards = [
-      { rank: 'A', suit: 'Hearts', faceUp: false },
-      { rank: 'A', suit: 'Spades', faceUp: false },
-      { rank: '2', suit: 'Clubs', faceUp: true },
-      { rank: '3', suit: 'Diamonds', faceUp: true },
-      { rank: '4', suit: 'Hearts', faceUp: true },
-      { rank: '8', suit: 'Clubs', faceUp: true },
-      { rank: '9', suit: 'Spades', faceUp: false }
-    ];
+    findWinners.mockReturnValue(['user1']);
 
-    game.Players[1].Cards = [
-      { rank: 'K', suit: 'Hearts', faceUp: false },
-      { rank: 'K', suit: 'Spades', faceUp: false },
-      { rank: 'Q', suit: 'Clubs', faceUp: true },
-      { rank: 'J', suit: 'Diamonds', faceUp: true },
-      { rank: '10', suit: 'Hearts', faceUp: true },
-      { rank: '9', suit: 'Clubs', faceUp: true },
-      { rank: '8', suit: 'Spades', faceUp: false }
-    ];
-
-    game.Players[0].RoundContribution = 10;
-    game.Players[0].HasActed = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const table = await TableDao.findById(tableId);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(result.Status).toBe('Completed');
-    expect(result.Street).toBe(7);
-    expect(result.BettingRoundComplete).toBe(true);
-    expect(result.CurrentTurnPlayerId).toBeNull();
-    expect(result.WinnerIds).toEqual(['user2']);
-    expect(result.Deck).toHaveLength(52);
-
-    // The mocked deduction does not change the stack.
-    // User2 receives the full 14-chip pot.
-    expect(table.PlayerStacks[0].Chips).toBe(100);
-    expect(table.PlayerStacks[1].Chips).toBe(114);
-
-    expect(game.HandResults).toEqual([
-      {
-        PlayerId: 'user2',
-        AmountWon: 14,
-        HandName: 'Straight'
-      }
-    ]);
-
-    expect(table.save).toHaveBeenCalledTimes(1);
-    expect(UserDao.creditChips).not.toHaveBeenCalled();
+    settleHand.mockImplementation(async game => {
+      game.Status = 'Completed';
+      game.CurrentTurnPlayerId = null;
+    });
   });
 
-  test('folding to one player ends game without dealing', async () => {
-    const game = createMockGame({
-      Street: 5,
-      CurrentTurnPlayerId: 'user2'
+  afterEach(() => {
+    startSessionSpy.mockRestore();
+    consoleSpy.mockRestore();
+  });
+
+  // -----------------------------------------
+  // Helper functions
+  // -----------------------------------------
+
+  describe('Helper functions', () => {
+    test('getBetSize uses small bets on streets 3 and 4', () => {
+      const stakes = {
+        smallBet: 5,
+        bigBet: 10
+      };
+
+      expect(getBetSize(stakes, 3)).toBe(5);
+      expect(getBetSize(stakes, 4)).toBe(5);
     });
 
-    GameDao.findById.mockResolvedValue(game);
+    test('getBetSize uses big bets on streets 5 through 7', () => {
+      const stakes = {
+        smallBet: 5,
+        bigBet: 10
+      };
 
-    const result = await performBettingAction(
-      gameId, 'user2', 'fold'
-    );
-
-    expect(result.Status).toBe('Completed');
-    expect(result.BettingRoundComplete).toBe(true);
-    expect(result.CurrentTurnPlayerId).toBeNull();
-    expect(result.Deck).toHaveLength(52);
-  });
-
-  test('nextPlayer returns to a player who still owes chips', () => {
-    const players = [
-      {
-        PlayerId: 'user1',
-        HasFolded: false,
-        HasActed: true,
-        RoundContribution: 5
-      },
-      {
-        PlayerId: 'user2',
-        HasFolded: false,
-        HasActed: true,
-        RoundContribution: 10
-      }
-    ];
-
-    expect(
-      nextPlayer(players, 'user2', 10)
-    ).toBe('user1');
-  });
-
-  test('round completes only when active players match', () => {
-    const players = [
-      {
-        PlayerId: 'user1',
-        HasFolded: false,
-        HasActed: true,
-        RoundContribution: 10
-      },
-      {
-        PlayerId: 'user2',
-        HasFolded: false,
-        HasActed: false,
-        RoundContribution: 10
-      }
-    ];
-
-    expect(
-      isBettingRoundComplete(players, 10)
-    ).toBe(false);
-
-    players[1].HasActed = true;
-
-    expect(
-      isBettingRoundComplete(players, 10)
-    ).toBe(true);
-  });
-
-  test('folded players do not receive new cards', async () => {
-    const game = createMockGame();
-
-    game.Players.push(
-      createPlayer('user3', 0, 1, [
-        { rank: '8', suit: 'Diamonds', faceUp: false },
-        { rank: '9', suit: 'Diamonds', faceUp: false },
-        { rank: '10', suit: 'Diamonds', faceUp: true }
-      ])
-    );
-
-    game.Players[2].HasFolded = true;
-    game.Players[0].HasActed = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(result.Street).toBe(4);
-    expect(result.Players[0].Cards).toHaveLength(4);
-    expect(result.Players[1].Cards).toHaveLength(4);
-    expect(result.Players[2].Cards).toHaveLength(3);
-    expect(result.Deck).toHaveLength(50);
-  });
-
-  test('new betting round selects strongest exposed hand', async () => {
-    const game = createMockGame();
-
-    // Both players initially have one exposed card.
-    // The deck deals A and K as the next upcards.
-    game.Deck = [
-      { rank: 'K', suit: 'Spades' },
-      { rank: 'A', suit: 'Spades' }
-    ];
-
-    game.Players[0].HasActed = true;
-
-    GameDao.findById.mockResolvedValue(game);
-
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
-
-    expect(result.Street).toBe(4);
-    expect(result.CurrentTurnPlayerId).toBe('user1');
-    expect(result.Players[0].Cards[3].rank).toBe('A');
-    expect(result.Players[1].Cards[3].rank).toBe('K');
-  });
-
-  test('new betting round resets raise count', async () => {
-    const game = createMockGame({
-      RaiseCount: 2
+      expect(getBetSize(stakes, 5)).toBe(10);
+      expect(getBetSize(stakes, 6)).toBe(10);
+      expect(getBetSize(stakes, 7)).toBe(10);
     });
 
-    game.Players[0].HasActed = true;
+    test('nextPlayer skips folded players', () => {
+      const players = [
+        createPlayer('user1', { HasFolded: true }),
+        createPlayer('user2', { HasActed: true }),
+        createPlayer('user3')
+      ];
 
-    GameDao.findById.mockResolvedValue(game);
+      expect(
+        nextPlayer(players, 'user2', 0)
+      ).toBe('user3');
+    });
 
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
+    test('nextPlayer returns null when no action is needed', () => {
+      const players = [
+        createPlayer('user1', {
+          HasActed: true,
+          RoundContribution: 5
+        }),
+        createPlayer('user2', {
+          HasActed: true,
+          RoundContribution: 5
+        })
+      ];
 
-    expect(result.Street).toBe(4);
-    expect(result.RaiseCount).toBe(0);
-    expect(result.LastRaiseAmount).toBe(0);
+      expect(
+        nextPlayer(players, 'user1', 5)
+      ).toBeNull();
+    });
+
+    test('nextPlayer rejects an unknown current player', () => {
+      expect(() => nextPlayer(
+        [createPlayer('user1')],
+        'missing-player',
+        0
+      )).toThrow('Current player not found');
+    });
+
+    test('isBettingRoundComplete returns true when everyone has acted and matched', () => {
+      const players = [
+        createPlayer('user1', {
+          HasActed: true,
+          RoundContribution: 5
+        }),
+        createPlayer('user2', {
+          HasActed: true,
+          RoundContribution: 5
+        })
+      ];
+
+      expect(
+        isBettingRoundComplete(players, 5)
+      ).toBe(true);
+    });
+
+    test('isBettingRoundComplete ignores folded players', () => {
+      const players = [
+        createPlayer('user1', {
+          HasActed: true,
+          RoundContribution: 5
+        }),
+        createPlayer('user2', {
+          HasFolded: true
+        })
+      ];
+
+      expect(
+        isBettingRoundComplete(players, 5)
+      ).toBe(true);
+    });
+
+    test('isBettingRoundComplete returns false when a player still owes chips', () => {
+      const players = [
+        createPlayer('user1', {
+          HasActed: true,
+          RoundContribution: 5
+        }),
+        createPlayer('user2', {
+          HasActed: true,
+          RoundContribution: 2
+        })
+      ];
+
+      expect(
+        isBettingRoundComplete(players, 5)
+      ).toBe(false);
+    });
   });
 
-  // ----------------------------------------
-  // Full multi-player betting sequence
-  // ----------------------------------------
+  // -----------------------------------------
+  // Validation
+  // -----------------------------------------
 
-  test('handles a complete three-player betting sequence', async () => {
-    const game = createMockGame({
-      CurrentBet: 2,
-      CurrentTurnPlayerId: 'user2',
-      Pot: 5,
-      RaiseCount: 0,
-      BettingRoundComplete: false
+  describe('Action validation', () => {
+    test('rejects invalid actions before opening a transaction', async () => {
+      await expect(
+        performBettingAction(gameId, 'user2', 'dance')
+      ).rejects.toThrow('Invalid betting action');
+
+      expect(startSessionSpy).not.toHaveBeenCalled();
     });
 
-    game.Players[0].RoundContribution = 2;
-    game.Players[0].TotalContribution = 3;
+    test('rejects a missing game', async () => {
+      GameDao.findById.mockResolvedValue(null);
 
-    game.Players[1].RoundContribution = 0;
-    game.Players[1].TotalContribution = 1;
-
-    game.Players.push(
-      createPlayer('user3', 0, 1, [
-        { rank: '8', suit: 'Diamonds', faceUp: false },
-        { rank: '9', suit: 'Diamonds', faceUp: false },
-        { rank: '10', suit: 'Diamonds', faceUp: true }
-      ])
-    );
-
-    const table = await TableDao.findById(tableId);
-    table.UserIds.push('user3');
-    table.PlayerStacks.push({
-      PlayerId: 'user3',
-      Chips: 100
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow('Game not found');
     });
 
-    GameDao.findById.mockResolvedValue(game);
+    test('rejects a completed game', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          Status: 'Completed'
+        })
+      );
 
-    // User2 completes the bring-in.
-    await performBettingAction(
-      gameId, 'user2', 'raise'
-    );
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow('Game is not in progress');
+    });
 
-    expect(game.CurrentBet).toBe(5);
-    expect(game.Pot).toBe(10);
-    expect(game.CurrentTurnPlayerId).toBe('user3');
+    test('rejects actions during a completed betting round', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          BettingRoundComplete: true
+        })
+      );
 
-    // User3 raises to 10.
-    await performBettingAction(
-      gameId, 'user3', 'raise'
-    );
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow(
+        'Betting round is not accepting actions'
+      );
+    });
 
-    expect(game.CurrentBet).toBe(10);
-    expect(game.Pot).toBe(20);
-    expect(game.RaiseCount).toBe(1);
-    expect(game.CurrentTurnPlayerId).toBe('user1');
+    test('rejects actions while awaiting the next round', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          AwaitingNextRound: true
+        })
+      );
 
-    // User1 calls the remaining 8 chips.
-    await performBettingAction(
-      gameId, 'user1', 'call'
-    );
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow(
+        'Betting round is not accepting actions'
+      );
+    });
 
-    expect(game.Players[0].RoundContribution).toBe(10);
-    expect(game.Pot).toBe(28);
-    expect(game.CurrentTurnPlayerId).toBe('user2');
+    test('rejects actions from the wrong player', async () => {
+      await expect(
+        performBettingAction(gameId, 'user1', 'fold')
+      ).rejects.toThrow(
+        'It is not this player’s turn'
+      );
+    });
 
-    // User2 calls the remaining 5 chips.
-    const result = await performBettingAction(
-      gameId, 'user2', 'call'
-    );
+    test('rejects a player missing from the game', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          CurrentTurnPlayerId: 'missing-player'
+        })
+      );
 
-    expect(result.Street).toBe(4);
-    expect(result.CurrentBet).toBe(0);
-    expect(result.BettingRoundComplete).toBe(false);
-    expect(result.AwaitingNextRound).toBe(false);
+      await expect(
+        performBettingAction(
+          gameId,
+          'missing-player',
+          'fold'
+        )
+      ).rejects.toThrow('Player cannot act');
+    });
 
-    expect(result.Players[0].RoundContribution).toBe(0);
-    expect(result.Players[1].RoundContribution).toBe(0);
-    expect(result.Players[2].RoundContribution).toBe(0);
+    test('rejects a folded player', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          Players: [
+            createPlayer('user1'),
+            createPlayer('user2', {
+              HasFolded: true
+            })
+          ]
+        })
+      );
 
-    expect(result.Players[0].TotalContribution).toBe(11);
-    expect(result.Players[1].TotalContribution).toBe(11);
-    expect(result.Players[2].TotalContribution).toBe(11);
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow('Player cannot act');
+    });
 
-    expect(result.Pot).toBe(33);
-    expect(result.Deck).toHaveLength(49);
+    test('rejects a missing table', async () => {
+      TableDao.findById.mockResolvedValue(null);
 
-    expect(
-      result.Players.every(p => p.Cards.length === 4)
-    ).toBe(true);
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow('Table not found');
+    });
 
-    expect(game.save).toHaveBeenCalledTimes(4);
-    expect(TableDao.deductPlayerChips)
-      .toHaveBeenCalledTimes(4);
+    test('rejects an invalid table level', async () => {
+      TableDao.findById.mockResolvedValue(
+        createMockTable({
+          Level: 'Invalid'
+        })
+      );
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'fold')
+      ).rejects.toThrow('Invalid table level');
+    });
+  });
+
+  // -----------------------------------------
+  // Fold
+  // -----------------------------------------
+
+  describe('Fold', () => {
+    test('fold marks the player as folded', async () => {
+      const game = createMockGame({
+        Players: [
+          createPlayer('user1'),
+          createPlayer('user2'),
+          createPlayer('user3')
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'fold'
+      );
+
+      expect(
+        result.Players.find(p => p.PlayerId === 'user2')
+          .HasFolded
+      ).toBe(true);
+
+      expect(result.Players.find(
+        p => p.PlayerId === 'user2'
+      ).HasActed).toBe(true);
+
+      expect(result.save).toHaveBeenCalled();
+    });
+
+    test('folding to one player settles the hand', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'fold'
+      );
+
+      expect(settleHand).toHaveBeenCalledWith(
+        game,
+        expect.anything(),
+        ['user1'],
+        session
+      );
+
+      expect(result.Status).toBe('Completed');
+      expect(result.CurrentTurnPlayerId).toBeNull();
+    });
+
+    test('fold does not deduct chips', async () => {
+      await performBettingAction(
+        gameId,
+        'user2',
+        'fold'
+      );
+
+      expect(
+        TableDao.deductPlayerChips
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------
+  // Check
+  // -----------------------------------------
+
+  describe('Check', () => {
+    test('check succeeds when nothing is owed', async () => {
+      const game = createMockGame({
+        CurrentBet: 0,
+        Players: [
+          createPlayer('user1'),
+          createPlayer('user2')
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'check'
+      );
+
+      expect(
+        TableDao.deductPlayerChips
+      ).not.toHaveBeenCalled();
+
+      expect(result.Players[1].HasActed).toBe(true);
+    });
+
+    test('check rejects when facing a bet', async () => {
+      await expect(
+        performBettingAction(gameId, 'user2', 'check')
+      ).rejects.toThrow(
+        'Cannot check when facing a bet'
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // Call
+  // -----------------------------------------
+
+  describe('Call', () => {
+    test('call deducts the amount owed', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(
+        TableDao.deductPlayerChips
+      ).toHaveBeenCalledWith(
+        tableId,
+        'user2',
+        2,
+        session
+      );
+
+      expect(result.Players[1].TotalContribution)
+        .toBe(3);
+
+      expect(result.Pot).toBe(6);
+
+      expect(advanceRoundInGame).toHaveBeenCalledWith(game);
+      expect(result.Street).toBe(4);
+
+      expect(game.save).toHaveBeenCalledWith({ session });
+
+      expect(GameActionEvent.create).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            gameId,
+            playerId: 'user2',
+            action: 'call',
+            amount: 2,
+            street: 3,
+            createdAt: expect.any(Date)
+          })
+        ],
+        { session }
+      );
+    });
+
+    test('call rejects when nothing is owed', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          CurrentBet: 0
+        })
+      );
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'call')
+      ).rejects.toThrow('Nothing to call');
+    });
+
+    test('call rejects insufficient chips', async () => {
+      TableDao.deductPlayerChips.mockResolvedValue(null);
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'call')
+      ).rejects.toThrow('Insufficient chips');
+
+      expect(GameActionEvent.create)
+        .not.toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------
+  // Bet
+  // -----------------------------------------
+
+  describe('Bet', () => {
+    test('bet opens betting when CurrentBet is zero', async () => {
+      const game = createMockGame({
+        CurrentBet: 0,
+        Players: [
+          createPlayer('user1', {
+            HasActed: true
+          }),
+          createPlayer('user2')
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'bet'
+      );
+
+      expect(result.CurrentBet).toBe(5);
+      expect(result.Pot).toBe(9);
+      expect(result.Players[0].HasActed).toBe(false);
+
+      expect(
+        TableDao.deductPlayerChips
+      ).toHaveBeenCalledWith(
+        tableId,
+        'user2',
+        5,
+        session
+      );
+    });
+
+    test('bet rejects when a bet already exists', async () => {
+      await expect(
+        performBettingAction(gameId, 'user2', 'bet')
+      ).rejects.toThrow(
+        'Cannot bet when a bet already exists'
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // Raise
+  // -----------------------------------------
+
+  describe('Raise', () => {
+    test('raise completes the Third Street bring-in', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'raise'
+      );
+
+      expect(result.CurrentBet).toBe(5);
+      expect(result.RaiseCount).toBe(0);
+
+      expect(
+        TableDao.deductPlayerChips
+      ).toHaveBeenCalledWith(
+        tableId,
+        'user2',
+        5,
+        session
+      );
+    });
+
+    test('raise increases an existing full bet', async () => {
+      const game = createMockGame({
+        CurrentBet: 5,
+        Players: [
+          createPlayer('user1', {
+            RoundContribution: 5,
+            HasActed: true
+          }),
+          createPlayer('user2')
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'raise'
+      );
+
+      expect(result.CurrentBet).toBe(10);
+      expect(result.RaiseCount).toBe(1);
+
+      expect(
+        TableDao.deductPlayerChips
+      ).toHaveBeenCalledWith(
+        tableId,
+        'user2',
+        10,
+        session
+      );
+    });
+
+    test('raise rejects when no bet exists', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          CurrentBet: 0
+        })
+      );
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'raise')
+      ).rejects.toThrow(
+        'Cannot raise without an existing bet'
+      );
+    });
+
+    test('raise rejects after reaching the maximum', async () => {
+      GameDao.findById.mockResolvedValue(
+        createMockGame({
+          CurrentBet: 5,
+          RaiseCount: 3
+        })
+      );
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'raise')
+      ).rejects.toThrow('Maximum raises reached');
+    });
+
+    test('raise makes previous players act again', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'raise'
+      );
+
+      expect(result.Players[0].HasActed).toBe(false);
+      expect(result.Players[1].HasActed).toBe(true);
+      expect(result.CurrentTurnPlayerId).toBe('user1');
+    });
+  });
+
+  // -----------------------------------------
+  // Betting round progression
+  // -----------------------------------------
+
+  describe('Round progression', () => {
+    test('advances when everyone has acted and matched', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(advanceRoundInGame)
+        .toHaveBeenCalledWith(game);
+
+      expect(game.Street).toBe(4);
+    });
+
+    test('does not advance when betting is incomplete', async () => {
+      const game = createMockGame({
+        Players: [
+          createPlayer('user1', {
+            RoundContribution: 2,
+            HasActed: false
+          }),
+          createPlayer('user2')
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(advanceRoundInGame)
+        .not.toHaveBeenCalled();
+
+      expect(game.CurrentTurnPlayerId).toBe('user1');
+    });
+
+    test('seventh street finishes at showdown', async () => {
+      const game = createMockGame({
+        Street: 7,
+        CurrentBet: 10,
+        Players: [
+          createPlayer('user1', {
+            RoundContribution: 10,
+            HasActed: true
+          }),
+          createPlayer('user2', {
+            RoundContribution: 0
+          })
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue(game);
+
+      const result = await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(findWinners)
+        .toHaveBeenCalledWith(game.Players);
+
+      expect(settleHand).toHaveBeenCalledWith(
+        game,
+        expect.anything(),
+        ['user1'],
+        session
+      );
+
+      expect(result.Status).toBe('Completed');
+    });
+  });
+
+  // -----------------------------------------
+  // Action events and transactions
+  // -----------------------------------------
+
+  describe('Transactions and action events', () => {
+    test('saves an action event in the same transaction', async () => {
+      await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(GameActionEvent.create)
+        .toHaveBeenCalledWith(
+          [
+            expect.objectContaining({
+              gameId,
+              playerId: 'user2',
+              action: 'call',
+              amount: 2,
+              street: 3,
+              createdAt: expect.any(Date)
+            })
+          ],
+          { session }
+        );
+    });
+
+    test('records the original street even after advancing', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(game.Street).toBe(4);
+
+      expect(GameActionEvent.create)
+        .toHaveBeenCalledWith(
+          [
+            expect.objectContaining({
+              street: 3
+            })
+          ],
+          { session }
+        );
+    });
+
+    test('does not record an event for an invalid action', async () => {
+      await expect(
+        performBettingAction(gameId, 'user2', 'check')
+      ).rejects.toThrow();
+
+      expect(GameActionEvent.create)
+        .not.toHaveBeenCalled();
+    });
+
+    test('propagates action event database errors', async () => {
+      GameActionEvent.create.mockRejectedValue(
+        new Error('Action event write failed')
+      );
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'call')
+      ).rejects.toThrow('Action event write failed');
+    });
+
+    test('ends the session after a successful action', async () => {
+      await performBettingAction(
+        gameId,
+        'user2',
+        'call'
+      );
+
+      expect(session.endSession)
+        .toHaveBeenCalledTimes(1);
+    });
+
+    test('ends the session after a failed action', async () => {
+      await expect(
+        performBettingAction(gameId, 'user2', 'check')
+      ).rejects.toThrow();
+
+      expect(session.endSession)
+        .toHaveBeenCalledTimes(1);
+    });
+
+    test('does not save the game when chip deduction fails', async () => {
+      const game = createMockGame();
+
+      GameDao.findById.mockResolvedValue(game);
+
+      TableDao.deductPlayerChips.mockResolvedValue(null);
+
+      await expect(
+        performBettingAction(gameId, 'user2', 'call')
+      ).rejects.toThrow('Insufficient chips');
+
+      expect(game.save).not.toHaveBeenCalled();
+      expect(GameActionEvent.create)
+        .not.toHaveBeenCalled();
+    });
   });
 });

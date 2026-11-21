@@ -239,61 +239,48 @@ exports.create = async function(tableData, session = null) {
 };
 
 /**
- * Add a player to a waiting table.
- * Prevents duplicate joins and joining a full table.
+ * Add a human player to a table.
+ *
+ * During an active hand, bot replacement is deferred
+ * until the next hand starts.
  */
-
 exports.addPlayer = async function(
   tableId,
   userId,
   buyIn,
   session
 ) {
-  const table = await TableModel.findById(tableId).session(session);
+  const table = await TableModel.findById(tableId)
+    .session(session);
 
-  if (!table || table.Status === 'Closed') {
+  if (
+    !table ||
+    !['Waiting', 'In Progress'].includes(table.Status)
+  ) {
     return null;
   }
 
-  const isAlreadySeated = table.UserIds.some(
-    id => id.toString() === userId.toString()
-  );
+  const playerId = String(userId);
 
-  if (isAlreadySeated) {
+  if (
+    table.UserIds.some(id => String(id) === playerId)
+  ) {
     return null;
   }
 
-  // Only allow joining a waiting table or between hands.
-  if (table.Status === 'In Progress') {
-    const GameDao = require('./GameDao');
-
-    const game = await GameDao.findById(
-      table.CurrentGameID,
-      session
-    );
-
-    if (
-      !game ||
-      game.Status !== 'Completed' ||
-      !game.NextHandAt ||
-      new Date(game.NextHandAt).getTime() <= Date.now()
-    ) {
-      return null;
-    }
-  } else if (table.Status !== 'Waiting') {
+  if (table.UserIds.length >= table.Capacity) {
     return null;
   }
 
-  const humanCount = table.UserIds.length;
-  const totalSeats = humanCount + table.BotCount;
+  const totalSeats =
+    table.UserIds.length + table.BotCount;
 
-  if (humanCount >= table.Capacity) {
-    return null;
-  }
-
-  // If a seat is empty, use it first.
-  // Otherwise, replace the highest-numbered bot.
-  if (totalSeats >= table.Capacity) {
+  // At a waiting table, replacing a bot immediately
+  // is safe because no hand is active.
+  if (
+    table.Status === 'Waiting' &&
+    totalSeats >= table.Capacity
+  ) {
     if (table.BotCount === 0) {
       return null;
     }
@@ -308,15 +295,17 @@ exports.addPlayer = async function(
     table.BotCount -= 1;
   }
 
+  // During an active hand, keep the current bots
+  // until the next-hand transition.
   table.UserIds.push(userId);
 
   table.PlayerStacks.push({
-    PlayerId: userId.toString(),
+    PlayerId: playerId,
     Chips: buyIn
   });
 
   table.PlayerPresence.push({
-    PlayerId: userId.toString(),
+    PlayerId: playerId,
     LastSeenAt: new Date()
   });
 
@@ -324,6 +313,7 @@ exports.addPlayer = async function(
 
   return table;
 };
+
 
 /**
  * Deduct chips from a player's table stack.

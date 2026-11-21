@@ -449,6 +449,7 @@ exports.performBettingAction = async function (req, res) {
     const conflictErrors = [
       'Game is not in progress',
       'Betting round is complete',
+      'Betting round is not accepting actions',
       'It is not this player’s turn',
       'Maximum raises reached'
     ];

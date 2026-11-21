@@ -135,12 +135,13 @@ function Lobby({ tableSearch = '' }) {
   }
 
   function isTableFull(table) {
-    return table.playerCount >= table.capacity;
+    // Bots can be replaced by humans at the next-hand boundary.
+    return table.humanCount >= table.capacity;
   }
 
   function canJoinTable(table) {
     return (
-      table.status === 'Waiting' &&
+      (table.status === 'Waiting' || table.status === 'In Progress') &&
       !isTableFull(table) &&
       Boolean(table.stakes)
     );
@@ -272,22 +273,20 @@ function Lobby({ tableSearch = '' }) {
         level: data.level,
         capacity: data.capacity,
         playerCount: data.playerCount,
+        humanCount: data.humanCount,
+        botCount: data.botCount,
         status: data.status,
         joinCode: data.joinCode,
         stakes: data.stakes,
       };
 
-      // Check whether this table can be joined.
-      if (table.status !== 'Waiting') {
-        throw new Error('This table is not accepting players.');
-      }
-
-      if (table.playerCount >= table.capacity) {
-        throw new Error('This table is full.');
-      }
-
-      if (!table.stakes) {
-        throw new Error('This table has invalid betting settings.');
+      // Use the same eligibility rules for public and private tables.
+      if (!canJoinTable(table)) {
+        throw new Error(
+          isTableFull(table)
+            ? 'This table has no available human seats.'
+            : 'This table is not accepting players.'
+        );
       }
 
       // Reuse the same buy-in modal as normal table selection.
@@ -372,8 +371,8 @@ function Lobby({ tableSearch = '' }) {
           <div>
             <h3>{table.name}</h3>
             <p className="table-card-subtitle">
-              {table.level} Stakes · {table.playerCount}/
-              {table.capacity} Players
+              {table.level} Stakes · {table.humanCount}/{table.capacity} Humans
+              {' · '}{table.botCount} Bots
             </p>
           </div>
 
