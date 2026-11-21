@@ -76,6 +76,15 @@ app.post('/api/tables', TableController.createTable);
 // Join an existing table
 app.post('/api/tables/:tableId/join',  TableController.joinTable);
 
+// Leave a table
+app.post('/api/tables/:tableId/leave', TableController.leaveTable);
+
+// Heartbeat endpoint for players to indicate they are still present at the table
+app.post(
+  '/api/tables/:tableId/heartbeat',
+  TableController.heartbeat
+);
+
 // Retrieve a table by ID for spectator viewing.
 app.get(
   '/api/tables/id/:tableId',

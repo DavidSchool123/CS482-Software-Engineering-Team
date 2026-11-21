@@ -11,30 +11,32 @@ const {
   stopNextHandScheduler
 } = require('./service/NextHandScheduler');
 
+const {
+  startPlayerPresenceScheduler,
+  stopPlayerPresenceScheduler
+} = require('./service/PlayerPresenceScheduler');
+
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-    // Connect to MongoDB first.
     await connectDB();
 
-    // Create HTTP server and initialize messaging sockets.
     const server = http.createServer(app);
+
     createMessageSockets(server, app.locals.sessionMiddleware);
 
     server.listen(PORT, () => {
       console.log(`Poker Face server running on port ${PORT}`);
-
-      // P53: Automatically advance completed hands
-      // after their 30-second countdown.
       startNextHandScheduler();
+      startPlayerPresenceScheduler();
     });
 
-    // Stop the scheduler and close the server gracefully.
     function shutdown() {
       console.log('Shutting down Poker Face server...');
 
       stopNextHandScheduler();
+      stopPlayerPresenceScheduler();
 
       server.close((error) => {
         if (error) {
@@ -48,7 +50,6 @@ async function startServer() {
 
     process.once('SIGINT', shutdown);
     process.once('SIGTERM', shutdown);
-
   } catch (error) {
     console.error('Could not start Poker Face server.', error);
     process.exit(1);

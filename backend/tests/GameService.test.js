@@ -25,6 +25,7 @@ describe('Start Game Service', () => {
     _id: tableId,
     Status: 'Waiting',
     Level: 'Low',
+    Capacity: 6,
     UserIds: ['user1', 'user2'],
     BotCount: 0,
     PlayerStacks: [
@@ -143,7 +144,7 @@ describe('Start Game Service', () => {
     expect(game.Deck).toHaveLength(43);
   });
 
-  test('should not update the table if game creation fails', async () => {
+  test('should not link the game if game creation fails', async () => {
     GameDao.create.mockRejectedValue(
       new Error('Database error')
     );
@@ -276,13 +277,14 @@ describe('Start Game Service', () => {
   describe('P53 - Continuous Gameplay', () => {
 
     function setupCompletedHand(overrides = {}) {
-      TableDao.findById.mockResolvedValue(
-        createMockTable({
-          Status: 'In Progress',
-          CurrentGameID: previousGameId,
-          ...overrides
-        })
-      );
+      const table = createMockTable({
+        Status: 'In Progress',
+        CurrentGameID: previousGameId,
+        ...overrides
+      });
+
+      TableDao.findById.mockResolvedValue(table);
+      return table;
     }
 
     test('starts another hand after the countdown', async () => {
@@ -464,6 +466,153 @@ describe('Start Game Service', () => {
         startNextHand(tableId)
       ).rejects.toThrow('Table has no current game');
 
+      expect(GameDao.create).not.toHaveBeenCalled();
+    });
+
+    // -----------------------------------------
+    // Bot replacement between hands
+    // -----------------------------------------
+
+    test('replaces a bot when a human joins during an active hand', async () => {
+      const bot1 = `bot-${tableId}-1`;
+      const bot2 = `bot-${tableId}-2`;
+
+      const table = setupCompletedHand({
+        Capacity: 3,
+        UserIds: ['user1', 'user2'],
+        BotCount: 2,
+        PlayerStacks: [
+          { PlayerId: 'user1', Chips: 200 },
+          { PlayerId: 'user2', Chips: 200 },
+          { PlayerId: bot1, Chips: 200 },
+          { PlayerId: bot2, Chips: 200 }
+        ]
+      });
+
+      const result = await startNextHand(tableId);
+
+      expect(table.BotCount).toBe(1);
+
+      expect(
+        table.PlayerStacks.map(stack => stack.PlayerId)
+      ).not.toContain(bot2);
+
+      expect(
+        table.PlayerStacks.map(stack => stack.PlayerId)
+      ).toContain(bot1);
+
+      expect(result.game.Players).toHaveLength(3);
+
+      expect(
+        result.game.Players.map(player => player.PlayerId)
+      ).toEqual(
+        expect.arrayContaining([
+          'user1',
+          'user2',
+          bot1
+        ])
+      );
+
+      expect(table.save).toHaveBeenCalledWith({
+        session: expect.anything()
+      });
+    });
+
+    test('removes multiple bots when humans fill their seats', async () => {
+      const table = setupCompletedHand({
+        Capacity: 4,
+        UserIds: ['user1', 'user2', 'user3', 'user4'],
+        BotCount: 3,
+        PlayerStacks: [
+          { PlayerId: 'user1', Chips: 200 },
+          { PlayerId: 'user2', Chips: 200 },
+          { PlayerId: 'user3', Chips: 200 },
+          { PlayerId: 'user4', Chips: 200 },
+          { PlayerId: `bot-${tableId}-1`, Chips: 200 },
+          { PlayerId: `bot-${tableId}-2`, Chips: 200 },
+          { PlayerId: `bot-${tableId}-3`, Chips: 200 }
+        ]
+      });
+
+      const result = await startNextHand(tableId);
+
+      expect(table.BotCount).toBe(0);
+
+      expect(
+        table.PlayerStacks.some(stack =>
+          stack.PlayerId.startsWith('bot-')
+        )
+      ).toBe(false);
+
+      expect(result.game.Players).toHaveLength(4);
+
+      expect(
+        result.game.Players.every(player =>
+          !player.PlayerId.startsWith('bot-')
+        )
+      ).toBe(true);
+
+      expect(table.save).toHaveBeenCalled();
+    });
+
+    test('does not remove bots when no replacement is needed', async () => {
+      const bot1 = `bot-${tableId}-1`;
+
+      const table = setupCompletedHand({
+        Capacity: 3,
+        UserIds: ['user1', 'user2'],
+        BotCount: 1,
+        PlayerStacks: [
+          { PlayerId: 'user1', Chips: 200 },
+          { PlayerId: 'user2', Chips: 200 },
+          { PlayerId: bot1, Chips: 200 }
+        ]
+      });
+
+      const result = await startNextHand(tableId);
+
+      expect(table.BotCount).toBe(1);
+
+      expect(
+        table.PlayerStacks.map(stack => stack.PlayerId)
+      ).toContain(bot1);
+
+      expect(result.game.Players).toHaveLength(3);
+
+      expect(table.save).not.toHaveBeenCalled();
+    });
+
+    test('does not replace bots before the countdown finishes', async () => {
+      const bot1 = `bot-${tableId}-1`;
+      const bot2 = `bot-${tableId}-2`;
+
+      const table = setupCompletedHand({
+        Capacity: 3,
+        UserIds: ['user1', 'user2'],
+        BotCount: 2,
+        PlayerStacks: [
+          { PlayerId: 'user1', Chips: 200 },
+          { PlayerId: 'user2', Chips: 200 },
+          { PlayerId: bot1, Chips: 200 },
+          { PlayerId: bot2, Chips: 200 }
+        ]
+      });
+
+      GameDao.findById.mockResolvedValue({
+        _id: previousGameId,
+        Status: 'Completed',
+        NextHandAt: new Date(Date.now() + 30000)
+      });
+
+      await expect(
+        startNextHand(tableId)
+      ).rejects.toThrow(
+        'Next hand countdown has not finished'
+      );
+
+      expect(table.BotCount).toBe(2);
+      expect(table.PlayerStacks).toHaveLength(4);
+      expect(table.save).not.toHaveBeenCalled();
       expect(GameDao.create).not.toHaveBeenCalled();
     });
 
