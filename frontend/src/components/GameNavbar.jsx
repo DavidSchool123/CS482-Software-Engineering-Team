@@ -5,13 +5,15 @@ import './GameNavbar.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-function GameNavbar({ tableSearch, setTableSearch }) {
+function GameNavbar() {
   const navigate = useNavigate();
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
 
   async function handleLogout() {
+    if (loggingOut) return;
+
     setLoggingOut(true);
     setLogoutError('');
 
@@ -35,33 +37,25 @@ function GameNavbar({ tableSearch, setTableSearch }) {
   }
 
   return (
-    <nav className='navbar game-navbar'>
-      <Link to='/lobby' className='navbar-logo'>
+    <nav className="navbar game-navbar" aria-label="Game navigation">
+      <Link to="/lobby" className="navbar-logo">
         ♛ POKER FACE
       </Link>
 
-      <div className='navbar-links'>
-        <NavLink to='/lobby'>Lobby</NavLink>
-        <NavLink to='/profile'>Profile</NavLink>
-        <NavLink to='/friends'>Friends</NavLink>
-        <NavLink to='/messages'>Messages</NavLink>
-        <NavLink to='/tutorial' state={{ gameNavbar: true }}>
+      <div className="navbar-links">
+        <NavLink to="/lobby">Lobby</NavLink>
+        <NavLink to="/profile">Profile</NavLink>
+        <NavLink to="/friends">Friends</NavLink>
+        <NavLink to="/messages">Messages</NavLink>
+        <NavLink to="/tutorial" state={{ gameNavbar: true }}>
           How to Play
         </NavLink>
       </div>
 
-      <div className='game-navbar-actions'>
-        <input
-          type='search'
-          placeholder='Search tables...'
-          aria-label='Search tables'
-          value={tableSearch}
-          onChange={(event) => setTableSearch(event.target.value)}
-        />
-
+      <div className="game-navbar-actions">
         <button
-          type='button'
-          className='game-logout-btn'
+          type="button"
+          className="game-logout-btn"
           onClick={handleLogout}
           disabled={loggingOut}
         >
@@ -69,7 +63,7 @@ function GameNavbar({ tableSearch, setTableSearch }) {
         </button>
 
         {logoutError && (
-          <span role='alert' className='logout-error'>
+          <span role="alert" className="logout-error">
             {logoutError}
           </span>
         )}
