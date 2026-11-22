@@ -35,6 +35,49 @@ const games = [
   { id: '#1019', players: '6/6', status: 'Completed', time: '1:45 PM' },
 ];
 
+const initialAdvertisements = [
+  {
+    id: 1,
+    title: 'Poker Tournament',
+    placement: 'Lobby Banner',
+    imageUrl: 'https://example.com/poker-tournament.png',
+    destinationUrl: 'https://example.com/tournament',
+    status: 'Active',
+  },
+  {
+    id: 2,
+    title: 'Weekly Rewards',
+    placement: 'Game Page Sidebar',
+    imageUrl: 'https://example.com/weekly-rewards.png',
+    destinationUrl: 'https://example.com/rewards',
+    status: 'Active',
+  },
+  {
+    id: 3,
+    title: 'New Player Bonus',
+    placement: 'Homepage Banner',
+    imageUrl: 'https://example.com/player-bonus.png',
+    destinationUrl: 'https://example.com/register',
+    status: 'Inactive',
+  },
+  {
+    id: 4,
+    title: 'Summer Poker Event',
+    placement: 'Lobby Banner',
+    imageUrl: 'https://example.com/summer-event.png',
+    destinationUrl: 'https://example.com/events',
+    status: 'Active',
+  },
+];
+
+const adPlacements = [
+  'Lobby Banner',
+  'Game Page Sidebar',
+  'Homepage Banner',
+  'Profile Sidebar',
+  'Tournament Lobby',
+];
+
 const metrics = [
   { icon: 'users', value: '1,248', label: 'Registered Users' },
   { icon: 'cards', value: '312', label: 'Active Players', note: '(Last 24 hours)' },
@@ -353,6 +396,62 @@ function GameMonitoringView({ group, onGroupChange }) {
 }
 
 function AdEngagementView({ period, onPeriodChange }) {
+  const [advertisements, setAdvertisements] = useState(initialAdvertisements);
+  const [editingAdId, setEditingAdId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [draft, setDraft] = useState({
+    title: '',
+    placement: '',
+    imageUrl: '',
+    destinationUrl: '',
+    status: 'Active',
+  });
+
+  function openCreateForm() {
+    setEditingAdId(null);
+    setDraft({
+      title: '',
+      placement: '',
+      imageUrl: '',
+      destinationUrl: '',
+      status: 'Active',
+    });
+    setFormOpen(true);
+  }
+
+  function openEditForm(ad) {
+    setEditingAdId(ad.id);
+    setDraft({
+      title: ad.title,
+      placement: ad.placement,
+      imageUrl: ad.imageUrl || '',
+      destinationUrl: ad.destinationUrl || '',
+      status: ad.status,
+    });
+    setFormOpen(true);
+  }
+
+  function saveAdvertisement(event) {
+    event.preventDefault();
+    const updatedAd = { ...draft, title: draft.title.trim() };
+
+    if (editingAdId !== null) {
+      setAdvertisements((currentAds) =>
+        currentAds.map((ad) =>
+          ad.id === editingAdId ? { ...ad, ...updatedAd } : ad,
+        ),
+      );
+    } else {
+      setAdvertisements((currentAds) => [
+        ...currentAds,
+        { id: Date.now(), ...updatedAd },
+      ]);
+    }
+
+    setFormOpen(false);
+    setEditingAdId(null);
+  }
+
   return (
     <section
       className='admin-ad-engagement-view'
@@ -418,6 +517,229 @@ function AdEngagementView({ period, onPeriodChange }) {
           </div>
         </dl>
       </div>
+
+      <section
+        className='admin-ad-management'
+        aria-labelledby='ad-management-title'
+      >
+        <header className='admin-ad-management-heading'>
+          <div>
+            <h2 id='ad-management-title'>Ad Management</h2>
+            <p>Manage your website&apos;s advertisements and available placements.</p>
+          </div>
+          <span className='admin-ad-management-role'>Admin</span>
+        </header>
+
+        <div className='admin-ad-management-summary'>
+          <article className='admin-ad-management-stat'>
+            <strong>{advertisements.length}</strong>
+            <span>Total Ads</span>
+          </article>
+          <article className='admin-ad-management-stat'>
+            <strong>
+              {advertisements.filter((ad) => ad.status === 'Active').length}
+            </strong>
+            <span>Active Ads</span>
+          </article>
+          <article className='admin-ad-management-stat'>
+            <strong>{adPlacements.length}</strong>
+            <span>Placements</span>
+          </article>
+        </div>
+
+        <div className='admin-ad-list-heading'>
+          <div>
+            <h3>Advertisements</h3>
+            <p>All advertisements assigned to placements</p>
+          </div>
+          <span className='admin-ad-active-count'>
+            {advertisements.filter((ad) => ad.status === 'Active').length} Active
+          </span>
+        </div>
+
+        <div className='admin-advertisement-list'>
+          {advertisements.map((ad) => (
+            <article className='admin-advertisement-card' key={ad.id}>
+              <div>
+                <h4>{ad.title}</h4>
+                <p>Placement: {ad.placement}</p>
+              </div>
+              <div className='admin-advertisement-card-actions'>
+                <span
+                  className={`admin-ad-status ${
+                    ad.status === 'Active' ? 'active' : 'inactive'
+                  }`}
+                >
+                  {ad.status}
+                </span>
+                <div>
+                  <button
+                    type='button'
+                    onClick={() => openEditForm(ad)}
+                    aria-label={`Edit ${ad.title}`}
+                  >
+                    Edit
+                  </button>
+                  <span aria-hidden='true'>·</span>
+                  <button
+                    type='button'
+                    onClick={() =>
+                      setAdvertisements((currentAds) =>
+                        currentAds.filter((currentAd) => currentAd.id !== ad.id),
+                      )
+                    }
+                    aria-label={`Delete ${ad.title}`}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <button
+          type='button'
+          className='admin-ad-create-button'
+          onClick={openCreateForm}
+        >
+          <span aria-hidden='true'>+</span> Create Advertisement
+        </button>
+      </section>
+
+      {formOpen && (
+        <div
+          className='admin-ad-form-backdrop'
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setFormOpen(false);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setFormOpen(false);
+            }
+          }}
+        >
+          <section
+            className='admin-ad-form-dialog'
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='admin-ad-form-title'
+          >
+            <header className='admin-ad-form-header'>
+              <div>
+                <h2 id='admin-ad-form-title'>
+                  {editingAdId === null
+                    ? 'Create Advertisement'
+                    : 'Edit Advertisement'}
+                </h2>
+                <p>Add an advertisement to an existing website placement.</p>
+              </div>
+              <button
+                type='button'
+                className='admin-ad-form-close'
+                aria-label='Close advertisement form'
+                onClick={() => setFormOpen(false)}
+              >
+                ×
+              </button>
+            </header>
+
+            <form className='admin-ad-form' onSubmit={saveAdvertisement}>
+              <label>
+                Advertisement Name
+                <input
+                  type='text'
+                  placeholder='e.g. Weekly Poker Tournament'
+                  value={draft.title}
+                  autoFocus
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      title: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Placement
+                <select
+                  value={draft.placement}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      placement: event.target.value,
+                    }))
+                  }
+                  required
+                >
+                  <option value=''>Select a placement</option>
+                  {adPlacements.map((placement) => (
+                    <option key={placement}>{placement}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Image URL
+                <input
+                  type='url'
+                  placeholder='https://example.com/ad-image.png'
+                  value={draft.imageUrl}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      imageUrl: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Destination URL
+                <input
+                  type='url'
+                  placeholder='https://example.com'
+                  value={draft.destinationUrl}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      destinationUrl: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <fieldset className='admin-ad-status-fieldset'>
+                <legend>Status</legend>
+                <div className='admin-ad-status-options'>
+                  {['Active', 'Inactive'].map((status) => (
+                    <label key={status}>
+                      <input
+                        type='radio'
+                        name='advertisement-status'
+                        value={status}
+                        checked={draft.status === status}
+                        onChange={(event) =>
+                          setDraft((currentDraft) => ({
+                            ...currentDraft,
+                            status: event.target.value,
+                          }))
+                        }
+                      />
+                      {status}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <button type='submit' className='admin-ad-primary-button'>
+                {editingAdId === null
+                  ? 'Create Advertisement'
+                  : 'Save Changes'}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
