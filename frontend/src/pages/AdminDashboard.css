@@ -83,6 +83,212 @@
   display: none;
 }
 
+.admin-registered-users-view,
+.admin-player-statistics-view,
+.admin-game-monitoring-view,
+.admin-ad-engagement-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 0;
+}
+
+.admin-registered-users-heading,
+.admin-player-statistics-heading,
+.admin-game-monitoring-heading,
+.admin-ad-engagement-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.admin-registered-users-heading h1,
+.admin-player-statistics-heading h1,
+.admin-game-monitoring-heading h1,
+.admin-ad-engagement-heading h1 {
+  margin: 0;
+  color: var(--profile-text);
+  font-size: clamp(1.8rem, 2vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.admin-player-statistics-select-wrap {
+  position: relative;
+  width: min(36%, 300px);
+}
+
+.admin-player-statistics-select {
+  width: 100%;
+  padding: 6px 44px 6px 14px;
+  border: 1px solid var(--profile-border);
+  border-radius: 10px;
+  background: var(--profile-panel);
+  color: var(--profile-text);
+  font: inherit;
+  font-size: 1rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.admin-player-statistics-arrow {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--profile-text);
+  border-bottom: 2px solid var(--profile-text);
+  pointer-events: none;
+  transform: translateY(-70%) rotate(45deg);
+}
+
+.admin-player-statistics-select:focus-visible {
+  outline: 3px solid rgba(139, 54, 233, 0.14);
+}
+
+.admin-user-search-large {
+  width: min(52%, 420px);
+  padding: 9px 14px;
+  border-radius: 10px;
+}
+
+.admin-search-icon-button {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.admin-search-icon-button:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--profile-accent);
+  outline-offset: 3px;
+}
+
+.admin-user-search-large .admin-search-icon {
+  flex-basis: 16px;
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.admin-user-search-large .admin-search-icon::after {
+  right: -6px;
+  bottom: -3px;
+  width: 7px;
+  height: 2px;
+}
+
+.admin-user-search-large input {
+  font-size: 1rem;
+}
+
+.admin-dashboard-table.admin-registered-users-table,
+.admin-dashboard-table.admin-player-statistics-table,
+.admin-dashboard-table.admin-game-monitoring-table {
+  min-width: 700px;
+  border: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--profile-panel);
+  font-size: 1rem;
+}
+
+.admin-registered-users-view .admin-table-scroll,
+.admin-player-statistics-view .admin-table-scroll,
+.admin-game-monitoring-view .admin-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--profile-border);
+  border-radius: 12px;
+  background: var(--profile-panel);
+  box-shadow: 0 4px 14px var(--profile-shadow);
+}
+
+.admin-dashboard-table.admin-registered-users-table th,
+.admin-dashboard-table.admin-registered-users-table td,
+.admin-dashboard-table.admin-player-statistics-table th,
+.admin-dashboard-table.admin-player-statistics-table td,
+.admin-dashboard-table.admin-game-monitoring-table th,
+.admin-dashboard-table.admin-game-monitoring-table td {
+  height: 60px;
+  padding: 9px 13px;
+  border: 0;
+  border-right: 1px solid var(--profile-border);
+  border-bottom: 1px solid var(--profile-border);
+  background: var(--profile-panel);
+}
+
+.admin-dashboard-table.admin-registered-users-table th:last-child,
+.admin-dashboard-table.admin-registered-users-table td:last-child,
+.admin-dashboard-table.admin-player-statistics-table th:last-child,
+.admin-dashboard-table.admin-player-statistics-table td:last-child,
+.admin-dashboard-table.admin-game-monitoring-table th:last-child,
+.admin-dashboard-table.admin-game-monitoring-table td:last-child {
+  border-right: 0;
+}
+
+.admin-dashboard-table.admin-registered-users-table tbody tr:last-child td,
+.admin-dashboard-table.admin-player-statistics-table tbody tr:last-child td,
+.admin-dashboard-table.admin-game-monitoring-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-dashboard-table.admin-registered-users-table thead th,
+.admin-dashboard-table.admin-player-statistics-table thead th,
+.admin-dashboard-table.admin-game-monitoring-table thead th {
+  height: 48px;
+  padding: 6px 13px;
+  background: #f5f1f9;
+}
+
+.admin-registered-users-table th,
+.admin-player-statistics-table th,
+.admin-game-monitoring-table th {
+  font-size: 1.05rem;
+}
+
+.admin-dashboard-table.admin-player-statistics-table th,
+.admin-dashboard-table.admin-player-statistics-table td {
+  text-align: center;
+}
+
+.admin-registered-users-table .admin-status-dot,
+.admin-game-monitoring-table .admin-status-dot {
+  width: 15px;
+  height: 15px;
+  margin-right: 10px;
+  vertical-align: -2px;
+}
+
+.admin-registered-users-table .admin-view-button,
+.admin-game-monitoring-table .admin-view-button {
+  min-width: 96px;
+  padding: 7px 14px;
+  border: 1px solid #c8b0e2;
+  border-radius: 9px;
+  font-size: 1rem;
+}
+
+.admin-registered-users-pagination {
+  gap: 10px;
+  margin-top: -3px;
+  font-size: 1rem;
+}
+
+.admin-registered-users-pagination button {
+  min-width: 28px;
+  padding: 4px 7px;
+  font-size: 1rem;
+}
+
 .admin-dashboard-heading h1 {
   margin: 0 0 3px;
   color: var(--profile-text);
@@ -383,8 +589,9 @@
 .admin-chart-bar {
   position: relative;
   width: 22%;
-  background: #929292;
-  border: 1px solid #727272;
+  background: var(--profile-accent-light);
+  border: 1px solid #c8b0e2;
+  border-bottom: 0;
 }
 
 .bar-impressions {
@@ -436,6 +643,133 @@
   margin: 0;
   color: var(--profile-text);
   font-size: 1rem;
+  font-weight: 700;
+}
+
+.admin-ad-engagement-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 24px;
+  align-items: end;
+  min-height: 364px;
+}
+
+.admin-ad-engagement-chart {
+  min-width: 0;
+  padding: 18px 22px 14px;
+  border: 1px solid var(--profile-border);
+  border-radius: 12px;
+  background: var(--profile-panel);
+  box-shadow: 0 4px 14px var(--profile-shadow);
+}
+
+.admin-ad-engagement-chart-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 330px;
+  padding-left: 52px;
+  color: var(--profile-muted);
+  font-size: 1rem;
+}
+
+.admin-ad-engagement-chart-grid > span {
+  position: relative;
+  z-index: 1;
+  width: 42px;
+  text-align: right;
+  transform: translateY(-50%);
+}
+
+.admin-ad-engagement-chart-grid::after {
+  position: absolute;
+  inset: 6px 0 24px 108px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(25% - 1px),
+    var(--profile-soft-border) calc(25% - 1px),
+    var(--profile-soft-border) 25%
+  );
+  content: '';
+}
+
+.admin-ad-engagement-bars {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 24px;
+  left: 108px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 300px;
+  border-bottom: 2px solid var(--profile-border);
+}
+
+.admin-ad-engagement-bar {
+  position: relative;
+  width: 22%;
+  min-width: 72px;
+  border: 1px solid #c8b0e2;
+  border-bottom: 0;
+  background: var(--profile-accent-light);
+}
+
+.admin-ad-engagement-bar.impressions {
+  height: 76%;
+}
+
+.admin-ad-engagement-bar.clicks {
+  height: 43%;
+}
+
+.admin-ad-engagement-bar.conversions {
+  height: 14%;
+}
+
+.admin-ad-engagement-bar span {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  color: var(--profile-text);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.admin-ad-engagement-stats {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 364px;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-ad-engagement-stats div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 1px solid var(--profile-border);
+  border-radius: 12px;
+  background: var(--profile-panel);
+  box-shadow: 0 4px 14px var(--profile-shadow);
+}
+
+.admin-ad-engagement-stats dt {
+  color: var(--profile-muted);
+  font-size: 1.05rem;
+}
+
+.admin-ad-engagement-stats dd {
+  margin: 0;
+  color: var(--profile-text);
+  font-size: 1.55rem;
   font-weight: 700;
 }
 
@@ -547,6 +881,29 @@
 }
 
 @media (max-width: 640px) {
+  .admin-registered-users-heading,
+  .admin-player-statistics-heading,
+  .admin-game-monitoring-heading,
+  .admin-ad-engagement-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-user-search-large {
+    width: 100%;
+  }
+
+  .admin-player-statistics-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-player-statistics-select-wrap {
+    width: 100%;
+  }
+
   .admin-dashboard-panels {
     grid-template-columns: 1fr;
   }
@@ -572,5 +929,48 @@
 
   .admin-engagement-content {
     grid-template-columns: minmax(0, 1fr) 78px;
+  }
+
+  .admin-ad-engagement-frame {
+    grid-template-columns: 1fr;
+    min-height: 380px;
+  }
+
+  .admin-ad-engagement-chart-grid {
+    height: 280px;
+    padding-left: 40px;
+  }
+
+  .admin-ad-engagement-chart-grid > span {
+    width: 32px;
+  }
+
+  .admin-ad-engagement-chart-grid::after {
+    left: 88px;
+  }
+
+  .admin-ad-engagement-bars {
+    left: 88px;
+    height: 250px;
+  }
+
+  .admin-ad-engagement-bar {
+    min-width: 48px;
+  }
+
+  .admin-ad-engagement-bar span {
+    font-size: 0.68rem;
+  }
+
+  .admin-ad-engagement-stats {
+    height: auto;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .admin-ad-engagement-stats div {
+    flex: none;
+    height: 64px;
   }
 }
