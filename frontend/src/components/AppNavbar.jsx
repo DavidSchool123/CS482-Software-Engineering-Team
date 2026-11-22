@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import GameNavbar from './GameNavbar';
 
-function AppNavbar({ tableSearch, setTableSearch }) {
+function AppNavbar() {
   const location = useLocation();
 
   const publicPages = [
@@ -18,14 +18,7 @@ function AppNavbar({ tableSearch, setTableSearch }) {
     publicPages.includes(location.pathname) &&
     !(location.pathname === '/tutorial' && location.state?.gameNavbar);
 
-  return isPublicPage ? (
-    <Navbar />
-  ) : (
-    <GameNavbar
-      tableSearch={tableSearch}
-      setTableSearch={setTableSearch}
-    />
-  );
+  return isPublicPage ? <Navbar /> : <GameNavbar />;
 }
 
 export default AppNavbar;

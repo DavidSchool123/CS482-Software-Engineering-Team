@@ -101,11 +101,27 @@ const tableSchema = new mongoose.Schema({
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: [],
     },
   ],
 
-});
+}, { timestamps: true });
+
+// Table names must be unique among active tables.
+// Closed table names can be reused.
+tableSchema.index(
+  { Name: 1 },
+  {
+    name: 'unique_active_table_name',
+    unique: true,
+    partialFilterExpression: {
+      Status: { $in: ['Waiting', 'In Progress'] }
+    },
+    collation: {
+      locale: 'en',
+      strength: 2
+    }
+  }
+);
 
 const TableModel = mongoose.model('Table', tableSchema);
 
@@ -115,14 +131,18 @@ exports.findAll = async function() {
     .select('Name Capacity UserIds BotCount IsPublic Level Status');
 };
 
-// Retrieve public tables for the Lobby
 exports.findPublicTables = async function() {
   return await TableModel.find({
     IsPublic: true,
-    Status: { $ne: 'Closed' },
-  }).select(
-    'Name Capacity UserIds BotCount Level Status'
-  );
+    Status: { $in: ['Waiting', 'In Progress'] },
+  })
+    .select(
+      'Name Capacity UserIds BotCount Level Status createdAt'
+    )
+    .sort({
+      createdAt: -1,
+      _id: -1
+    });
 };
 
 // Find a table using its join code

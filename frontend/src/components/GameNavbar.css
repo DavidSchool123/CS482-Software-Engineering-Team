@@ -1,103 +1,94 @@
-/* Game-specific navbar styles */
+
+/* AUTHENTICATED GAME NAVBAR */
 
 .game-navbar {
-  gap: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 16px 32px;
+  background: linear-gradient(
+    90deg,
+    #1c142e 0%,
+    #241937 55%,
+    #1c142e 100%
+  );
+  border-bottom: 1px solid #49365e;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
 }
 
-/* Navigation links */
-.game-navbar .navbar-links {
-  gap: 20px;
-}
+/* LOGO */
 
-.game-navbar .navbar-links a {
-  padding: 10px 0;
-  border-bottom: 3px solid transparent;
+.game-navbar .navbar-logo {
+  flex-shrink: 0;
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-/* Highlight the current page */
-.game-navbar .navbar-links a.active {
-  color: #c99aff;
-  border-bottom-color: #b67aff;
-}
+/* NAVIGATION LINKS */
 
-/* Search and profile section */
-.game-navbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.game-navbar-actions input {
-  width: 190px;
-  padding: 10px 14px;
-  background-color: #352750;
-  color: white;
-  border: 1px solid #7653a6;
-  border-radius: 8px;
-  outline: none;
-}
-
-.game-navbar-actions input::placeholder {
-  color: #c4b5d6;
-}
-
-.game-navbar-actions input:focus {
-  border-color: #b67aff;
-}
-
-/* Profile icon */
-.game-navbar .game-profile-icon {
+.game-navbar .navbar-links {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 2px solid #b67aff;
-  border-radius: 50%;
-  font-size: 22px;
+  flex-wrap: wrap;
+  gap: 26px;
 }
 
-/* Smaller screens */
-@media (max-width: 1100px) {
-  .game-navbar {
-    flex-wrap: wrap;
-  }
-
-  .game-navbar .navbar-links {
-    flex-wrap: wrap;
-  }
-
-  .game-navbar-actions {
-    margin-left: auto;
-  }
+.game-navbar .navbar-links a {
+  position: relative;
+  padding: 10px 0;
+  color: #c9bce0;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-@media (max-width: 600px) {
-  .game-navbar {
-    padding: 16px;
-  }
+.game-navbar .navbar-links a:hover {
+  color: #ffffff;
+}
 
-  .game-navbar-actions input {
-    width: 150px;
-  }
+.game-navbar .navbar-links a.active {
+  color: #d6b3ff;
+  border-bottom-color: #a46cf0;
+}
+
+/* LOGOUT AREA */
+
+.game-navbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .game-logout-btn {
+  padding: 10px 18px;
   background: transparent;
-  border: 1px solid #a78bfa;
-  border-radius: 8px;
+  border: 1px solid #8e6bb5;
+  border-radius: 9px;
   color: #ffffff;
-  padding: 10px 16px;
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.game-logout-btn:hover {
-  background-color: #6b21a8;
+.game-logout-btn:hover:not(:disabled) {
+  background: #392954;
+  border-color: #b67aff;
 }
 
 .game-logout-btn:disabled {
@@ -108,4 +99,64 @@
 .logout-error {
   color: #fca5a5;
   font-size: 12px;
+}
+
+/* KEYBOARD ACCESSIBILITY */
+
+.game-navbar a:focus-visible,
+.game-navbar button:focus-visible {
+  outline: 2px solid #c99aff;
+  outline-offset: 4px;
+}
+
+/* RESPONSIVE NAVIGATION */
+
+@media (max-width: 1100px) {
+  .game-navbar {
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 24px;
+  }
+
+  .game-navbar .navbar-links {
+    gap: 20px;
+  }
+
+  .game-navbar-actions {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .game-navbar {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .game-navbar .navbar-logo {
+    margin-right: auto;
+  }
+
+  .game-navbar .navbar-links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 18px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .game-navbar .navbar-links a {
+    font-size: 13px;
+  }
+
+  .game-navbar-actions {
+    margin-left: 0;
+  }
+
+  .game-logout-btn {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
 }
