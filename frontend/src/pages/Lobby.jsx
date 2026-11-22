@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Lobby.css';
 import './LobbyEnhancements.css';
+import AdPlacement from './AdPlacement';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TABLE_STAKES = {
@@ -648,12 +649,12 @@ function Lobby({ tableSearch = '' }) {
 
         {/* RIGHT: ADVERTISEMENT PLACEHOLDER */}
         <aside className="lobby-ad">
-          <div className="lobby-ad-content"><span className="lobby-ad-kicker">ADVERTISEMENT</span><span className="lobby-ad-emblem" aria-hidden="true">♠</span><strong>Your next hand awaits</strong><span>Promotional space</span></div>
+          <AdPlacement placement="Lobby Right Sidebar" />
         </aside>
       </div>
 
       <div className="lobby-bottom-ad">
-        Advertisement
+        <AdPlacement placement="Lobby Bottom Banner" />
       </div>
 
 
