@@ -56,6 +56,7 @@ exports.getAllTables = async function(req, res) {
       return {
         id: table._id,
         name: table.Name,
+        createdAt: table.createdAt || null,
         level: table.Level,
         capacity: table.Capacity,
         humanCount: table.UserIds?.length ?? 0,
@@ -189,6 +190,14 @@ exports.createTable = async function(req, res) {
       buyIn,
     });
   } catch (error) {
+
+    if (error.code === 11000 &&
+      (error.keyPattern?.Name || error.message?.includes('unique_active_table_name'))) {
+      return res.status(409).json({
+        message: 'A table with this name already exists',
+      });
+    }
+    
     console.error('Error creating table:', error);
 
     return res.status(error.status || 500).json({

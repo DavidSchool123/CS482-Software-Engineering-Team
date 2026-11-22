@@ -587,12 +587,183 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .messages-page,
+  .messages-page *,
+  .messages-page *::before,
+  .messages-page *::after,
+  .message-dialog-backdrop,
+  .message-delete-dialog {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* =========================================
+   MESSAGES — POKER FACE DESIGN POLISH
+   ========================================= */
+
+/* PAGE */
+
+.messages-page {
+  box-sizing: border-box;
+  color: #21183e;
+}
+
+.messages-header h1 {
+  font-size: clamp(26px, 3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.messages-header p {
+  color: #6b6375;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* MAIN MESSAGING PANEL */
+
+.messages-layout {
+  border: 1px solid #e8ddf5;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(47, 23, 76, 0.07);
+}
+
+/* FRIENDS / CONVERSATIONS SIDEBAR */
+
+.messages-friends {
+  background: #faf8fd;
+  border-right-color: #e8ddf5;
+}
+
+.messages-friend {
+  border-radius: 9px;
+}
+
+.messages-friend:hover {
+  background: #f1e9fa;
+}
+
+.messages-friend.active {
+  background: #eee1ff;
+  border-color: #d9c9eb;
+  color: #7130b4;
+  box-shadow: none;
+}
+
+.messages-friend.active .messages-avatar {
+  border-color: #c8a4ef;
+}
+
+/* CONVERSATION AREA */
+
+.messages-conversation {
+  background: #ffffff;
+}
+
+.messages-conversation-header {
+  border-bottom-color: #e8ddf5;
+}
+
+.messages-contact h2 {
+  color: #21183e;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* MESSAGE BUBBLES */
+
+.private-message {
+  background: #f8f6fc;
+  border-color: #e8ddf5;
+  color: #21183e;
+}
+
+.private-message.own-message {
+  background: #f1e9fa;
+  border-color: #e2d2f3;
+}
+
+.private-message time {
+  color: #71677f;
+}
+
+/* MESSAGE ACTIONS */
+
+.message-actions button,
+.message-edit button,
+.message-compose button {
+  background: #8b36e9;
+  border-radius: 9px;
+  font-weight: 600;
+}
+
+.message-actions button:hover,
+.message-edit button:hover,
+.message-compose button:not(:disabled):hover {
+  background: #7130b4;
+}
+
+.message-actions .message-delete {
+  background: #746b80;
+}
+
+.message-actions .message-delete:hover {
+  background: #a13d56;
+}
+
+.message-edit .message-secondary {
+  background: #746b80;
+}
+
+/* MESSAGE INPUT */
+
+.message-edit textarea,
+.message-compose textarea {
+  background: #faf8fd;
+  border-color: #d9c9eb;
+  border-radius: 9px;
+}
+
+.message-edit textarea:focus,
+.message-compose textarea:focus {
+  border-color: #8b36e9;
+  box-shadow: 0 0 0 3px rgba(139, 54, 233, 0.12);
+}
+
+/* DELETE CONFIRMATION */
+
+.message-delete-dialog {
+  border-radius: 14px;
+  border-color: #e8ddf5;
+}
+
+.message-dialog-actions button {
+  border-radius: 9px;
+}
+
+/* ACCESSIBILITY */
+
+.messages-page button:focus-visible,
+.messages-page textarea:focus-visible,
+.message-delete-dialog button:focus-visible {
+  outline: 3px solid #b68af0;
+  outline-offset: 3px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 720px) {
+  .messages-friends {
+    border-right: 0;
+    border-bottom: 1px solid #e8ddf5;
+  }
+
+  .messages-layout {
+    border-radius: 14px;
+  }
+}
+

@@ -715,3 +715,281 @@
     align-self: center;
   }
 }
+
+
+/* =========================================
+   PROFILE — POKER FACE DESIGN POLISH
+   ========================================= */
+
+/* PAGE */
+
+.profile-page {
+  background: #f8f6fc;
+  color: #21183e;
+  gap: 20px;
+  padding: 28px 24px;
+}
+
+/* SIDEBAR */
+
+.profile-sidebar {
+  background: #291b47;
+  border: 1px solid #291b47;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(47, 23, 76, 0.07);
+}
+
+.profile-sidebar-item {
+  border-bottom: none;
+  border-radius: 9px;
+  margin: 4px 8px;
+  padding: 13px 14px;
+  background: transparent;
+  color: #d8c9eb;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.profile-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.profile-sidebar-item.active,
+.profile-sidebar-item.active:hover {
+  background: #7130b4;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* CONTENT PANELS */
+
+.profile-panel,
+.stats-panel,
+.achievements-panel {
+  background: #ffffff;
+  border: 1px solid #e8ddf5;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(47, 23, 76, 0.07);
+}
+
+.profile-panel,
+.stats-panel,
+.achievements-panel {
+  padding: 24px;
+}
+
+.profile-panel h1 {
+  font-size: 28px;
+  letter-spacing: -0.4px;
+}
+
+.stats-panel h2,
+.achievements-panel h2 {
+  font-size: 22px;
+  letter-spacing: -0.3px;
+}
+
+/* PLAYER CARD */
+
+.profile-card {
+  border: 1px solid #e8ddf5;
+  border-radius: 11px;
+  background: #faf8fd;
+}
+
+.profile-avatar-circle {
+  border-color: #7130b4;
+  background: #eee1ff;
+}
+
+.profile-overview {
+  min-width: 0;
+}
+
+.profile-name-row {
+  min-width: 0;
+}
+
+.profile-name-row h2 {
+  min-width: 0;
+  max-width: 100%;
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* PLAYER INFORMATION */
+
+.profile-meta,
+.balance-label {
+  color: #6b6375;
+  font-size: 14px;
+}
+
+.profile-suit,
+.balance-amount {
+  color: #7130b4;
+}
+
+/* PROFILE BUTTONS */
+
+.profile-change-button,
+.profile-add-chips {
+  background: #f1e9fa;
+  border: 1px solid #d9c9eb;
+  border-radius: 9px;
+  color: #7130b4;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.profile-change-button:hover,
+.profile-add-chips:hover {
+  background: #e5d5f7;
+}
+
+/* STATS */
+
+.stats-grid {
+  border-color: #e8ddf5;
+  border-radius: 11px;
+  background: #faf8fd;
+}
+
+.stat-box {
+  border-color: #e8ddf5;
+}
+
+.stat-icon {
+  color: #7130b4;
+}
+
+.stat-value {
+  color: #21183e;
+}
+
+/* ACHIEVEMENTS */
+
+.achievement-item {
+  border-color: #e8ddf5;
+}
+
+.achievement-icon {
+  color: #7130b4;
+}
+
+.achievement-copy h3 {
+  color: #21183e;
+}
+
+.achievement-copy p {
+  color: #6b6375;
+  line-height: 1.5;
+}
+
+/* EDIT PROFILE */
+
+.edit-profile-intro {
+  color: #6b6375;
+  font-size: 14px;
+}
+
+.edit-profile-form label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.edit-profile-form input {
+  padding: 12px 14px;
+  border: 1px solid #d9c9eb;
+  border-radius: 9px;
+  background: #faf8fd;
+  font-size: 14px;
+}
+
+.edit-profile-form input:focus {
+  outline: none;
+  border-color: #8b36e9;
+  box-shadow: 0 0 0 3px rgba(139, 54, 233, 0.12);
+}
+
+.edit-profile-save-button,
+.confirmation-accept-button {
+  background: #8b36e9;
+  border-radius: 9px;
+  color: #ffffff;
+}
+
+.edit-profile-save-button:hover,
+.confirmation-accept-button:hover {
+  background: #7130b4;
+}
+
+.delete-account-button,
+.confirmation-delete-button {
+  border-radius: 9px;
+}
+
+/* CONFIRMATION DIALOG */
+
+.profile-confirmation-dialog {
+  border: 1px solid #e8ddf5;
+  border-radius: 14px;
+}
+
+.confirmation-cancel-button {
+  border-radius: 9px;
+}
+
+/* ACCESSIBILITY */
+
+.profile-page button:focus-visible,
+.profile-page a:focus-visible,
+.profile-page input:focus-visible {
+  outline: 3px solid #b68af0;
+  outline-offset: 3px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .profile-page {
+    padding: 20px 16px;
+  }
+
+  .profile-sidebar {
+    width: 100%;
+  }
+
+  .profile-sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 6px;
+  }
+
+  .profile-sidebar-item {
+    margin: 2px;
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-page {
+    padding: 16px 12px;
+  }
+
+  .profile-panel,
+  .stats-panel,
+  .achievements-panel {
+    padding: 18px;
+  }
+
+  .profile-card {
+    padding: 16px;
+  }
+
+  .profile-name-row h2 {
+    font-size: 22px;
+  }
+}

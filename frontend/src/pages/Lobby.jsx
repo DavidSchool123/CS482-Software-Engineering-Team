@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Lobby.css';
+import './LobbyEnhancements.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TABLE_STAKES = {
@@ -13,6 +14,10 @@ function Lobby({ tableSearch = '' }) {
   const [selectedLevels, setSelectedLevels] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [availability, setAvailability] = useState('all');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [localSearch, setLocalSearch] = useState(tableSearch);
+  const [expandedTableId, setExpandedTableId] = useState(null);
+  useEffect(() => setLocalSearch(tableSearch), [tableSearch]);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -151,7 +156,7 @@ function Lobby({ tableSearch = '' }) {
     .filter((table) => {
       const matchesSearch = table.name
         .toLowerCase()
-        .includes(tableSearch.trim().toLowerCase());
+        .includes(localSearch.trim().toLowerCase());
 
       const matchesLevel =
         selectedLevels.length === 0 ||
@@ -175,8 +180,20 @@ function Lobby({ tableSearch = '' }) {
       );
     })
     .sort((a, b) => {
-      // Show joinable tables before full tables.
-      return Number(canJoinTable(b)) - Number(canJoinTable(a));
+      const newest = () => {
+        const aTime = a.createdAt ? Date.parse(a.createdAt) || 0 : 0;
+        const bTime = b.createdAt ? Date.parse(b.createdAt) || 0 : 0;
+        return bTime - aTime || String(b.id).localeCompare(String(a.id));
+      };
+
+      if (sortBy === 'newest') return newest();
+      if (sortBy === 'oldest') return -newest();
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'openSeats') {
+        return (b.capacity - b.humanCount) - (a.capacity - a.humanCount) || newest();
+      }
+      // Default: joinable first, then newest.
+      return Number(canJoinTable(b)) - Number(canJoinTable(a)) || newest();
     });
 
   function openJoinModal(table) {
@@ -353,106 +370,123 @@ function Lobby({ tableSearch = '' }) {
   }
 
 
+  // Player identities are optional until the public tables API returns them.
+  // Never treat raw MongoDB IDs as display names.
+  function getPreviewSeats(table) {
+    const players = Array.isArray(table.players) ? table.players
+      : Array.isArray(table.playerDetails) ? table.playerDetails
+      : Array.isArray(table.seatedPlayers) ? table.seatedPlayers : [];
+    const humans = players.filter((player) => player &&
+      !player.isBot && player.type !== 'bot' && player.userType !== 'bot');
+    const bots = players.filter((player) => player &&
+      (player.isBot || player.type === 'bot' || player.userType === 'bot'));
+    const seats = [];
+    const humanCount = Math.min(table.capacity, Number(table.humanCount) || 0);
+    const botCount = Math.min(table.capacity - humanCount, Number(table.botCount) || 0);
+
+    for (let i = 0; i < humanCount; i++) {
+      const player = humans[i];
+      seats.push({
+        kind: 'human',
+        name: player?.username || player?.displayName || player?.name || `Player ${i + 1}`,
+        avatar: player?.avatarUrl || player?.avatar || null,
+      });
+    }
+    for (let i = 0; i < botCount && seats.length < table.capacity; i++) {
+      seats.push({ kind: 'bot', name: bots[i]?.name || `Bot ${i + 1}`, avatar: null });
+    }
+    while (seats.length < table.capacity) seats.push({ kind: 'open', name: 'Open seat' });
+    return seats;
+  }
+
   function renderTableCard(table) {
     const isFull = isTableFull(table);
     const isInProgress = table.status === 'In Progress';
     const joinable = canJoinTable(table);
-
-    const displayStatus =
-      isInProgress
-        ? 'In Progress'
-        : isFull
-          ? 'Full'
-          : table.status;
+    const expanded = expandedTableId === table.id;
+    const seats = getPreviewSeats(table);
+    const seatPositions = [
+      { left: '50%', top: '5%' },
+      { left: '17%', top: '27%' },
+      { left: '17%', top: '73%' },
+      { left: '83%', top: '27%' },
+      { left: '83%', top: '73%' },
+      { left: '50%', top: '95%' },
+    ];
+    const openHumanSeats = Math.max(0, table.capacity - table.humanCount);
+    const occupiedSeats = Math.min(table.capacity, (Number(table.humanCount) || 0) + (Number(table.botCount) || 0));
 
     return (
-      <article className="table-card" key={table.id}>
-        <div className="table-card-header">
-          <div>
-            <h3>{table.name}</h3>
-            <p className="table-card-subtitle">
-              {table.level} Stakes · {table.humanCount}/{table.capacity} Humans
-              {' · '}{table.botCount} Bots
-            </p>
-          </div>
-
-          <span
-            className={`table-status ${
-              isInProgress ? 'status-progress' : ''
-            }`}
-          >
-            {displayStatus}
+      <article className={`lobby-browser-item ${expanded ? 'is-expanded' : ''}`} key={table.id}>
+        <button
+          type="button"
+          className="lobby-browser-row"
+          onClick={() => setExpandedTableId(expanded ? null : table.id)}
+          aria-expanded={expanded}
+          aria-controls={`lobby-preview-${table.id}`}
+        >
+          <span className="lobby-browser-suit" aria-hidden="true">♠</span>
+          <span className="lobby-browser-main">
+            <strong>{table.name}</strong>
+            <span>{table.level} stakes · {table.stakes ? `${table.stakes.smallBet}/${table.stakes.bigBet}` : '—'} bets</span>
           </span>
-        </div>
-
-        <div className="table-card-details">
-          <div className="table-detail">
-            <span className="detail-label">
-              Buy-In Range
-              <span
-                className="info-icon"
-                title="The minimum and maximum number of chips you can bring to this table."
-                tabIndex={0}
-                aria-label="Buy-in range is the minimum and maximum number of chips you can bring to this table."
-              >
-                ⓘ
-              </span>
+          <span className="lobby-browser-meta">
+            <span className={`lobby-browser-status ${joinable ? 'is-joinable' : ''}`}>
+              {isInProgress ? '● In Progress' : isFull ? '● Full' : '● Waiting'}
             </span>
-
-            <strong>
-              {table.stakes
-                ? `${table.stakes.minBuyIn.toLocaleString()}–${table.stakes.maxBuyIn.toLocaleString()} chips`
-                : 'Unavailable'}
-            </strong>
-          </div>
-
-          <div className="table-detail">
-            <span className="detail-label">
-              Bet Amounts
-              <span
-                className="info-icon"
-                title="The fixed betting increments used during the game. Early rounds use the smaller amount; later rounds use the larger amount."
-                tabIndex={0}
-                aria-label="Bet amounts are the fixed betting increments. Early rounds use the smaller amount and later rounds use the larger amount."
-              >
-                ⓘ
-              </span>
-            </span>
-
-            <strong>
-              {table.stakes
-                ? `${table.stakes.smallBet} / ${table.stakes.bigBet} chips`
-                : 'Unavailable'}
-            </strong>
-          </div>
-        </div>
-
-        <div className="table-card-footer">
-          <div className="table-actions">
-            {/* Allow spectators to watch full or active public tables. */}
-            {(isInProgress || isFull) && (
-              <button
-                type="button"
-                className="observe-btn"
-                onClick={() =>
-                  navigate(`/table/${table.id}?spectate=true`)
-                }
-                title="Watch this table without joining it."
-              >
-                Observe
-              </button>
+            <span>{occupiedSeats}/{table.capacity} seats occupied <span aria-hidden="true">{expanded ? '⌃' : '⌄'}</span></span>
+          </span>
+        </button>
+        {expanded && (
+          <div className="lobby-browser-preview" id={`lobby-preview-${table.id}`}>
+            <div className="lobby-preview-heading">
+              <div>
+                <span className="lobby-preview-eyebrow">TABLE PREVIEW</span>
+                <h3>{table.name}</h3>
+                <p>{table.level} stakes · {occupiedSeats}/{table.capacity} seats occupied</p>
+              </div>
+              <span className="lobby-preview-status">{table.status}</span>
+            </div>
+            <div className="lobby-preview-stage" aria-label="Table seating preview">
+              <div className="lobby-preview-felt">
+                <div>POKER FACE <small>SEVEN-CARD STUD</small></div>
+              </div>
+              {seats.map((seat, index) => (
+                <div
+                  className={`lobby-preview-seat seat-${seat.kind}`}
+                  style={seatPositions[index]}
+                  key={index}
+                  title={seat.name}
+                >
+                  <span className="lobby-seat-icon">
+                    {seat.avatar && typeof seat.avatar === 'string' ? (
+                      <img src={seat.avatar} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                    ) : seat.kind === 'bot' ? '🤖' : seat.kind === 'human' ? '♟' : '+'}
+                  </span>
+                  <span className="lobby-seat-name">{seat.name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="lobby-preview-stats">
+              <div><span>SPOTS FOR PLAYERS</span><strong>{openHumanSeats}</strong></div>
+              <div><span>BUY-IN</span><strong>{table.stakes ? `${table.stakes.minBuyIn.toLocaleString()}–${table.stakes.maxBuyIn.toLocaleString()}` : 'Unavailable'}</strong></div>
+              <div><span>FIXED BETS</span><strong>{table.stakes ? `${table.stakes.smallBet} / ${table.stakes.bigBet}` : 'Unavailable'}</strong></div>
+            </div>
+            {isInProgress && joinable && (
+              <p className="lobby-preview-note">You can join now and enter play when the next hand begins.</p>
             )}
-
-            <button
-              type="button"
-              className="join-btn"
-              disabled={!joinable}
-              onClick={() => openJoinModal(table)}
-            >
-              {isFull ? 'Table Full' : 'Join Table'}
-            </button>
+            <div className="lobby-preview-actions">
+              {(isInProgress || isFull) && (
+                <button type="button" className="observe-btn" onClick={() => navigate(`/table/${table.id}?spectate=true`)}>
+                  Observe
+                </button>
+              )}
+              <button type="button" className="join-btn" disabled={!joinable} onClick={() => openJoinModal(table)}>
+                {isFull ? 'Table Full' : 'Join Table'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </article>
     );
   }
@@ -469,7 +503,8 @@ function Lobby({ tableSearch = '' }) {
 
 
   return (
-    <div className="lobby-page">
+    <div className="lobby-page lobby-page-refined">
+      <div className="lobby-ambient" aria-hidden="true"><span>♠</span><span>♣</span><span>♦</span><span>♥</span></div>
       <div className="lobby-layout">
         {/* LEFT: FILTERS */}
         <aside className="lobby-filters">
@@ -578,6 +613,24 @@ function Lobby({ tableSearch = '' }) {
             </div>
           </div>
 
+          <div className="lobby-browser-toolbar">
+            <label className="lobby-search-field" htmlFor="lobby-table-search">
+              <span aria-hidden="true">⌕</span>
+              <input id="lobby-table-search" type="search" placeholder="Search tables..."
+                value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} />
+            </label>
+            <label className="lobby-sort-field" htmlFor="lobby-sort">
+              <span>Sort by</span>
+              <select id="lobby-sort" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="recommended">Joinable first · Newest</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="openSeats">Most spots for players</option>
+                <option value="name">Table name A–Z</option>
+              </select>
+            </label>
+          </div>    
+
           {loading ? (
             <p className="no-tables">Loading tables...</p>
           ) : error ? (
@@ -587,7 +640,7 @@ function Lobby({ tableSearch = '' }) {
               No tables match your filters.
             </p>
           ) : (
-            <div className="table-card-list">
+            <div className="lobby-browser-list">
               {filteredTables.map(renderTableCard)}
             </div>
           )}
@@ -595,7 +648,7 @@ function Lobby({ tableSearch = '' }) {
 
         {/* RIGHT: ADVERTISEMENT PLACEHOLDER */}
         <aside className="lobby-ad">
-          <span>Advertisement</span>
+          <div className="lobby-ad-content"><span className="lobby-ad-kicker">ADVERTISEMENT</span><span className="lobby-ad-emblem" aria-hidden="true">♠</span><strong>Your next hand awaits</strong><span>Promotional space</span></div>
         </aside>
       </div>
 
