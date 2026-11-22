@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { EditProfile } from './Profile';
 import './AdminDashboard.css';
 
@@ -88,9 +88,344 @@ function MetricIcon({ type }) {
   );
 }
 
+function RegisteredUsersView({
+  users: registeredUsers,
+  search,
+  onSearchChange,
+  currentPage,
+  onPageChange,
+}) {
+  const searchInputRef = useRef(null);
+  const pages =
+    currentPage <= 3
+      ? [1, 2, 3, 'ellipsis', 25]
+      : currentPage >= 23
+        ? [1, 'ellipsis', 23, 24, 25]
+        : [
+            1,
+            'ellipsis',
+            currentPage - 1,
+            currentPage,
+            currentPage + 1,
+            'ellipsis',
+            25,
+          ];
+
+  return (
+    <section
+      className='admin-registered-users-view'
+      aria-labelledby='registered-users-title'
+    >
+      <div className='admin-registered-users-heading'>
+        <h1 id='registered-users-title'>Registered Users</h1>
+        <div className='admin-user-search admin-user-search-large'>
+          <button
+            type='button'
+            className='admin-search-icon-button'
+            aria-label='Focus user search'
+            onClick={() => searchInputRef.current?.focus()}
+          >
+            <span className='admin-search-icon' aria-hidden='true' />
+          </button>
+          <input
+            ref={searchInputRef}
+            type='search'
+            aria-label='Search users'
+            placeholder='Search users...'
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className='admin-table-scroll'>
+        <table className='admin-dashboard-table admin-registered-users-table'>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Join Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {registeredUsers.map((user) => (
+              <tr key={user.username}>
+                <td>{user.username}</td>
+                <td>{user.email}</td>
+                <td>{user.joined}</td>
+                <td>
+                  <span
+                    className={`admin-status-dot status-${user.status.toLowerCase()}`}
+                    aria-hidden='true'
+                  />
+                  {user.status}
+                </td>
+                <td>
+                  <button
+                    type='button'
+                    className='admin-view-button'
+                    aria-label={`View ${user.username}`}
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {registeredUsers.length === 0 && (
+              <tr>
+                <td colSpan='5' className='admin-empty-results'>
+                  No users match that search.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <nav
+        className='admin-pagination admin-registered-users-pagination'
+        aria-label='Registered user pages'
+      >
+        <button
+          type='button'
+          aria-label='Previous page'
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        >
+          ‹
+        </button>
+        {pages.map((page, index) =>
+          typeof page === 'number' ? (
+            <button
+              type='button'
+              className={currentPage === page ? 'current-page' : ''}
+              aria-current={currentPage === page ? 'page' : undefined}
+              key={page}
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </button>
+          ) : (
+            <span
+              className='admin-pagination-ellipsis'
+              aria-hidden='true'
+              key={`${page}-${index}`}
+            >
+              …
+            </span>
+          ),
+        )}
+        <button
+          type='button'
+          aria-label='Next page'
+          disabled={currentPage === 25}
+          onClick={() => onPageChange(Math.min(25, currentPage + 1))}
+        >
+          ›
+        </button>
+      </nav>
+    </section>
+  );
+}
+
+function PlayerStatisticsView({ group, onGroupChange }) {
+  return (
+    <section
+      className='admin-player-statistics-view'
+      aria-labelledby='player-statistics-title'
+    >
+      <div className='admin-player-statistics-heading'>
+        <h1 id='player-statistics-title'>Player Statistics</h1>
+        <div className='admin-player-statistics-select-wrap'>
+          <select
+            className='admin-player-statistics-select'
+            aria-label='Player statistics group'
+            value={group}
+            onChange={(event) => onGroupChange(event.target.value)}
+          >
+            <option>Top Players</option>
+            <option>Most Games Played</option>
+            <option>Highest Win Rate</option>
+          </select>
+          <span
+            className='admin-player-statistics-arrow'
+            aria-hidden='true'
+          />
+        </div>
+      </div>
+
+      <div className='admin-table-scroll'>
+        <table className='admin-dashboard-table admin-player-statistics-table'>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Username</th>
+              <th>Games Won</th>
+              <th>Win Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topPlayers.map((player) => (
+              <tr key={player.rank}>
+                <td>{player.rank}</td>
+                <td>{player.username}</td>
+                <td>{player.wins}</td>
+                <td>{player.rate}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function GameMonitoringView({ group, onGroupChange }) {
+  return (
+    <section
+      className='admin-game-monitoring-view'
+      aria-labelledby='game-monitoring-title'
+    >
+      <div className='admin-game-monitoring-heading'>
+        <h1 id='game-monitoring-title'>Game Monitoring</h1>
+        <div className='admin-player-statistics-select-wrap'>
+          <select
+            className='admin-player-statistics-select'
+            aria-label='Game monitoring group'
+            value={group}
+            onChange={(event) => onGroupChange(event.target.value)}
+          >
+            <option>Active Games</option>
+            <option>All Games</option>
+            <option>Completed Games</option>
+          </select>
+          <span
+            className='admin-player-statistics-arrow'
+            aria-hidden='true'
+          />
+        </div>
+      </div>
+
+      <div className='admin-table-scroll'>
+        <table className='admin-dashboard-table admin-game-monitoring-table'>
+          <thead>
+            <tr>
+              <th>Table ID</th>
+              <th>Players</th>
+              <th>Status</th>
+              <th>Start Time</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((game) => (
+              <tr key={game.id}>
+                <td>{game.id}</td>
+                <td>{game.players}</td>
+                <td>
+                  <span
+                    className={`admin-status-dot status-${game.status
+                      .toLowerCase()
+                      .replace(' ', '-')}`}
+                    aria-hidden='true'
+                  />
+                  {game.status}
+                </td>
+                <td>{game.time}</td>
+                <td>
+                  <button
+                    type='button'
+                    className='admin-view-button'
+                    aria-label={`View game ${game.id}`}
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function AdEngagementView({ period, onPeriodChange }) {
+  return (
+    <section
+      className='admin-ad-engagement-view'
+      aria-labelledby='ad-engagement-title'
+    >
+      <div className='admin-ad-engagement-heading'>
+        <h1 id='ad-engagement-title'>Ad Engagement</h1>
+        <div className='admin-player-statistics-select-wrap'>
+          <select
+            className='admin-player-statistics-select'
+            aria-label='Ad engagement period'
+            value={period}
+            onChange={(event) => onPeriodChange(event.target.value)}
+          >
+            <option>Last 7 Days</option>
+            <option>Last 30 Days</option>
+            <option>Last 90 Days</option>
+          </select>
+          <span
+            className='admin-player-statistics-arrow'
+            aria-hidden='true'
+          />
+        </div>
+      </div>
+
+      <div className='admin-ad-engagement-frame'>
+        <div
+          className='admin-ad-engagement-chart'
+          aria-label='Impressions 152, clicks 87, conversions 28'
+        >
+          <div className='admin-ad-engagement-chart-grid'>
+            <span>200</span>
+            <span>150</span>
+            <span>100</span>
+            <span>50</span>
+            <span>0</span>
+            <div className='admin-ad-engagement-bars'>
+              <div className='admin-ad-engagement-bar impressions'>
+                <span>Impressions</span>
+              </div>
+              <div className='admin-ad-engagement-bar clicks'>
+                <span>Clicks</span>
+              </div>
+              <div className='admin-ad-engagement-bar conversions'>
+                <span>Conversions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <dl className='admin-ad-engagement-stats'>
+          <div>
+            <dt>Impressions</dt>
+            <dd>152</dd>
+          </div>
+          <div>
+            <dt>Clicks</dt>
+            <dd>87</dd>
+          </div>
+          <div>
+            <dt>Conversions</dt>
+            <dd>28</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  );
+}
+
 function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('Dashboard');
   const [userSearch, setUserSearch] = useState('');
+  const [usersPage, setUsersPage] = useState(1);
   const [playerGroup, setPlayerGroup] = useState('Top Players');
   const [gameGroup, setGameGroup] = useState('Active Games');
   const [engagementPeriod, setEngagementPeriod] = useState('Last 7 Days');
@@ -126,9 +461,49 @@ function AdminDashboard() {
           <EditProfile embedded pathnameOverride='/profile/edit' />
         )}
 
+        {activeSection === 'Registered Users' && (
+          <RegisteredUsersView
+            users={filteredUsers}
+            search={userSearch}
+            onSearchChange={(search) => {
+              setUserSearch(search);
+              setUsersPage(1);
+            }}
+            currentPage={usersPage}
+            onPageChange={setUsersPage}
+          />
+        )}
+
+        {activeSection === 'Player Statistics' && (
+          <PlayerStatisticsView
+            group={playerGroup}
+            onGroupChange={setPlayerGroup}
+          />
+        )}
+
+        {activeSection === 'Game Monitoring' && (
+          <GameMonitoringView
+            group={gameGroup}
+            onGroupChange={setGameGroup}
+          />
+        )}
+
+        {activeSection === 'Ad Engagement' && (
+          <AdEngagementView
+            period={engagementPeriod}
+            onPeriodChange={setEngagementPeriod}
+          />
+        )}
+
         <div
           className='admin-dashboard-view'
-          hidden={activeSection === 'Edit Profile'}
+          hidden={
+            activeSection === 'Edit Profile' ||
+            activeSection === 'Registered Users' ||
+            activeSection === 'Player Statistics' ||
+            activeSection === 'Game Monitoring' ||
+            activeSection === 'Ad Engagement'
+          }
         >
           <header className='admin-dashboard-heading'>
             <h1>Admin Dashboard</h1>
