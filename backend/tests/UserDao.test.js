@@ -40,7 +40,7 @@ describe('UserDao account and profile operations', () => {
     const result = await User.getProfile('user123');
 
     expect(select).toHaveBeenCalledWith(
-          '_id username email friends avatar userType chipBalance stats',
+          '_id username email friends avatar userType chipBalance isAdmin stats',
         );
 
     expect(result).toEqual({

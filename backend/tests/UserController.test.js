@@ -232,22 +232,22 @@ test('Admin Security Check passes', () => {
   expect(controller.adminCheck(req)).toBeTruthy();
 });
 
-test('Admin Security Check fails', () => {
+test('Admin Security Check fails', async () => {
   const req = {
     session: {
       user: { _id: 'c1', permission: 2 },
     },
   };
 
-  expect(controller.adminCheck(req)).toBeFalsy();
+  expect(await controller.adminCheck(req)).toBeFalsy();
 });
 
-test('Admin Security Check unlogged user', () => {
+test('Admin Security Check unlogged user', async () => {
   const req = {
     session: { user: undefined },
   };
 
-  expect(controller.adminCheck(req)).toBeFalsy();
+  expect(await controller.adminCheck(req)).toBeFalsy();
 });
 
 describe('Update User Account', () => {
@@ -655,7 +655,7 @@ describe('Additional session and profile tests', () => {
 
     expect(userDao.findById).toHaveBeenCalledWith(userId);
     expect(selectMock).toHaveBeenCalledWith(
-      '_id username email friends avatar userType chipBalance stats'
+      '_id username email friends avatar userType chipBalance isAdmin stats'
     );
 
     expect(profile).toEqual({
@@ -666,13 +666,13 @@ describe('Additional session and profile tests', () => {
       avatar: '',
       userType: 'registered',
       chipBalance: 1000,
-      "stats": Object {
-               "gamesPlayed": 0,
-               "losses": 0,
-               "netWinnings": 0,
-               "totalChipsWon": 0,
-               "wins": 0,
-             },
+      stats: {
+        gamesPlayed: 0,
+        losses: 0,
+        netWinnings: 0,
+        totalChipsWon: 0,
+        wins: 0,
+      },
     });
   });
 
