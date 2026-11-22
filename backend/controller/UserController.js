@@ -282,13 +282,21 @@ async function resetPassword(req, res) {
   }
 }
 
-function adminCheck(req) {
-  return req.session.user && req.session.user.permission == 1;
+async function adminCheck(req) {
+  const userId = req.session?.userId;
+
+  if (!userId) {
+    return false;
+  }
+
+  const user = await UserDao.findById(userId);
+
+  return user && user.isAdmin === true;
 }
 
 async function getUsers(req, res) {
   try {
-    if (adminCheck(req) === true) {
+    if (await adminCheck(req)) {
       const users = await UserDao.readAll();
       return res.status(200).json(users);
     } else {
@@ -531,7 +539,7 @@ async function getCurrentUser(req, res) {
     }
 
     const user = await UserDao.findById(userId).select(
-      '_id username userType chipBalance',
+      '_id username userType chipBalance isAdmin',
     );
 
     if (!user) {
@@ -545,6 +553,7 @@ async function getCurrentUser(req, res) {
       username: user.username,
       userType: user.userType,
       chipBalance: user.chipBalance,
+      isAdmin: user.isAdmin,
     });
   } catch (error) {
     console.error('Error retrieving current user:', error);
