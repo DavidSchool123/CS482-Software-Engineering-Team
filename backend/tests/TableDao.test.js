@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const TableDao = require('../model/TableDao');
@@ -29,20 +28,19 @@ describe('TableDao - Table Operations', () => {
       PlayerStacks: [
         {
           PlayerId: String(user1),
-          Chips: 200
-        }
+          Chips: 200,
+        },
       ],
       PlayerPresence: [],
       save: jest.fn().mockResolvedValue(undefined),
-      ...overrides
+      ...overrides,
     };
   }
 
   function mockFindById(table) {
-    return jest.spyOn(TableModel, 'findById')
-      .mockReturnValue({
-        session: jest.fn().mockResolvedValue(table)
-      });
+    return jest.spyOn(TableModel, 'findById').mockReturnValue({
+      session: jest.fn().mockResolvedValue(table),
+    });
   }
 
   beforeEach(() => {
@@ -58,36 +56,42 @@ describe('TableDao - Table Operations', () => {
 
     const select = jest.fn().mockResolvedValue(tables);
 
-    const find = jest.spyOn(TableModel, 'find')
-      .mockReturnValue({ select });
+    const find = jest.spyOn(TableModel, 'find').mockReturnValue({ select });
 
     const result = await TableDao.findAll();
 
     expect(find).toHaveBeenCalledWith();
 
     expect(select).toHaveBeenCalledWith(
-      'Name Capacity UserIds BotCount IsPublic Level Status'
+      'Name Capacity UserIds BotCount IsPublic Level Status',
     );
 
     expect(result).toEqual(tables);
   });
 
   test('findPublicTables excludes closed and private tables', async () => {
-    const select = jest.fn().mockResolvedValue([]);
+    const sort = jest.fn().mockResolvedValue([]);
+    const select = jest.fn().mockReturnValue({ sort });
 
-    const find = jest.spyOn(TableModel, 'find')
-      .mockReturnValue({ select });
+    const find = jest.spyOn(TableModel, 'find').mockReturnValue({ select });
 
     await TableDao.findPublicTables();
 
     expect(find).toHaveBeenCalledWith({
       IsPublic: true,
-      Status: { $ne: 'Closed' }
+      Status: {
+        $in: ['Waiting', 'In Progress'],
+      },
     });
 
     expect(select).toHaveBeenCalledWith(
-      'Name Capacity UserIds BotCount Level Status'
+      'Name Capacity UserIds BotCount Level Status createdAt',
     );
+
+    expect(sort).toHaveBeenCalledWith({
+      createdAt: -1,
+      _id: -1,
+    });
   });
 
   test('findTableByCode searches using the join code', async () => {
@@ -95,19 +99,20 @@ describe('TableDao - Table Operations', () => {
 
     const select = jest.fn().mockResolvedValue(table);
 
-    const findOne = jest.spyOn(TableModel, 'findOne')
+    const findOne = jest
+      .spyOn(TableModel, 'findOne')
       .mockReturnValue({ select });
 
     const result = await TableDao.findTableByCode({
-      params: { joinCode: 'ABC123' }
+      params: { joinCode: 'ABC123' },
     });
 
     expect(findOne).toHaveBeenCalledWith({
-      JoinCode: 'ABC123'
+      JoinCode: 'ABC123',
     });
 
     expect(select).toHaveBeenCalledWith(
-      'Name Capacity UserIds BotCount Level Status JoinCode CurrentGameID PlayerStacks'
+      'Name Capacity UserIds BotCount Level Status JoinCode CurrentGameID PlayerStacks',
     );
 
     expect(result).toBe(table);
@@ -116,17 +121,16 @@ describe('TableDao - Table Operations', () => {
   test('deleteTableByCode deletes the matching table', async () => {
     const table = createMockTable();
 
-    const deleteMock = jest.spyOn(
-      TableModel,
-      'findOneAndDelete'
-    ).mockResolvedValue(table);
+    const deleteMock = jest
+      .spyOn(TableModel, 'findOneAndDelete')
+      .mockResolvedValue(table);
 
     const result = await TableDao.deleteTableByCode({
-      params: { joinCode: 'ABC123' }
+      params: { joinCode: 'ABC123' },
     });
 
     expect(deleteMock).toHaveBeenCalledWith({
-      JoinCode: 'ABC123'
+      JoinCode: 'ABC123',
     });
 
     expect(result).toBe(table);
@@ -137,10 +141,7 @@ describe('TableDao - Table Operations', () => {
 
     const findSpy = mockFindById(table);
 
-    const result = await TableDao.findById(
-      tableId,
-      session
-    );
+    const result = await TableDao.findById(tableId, session);
 
     expect(findSpy).toHaveBeenCalledWith(tableId);
     expect(result).toBe(table);
@@ -151,10 +152,9 @@ describe('TableDao - Table Operations', () => {
   // -----------------------------------------
 
   test('create saves a new table', async () => {
-    const save = jest.spyOn(
-      TableModel.prototype,
-      'save'
-    ).mockResolvedValue(undefined);
+    const save = jest
+      .spyOn(TableModel.prototype, 'save')
+      .mockResolvedValue(undefined);
 
     const tableData = {
       Name: 'New Table',
@@ -163,13 +163,10 @@ describe('TableDao - Table Operations', () => {
       UserIds: [],
       BotCount: 2,
       IsPublic: true,
-      Level: 'Low'
+      Level: 'Low',
     };
 
-    const result = await TableDao.create(
-      tableData,
-      session
-    );
+    const result = await TableDao.create(tableData, session);
 
     expect(save).toHaveBeenCalledWith({ session });
     expect(result.Name).toBe('New Table');
@@ -177,12 +174,9 @@ describe('TableDao - Table Operations', () => {
   });
 
   test('create propagates database errors', async () => {
-    jest.spyOn(
-      TableModel.prototype,
-      'save'
-    ).mockRejectedValue(
-      new Error('Database save failed')
-    );
+    jest
+      .spyOn(TableModel.prototype, 'save')
+      .mockRejectedValue(new Error('Database save failed'));
 
     await expect(
       TableDao.create({
@@ -191,8 +185,8 @@ describe('TableDao - Table Operations', () => {
         Capacity: 3,
         BotCount: 0,
         IsPublic: true,
-        Level: 'Low'
-      })
+        Level: 'Low',
+      }),
     ).rejects.toThrow('Database save failed');
   });
 
@@ -202,111 +196,97 @@ describe('TableDao - Table Operations', () => {
 
   test('setCurrentGame links a game to its table', async () => {
     const updatedTable = createMockTable({
-      CurrentGameID: previousGameId
+      CurrentGameID: previousGameId,
     });
 
-    const update = jest.spyOn(
-      TableModel,
-      'findByIdAndUpdate'
-    ).mockResolvedValue(updatedTable);
+    const update = jest
+      .spyOn(TableModel, 'findByIdAndUpdate')
+      .mockResolvedValue(updatedTable);
 
     const result = await TableDao.setCurrentGame(
       tableId,
       previousGameId,
-      session
+      session,
     );
 
     expect(update).toHaveBeenCalledWith(
       tableId,
       {
         $set: {
-          CurrentGameID: previousGameId
-        }
+          CurrentGameID: previousGameId,
+        },
       },
       {
         new: true,
-        session
-      }
+        session,
+      },
     );
 
     expect(result).toBe(updatedTable);
   });
 
   test('reserveForGame only reserves waiting tables', async () => {
-    const update = jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(createMockTable({
-      Status: 'In Progress'
-    }));
-
-    await TableDao.reserveForGame(
-      tableId,
-      session
+    const update = jest.spyOn(TableModel, 'findOneAndUpdate').mockResolvedValue(
+      createMockTable({
+        Status: 'In Progress',
+      }),
     );
+
+    await TableDao.reserveForGame(tableId, session);
 
     expect(update).toHaveBeenCalledWith(
       {
         _id: tableId,
-        Status: 'Waiting'
+        Status: 'Waiting',
       },
       {
         $set: {
-          Status: 'In Progress'
-        }
+          Status: 'In Progress',
+        },
       },
       {
         new: true,
-        session
-      }
+        session,
+      },
     );
   });
 
   test('setNextGame atomically links the next hand', async () => {
-    const update = jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(createMockTable({
-      CurrentGameID: nextGameId
-    }));
-
-    await TableDao.setNextGame(
-      tableId,
-      previousGameId,
-      nextGameId,
-      session
+    const update = jest.spyOn(TableModel, 'findOneAndUpdate').mockResolvedValue(
+      createMockTable({
+        CurrentGameID: nextGameId,
+      }),
     );
+
+    await TableDao.setNextGame(tableId, previousGameId, nextGameId, session);
 
     expect(update).toHaveBeenCalledWith(
       {
         _id: tableId,
         Status: 'In Progress',
-        CurrentGameID: previousGameId
+        CurrentGameID: previousGameId,
       },
       {
         $set: {
-          CurrentGameID: nextGameId
-        }
+          CurrentGameID: nextGameId,
+        },
       },
       {
         new: true,
         session,
-        runValidators: true
-      }
+        runValidators: true,
+      },
     );
   });
 
   test('setNextGame returns null when the previous game changed', async () => {
-    jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(null);
+    jest.spyOn(TableModel, 'findOneAndUpdate').mockResolvedValue(null);
 
     const result = await TableDao.setNextGame(
       tableId,
       previousGameId,
       nextGameId,
-      session
+      session,
     );
 
     expect(result).toBeNull();
@@ -321,12 +301,7 @@ describe('TableDao - Table Operations', () => {
 
     mockFindById(table);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user2,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user2, 200, session);
 
     expect(result).toBe(table);
 
@@ -334,20 +309,20 @@ describe('TableDao - Table Operations', () => {
 
     expect(table.PlayerStacks).toContainEqual({
       PlayerId: String(user2),
-      Chips: 200
+      Chips: 200,
     });
 
     expect(table.PlayerPresence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           PlayerId: String(user2),
-          LastSeenAt: expect.any(Date)
-        })
-      ])
+          LastSeenAt: expect.any(Date),
+        }),
+      ]),
     );
 
     expect(table.save).toHaveBeenCalledWith({
-      session
+      session,
     });
   });
 
@@ -362,28 +337,21 @@ describe('TableDao - Table Operations', () => {
       PlayerStacks: [
         { PlayerId: String(user1), Chips: 200 },
         { PlayerId: bot1, Chips: 200 },
-        { PlayerId: bot2, Chips: 200 }
-      ]
+        { PlayerId: bot2, Chips: 200 },
+      ],
     });
 
     mockFindById(table);
 
-    await TableDao.addPlayer(
-      tableId,
-      user2,
-      200,
-      session
-    );
+    await TableDao.addPlayer(tableId, user2, 200, session);
 
     expect(table.BotCount).toBe(1);
 
-    expect(
-      table.PlayerStacks.map(stack => stack.PlayerId)
-    ).not.toContain(bot2);
+    expect(table.PlayerStacks.map((stack) => stack.PlayerId)).not.toContain(
+      bot2,
+    );
 
-    expect(
-      table.PlayerStacks.map(stack => stack.PlayerId)
-    ).toContain(bot1);
+    expect(table.PlayerStacks.map((stack) => stack.PlayerId)).toContain(bot1);
 
     expect(table.UserIds).toContain(user2);
     expect(table.save).toHaveBeenCalled();
@@ -401,31 +369,20 @@ describe('TableDao - Table Operations', () => {
       PlayerStacks: [
         { PlayerId: String(user1), Chips: 200 },
         { PlayerId: bot1, Chips: 200 },
-        { PlayerId: bot2, Chips: 200 }
-      ]
+        { PlayerId: bot2, Chips: 200 },
+      ],
     });
 
     mockFindById(table);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user2,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user2, 200, session);
 
     expect(result).toBe(table);
 
     expect(table.BotCount).toBe(2);
 
-    expect(
-      table.PlayerStacks.map(stack => stack.PlayerId)
-    ).toEqual(
-      expect.arrayContaining([
-        bot1,
-        bot2,
-        String(user2)
-      ])
+    expect(table.PlayerStacks.map((stack) => stack.PlayerId)).toEqual(
+      expect.arrayContaining([bot1, bot2, String(user2)]),
     );
 
     expect(table.UserIds).toContain(user2);
@@ -437,12 +394,7 @@ describe('TableDao - Table Operations', () => {
 
     mockFindById(table);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user1,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user1, 200, session);
 
     expect(result).toBeNull();
     expect(table.save).not.toHaveBeenCalled();
@@ -451,17 +403,12 @@ describe('TableDao - Table Operations', () => {
   test('addPlayer rejects a table at human capacity', async () => {
     const table = createMockTable({
       Capacity: 2,
-      UserIds: [user1, user2]
+      UserIds: [user1, user2],
     });
 
     mockFindById(table);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user3,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user3, 200, session);
 
     expect(result).toBeNull();
     expect(table.save).not.toHaveBeenCalled();
@@ -469,17 +416,12 @@ describe('TableDao - Table Operations', () => {
 
   test('addPlayer rejects closed tables', async () => {
     const table = createMockTable({
-      Status: 'Closed'
+      Status: 'Closed',
     });
 
     mockFindById(table);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user2,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user2, 200, session);
 
     expect(result).toBeNull();
     expect(table.save).not.toHaveBeenCalled();
@@ -488,12 +430,7 @@ describe('TableDao - Table Operations', () => {
   test('addPlayer rejects nonexistent tables', async () => {
     mockFindById(null);
 
-    const result = await TableDao.addPlayer(
-      tableId,
-      user2,
-      200,
-      session
-    );
+    const result = await TableDao.addPlayer(tableId, user2, 200, session);
 
     expect(result).toBeNull();
   });
@@ -501,19 +438,12 @@ describe('TableDao - Table Operations', () => {
   test('addPlayer propagates database errors', async () => {
     const table = createMockTable();
 
-    table.save.mockRejectedValue(
-      new Error('Database update failed')
-    );
+    table.save.mockRejectedValue(new Error('Database update failed'));
 
     mockFindById(table);
 
     await expect(
-      TableDao.addPlayer(
-        tableId,
-        user2,
-        200,
-        session
-      )
+      TableDao.addPlayer(tableId, user2, 200, session),
     ).rejects.toThrow('Database update failed');
   });
 
@@ -522,17 +452,11 @@ describe('TableDao - Table Operations', () => {
   // -----------------------------------------
 
   test('deductPlayerChips atomically deducts chips', async () => {
-    const update = jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue({});
+    const update = jest
+      .spyOn(TableModel, 'findOneAndUpdate')
+      .mockResolvedValue({});
 
-    await TableDao.deductPlayerChips(
-      tableId,
-      String(user1),
-      10,
-      session
-    );
+    await TableDao.deductPlayerChips(tableId, String(user1), 10, session);
 
     expect(update).toHaveBeenCalledWith(
       {
@@ -540,34 +464,31 @@ describe('TableDao - Table Operations', () => {
         PlayerStacks: {
           $elemMatch: {
             PlayerId: String(user1),
-            Chips: { $gte: 10 }
-          }
-        }
+            Chips: { $gte: 10 },
+          },
+        },
       },
       {
         $inc: {
-          'PlayerStacks.$.Chips': -10
-        }
+          'PlayerStacks.$.Chips': -10,
+        },
       },
       {
         new: true,
         session,
-        runValidators: true
-      }
+        runValidators: true,
+      },
     );
   });
 
   test('deductPlayerChips returns null when chips are insufficient', async () => {
-    jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(null);
+    jest.spyOn(TableModel, 'findOneAndUpdate').mockResolvedValue(null);
 
     const result = await TableDao.deductPlayerChips(
       tableId,
       String(user1),
       500,
-      session
+      session,
     );
 
     expect(result).toBeNull();
@@ -577,14 +498,9 @@ describe('TableDao - Table Operations', () => {
     'deductPlayerChips rejects invalid amount %s',
     async (amount) => {
       await expect(
-        TableDao.deductPlayerChips(
-          tableId,
-          String(user1),
-          amount,
-          session
-        )
+        TableDao.deductPlayerChips(tableId, String(user1), amount, session),
       ).rejects.toThrow('Invalid chip amount');
-    }
+    },
   );
 
   // -----------------------------------------
@@ -594,29 +510,25 @@ describe('TableDao - Table Operations', () => {
   test('updatePlayerPresence refreshes an existing timestamp', async () => {
     const table = createMockTable();
 
-    const update = jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(table);
+    const update = jest
+      .spyOn(TableModel, 'findOneAndUpdate')
+      .mockResolvedValue(table);
 
-    const result = await TableDao.updatePlayerPresence(
-      tableId,
-      user1
-    );
+    const result = await TableDao.updatePlayerPresence(tableId, user1);
 
     expect(update).toHaveBeenCalledWith(
       {
         _id: tableId,
         UserIds: user1,
         'PlayerPresence.PlayerId': String(user1),
-        Status: { $ne: 'Closed' }
+        Status: { $ne: 'Closed' },
       },
       {
         $set: {
-          'PlayerPresence.$.LastSeenAt': expect.any(Date)
-        }
+          'PlayerPresence.$.LastSeenAt': expect.any(Date),
+        },
       },
-      { new: true }
+      { new: true },
     );
 
     expect(result).toBe(table);
@@ -626,17 +538,12 @@ describe('TableDao - Table Operations', () => {
   test('updatePlayerPresence initializes missing presence records', async () => {
     const table = createMockTable();
 
-    const update = jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    )
+    const update = jest
+      .spyOn(TableModel, 'findOneAndUpdate')
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(table);
 
-    const result = await TableDao.updatePlayerPresence(
-      tableId,
-      user1
-    );
+    const result = await TableDao.updatePlayerPresence(tableId, user1);
 
     expect(update).toHaveBeenCalledTimes(2);
 
@@ -647,46 +554,35 @@ describe('TableDao - Table Operations', () => {
         UserIds: user1,
         Status: { $ne: 'Closed' },
         'PlayerPresence.PlayerId': {
-          $ne: String(user1)
-        }
+          $ne: String(user1),
+        },
       },
       {
         $push: {
           PlayerPresence: {
             PlayerId: String(user1),
-            LastSeenAt: expect.any(Date)
-          }
-        }
+            LastSeenAt: expect.any(Date),
+          },
+        },
       },
-      { new: true }
+      { new: true },
     );
 
     expect(result).toBe(table);
   });
 
   test('updatePlayerPresence returns null when player is not seated', async () => {
-    jest.spyOn(
-      TableModel,
-      'findOneAndUpdate'
-    ).mockResolvedValue(null);
+    jest.spyOn(TableModel, 'findOneAndUpdate').mockResolvedValue(null);
 
-    const result = await TableDao.updatePlayerPresence(
-      tableId,
-      user3
-    );
+    const result = await TableDao.updatePlayerPresence(tableId, user3);
 
     expect(result).toBeNull();
   });
 
   test('findTablesWithInactivePlayers uses the cutoff timestamp', async () => {
-    const cutoff = new Date(
-      '2026-11-21T12:00:00.000Z'
-    );
+    const cutoff = new Date('2026-11-21T12:00:00.000Z');
 
-    const find = jest.spyOn(
-      TableModel,
-      'find'
-    ).mockResolvedValue([]);
+    const find = jest.spyOn(TableModel, 'find').mockResolvedValue([]);
 
     await TableDao.findTablesWithInactivePlayers(cutoff);
 
@@ -694,10 +590,9 @@ describe('TableDao - Table Operations', () => {
       Status: { $ne: 'Closed' },
       PlayerPresence: {
         $elemMatch: {
-          LastSeenAt: { $lte: cutoff }
-        }
-      }
+          LastSeenAt: { $lte: cutoff },
+        },
+      },
     });
   });
-
 });
