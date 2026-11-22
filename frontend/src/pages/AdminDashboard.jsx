@@ -1,0 +1,390 @@
+import { useState } from 'react';
+import { EditProfile } from './Profile';
+import './AdminDashboard.css';
+
+const navigationItems = [
+  'Dashboard',
+  'Registered Users',
+  'Player Statistics',
+  'Game Monitoring',
+  'Ad Engagement',
+  'Edit Profile',
+];
+
+const users = [
+  { username: 'Player1', email: 'player1@email.com', joined: 'Oct 1, 2026', status: 'Active' },
+  { username: 'Player2', email: 'player2@email.com', joined: 'Sep 28, 2026', status: 'Active' },
+  { username: 'Player3', email: 'player3@email.com', joined: 'Sep 25, 2026', status: 'Active' },
+  { username: 'Player4', email: 'player4@email.com', joined: 'Sep 20, 2026', status: 'Inactive' },
+  { username: 'Bot1', email: 'bot1@pokerface.com', joined: 'Aug 15, 2026', status: 'Bot' },
+];
+
+const topPlayers = [
+  { rank: 1, username: 'PokerQueen', wins: 125, rate: '62%' },
+  { rank: 2, username: 'AceKing', wins: 110, rate: '58%' },
+  { rank: 3, username: 'StudMaster', wins: 98, rate: '55%' },
+  { rank: 4, username: 'Player3', wins: 87, rate: '52%' },
+  { rank: 5, username: 'CardPro', wins: 76, rate: '50%' },
+];
+
+const games = [
+  { id: '#1023', players: '4/6', status: 'In Progress', time: '2:15 PM' },
+  { id: '#1022', players: '6/6', status: 'In Progress', time: '2:10 PM' },
+  { id: '#1021', players: '2/6', status: 'Waiting', time: '2:05 PM' },
+  { id: '#1020', players: '5/6', status: 'In Progress', time: '1:58 PM' },
+  { id: '#1019', players: '6/6', status: 'Completed', time: '1:45 PM' },
+];
+
+const metrics = [
+  { icon: 'users', value: '1,248', label: 'Registered Users' },
+  { icon: 'cards', value: '312', label: 'Active Players', note: '(Last 24 hours)' },
+  { icon: 'chips', value: '5,630', label: 'Games Played', note: '(Last 24 hours)' },
+  { icon: 'chart', value: '87', label: 'New Sign Ups', note: '(Last 7 days)' },
+];
+
+function MetricIcon({ type }) {
+  const props = {
+    viewBox: '0 0 48 48',
+    className: 'admin-metric-icon',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '2.5',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+  };
+
+  if (type === 'users') {
+    return (
+      <svg {...props}>
+        <circle cx='18' cy='17' r='7' />
+        <circle cx='32' cy='18' r='6' />
+        <path d='M5 39c1-8 6-13 13-13s12 5 13 13M29 27c7-1 12 4 14 11' />
+      </svg>
+    );
+  }
+
+  if (type === 'cards') {
+    return (
+      <svg {...props}>
+        <path d='M8 15h32v22H8zM15 15l4-7h10l4 7M14 23l5 5 5-5 5 5 5-5' />
+      </svg>
+    );
+  }
+
+  if (type === 'chips') {
+    return (
+      <svg {...props}>
+        <ellipse cx='24' cy='12' rx='13' ry='6' />
+        <path d='M11 12v8c0 3 6 6 13 6s13-3 13-6v-8M11 20v8c0 3 6 6 13 6s13-3 13-6v-8M11 28v8c0 3 6 6 13 6s13-3 13-6v-8' />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...props}>
+      <path d='M7 39V26h8v13M20 39V17h8v22M33 39V8h8v31M4 42h40' />
+    </svg>
+  );
+}
+
+function AdminDashboard() {
+  const [activeSection, setActiveSection] = useState('Dashboard');
+  const [userSearch, setUserSearch] = useState('');
+  const [playerGroup, setPlayerGroup] = useState('Top Players');
+  const [gameGroup, setGameGroup] = useState('Active Games');
+  const [engagementPeriod, setEngagementPeriod] = useState('Last 7 Days');
+
+  const filteredUsers = users.filter((user) =>
+    `${user.username} ${user.email}`
+      .toLowerCase()
+      .includes(userSearch.trim().toLowerCase()),
+  );
+
+  return (
+    <div className='admin-dashboard-page'>
+      <aside className='admin-dashboard-sidebar'>
+        <nav aria-label='Admin dashboard sections'>
+          {navigationItems.map((item) => (
+            <button
+              key={item}
+              type='button'
+              className={`admin-dashboard-nav-item ${
+                activeSection === item ? 'active' : ''
+              }`}
+              aria-current={activeSection === item ? 'page' : undefined}
+              onClick={() => setActiveSection(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <main className='admin-dashboard-content'>
+        {activeSection === 'Edit Profile' && (
+          <EditProfile embedded pathnameOverride='/profile/edit' />
+        )}
+
+        <div
+          className='admin-dashboard-view'
+          hidden={activeSection === 'Edit Profile'}
+        >
+          <header className='admin-dashboard-heading'>
+            <h1>Admin Dashboard</h1>
+            <p>Overview of users, game activity, and advertising performance.</p>
+          </header>
+
+          <section className='admin-metrics-grid' aria-label='Dashboard overview'>
+              {metrics.map((metric) => (
+                <article className='admin-metric-card' key={metric.label}>
+                  <MetricIcon type={metric.icon} />
+                  <div>
+                    <strong>{metric.value}</strong>
+                    <span>{metric.label}</span>
+                    {metric.note && <small>{metric.note}</small>}
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <div className='admin-dashboard-panels'>
+          <section className='admin-dashboard-panel'>
+            <div className='admin-panel-heading'>
+              <h2>Registered Users</h2>
+              <label className='admin-user-search'>
+                <span className='admin-search-icon' aria-hidden='true' />
+                <span className='visually-hidden'>Search users</span>
+                <input
+                  type='search'
+                  placeholder='Search users...'
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                />
+              </label>
+            </div>
+            <div className='admin-table-scroll'>
+              <table className='admin-dashboard-table'>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Join Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user.username}>
+                      <td>{user.username}</td>
+                      <td>{user.email}</td>
+                      <td>{user.joined}</td>
+                      <td>
+                        <span
+                          className={`admin-status-dot status-${user.status.toLowerCase()}`}
+                          aria-hidden='true'
+                        />
+                        {user.status}
+                      </td>
+                      <td>
+                        <button
+                          type='button'
+                          className='admin-view-button'
+                          aria-label={`View ${user.username}`}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan='5' className='admin-empty-results'>
+                        No users match that search.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className='admin-pagination' aria-label='User pages'>
+              <button type='button' aria-label='Previous page' disabled>
+                ‹
+              </button>
+              <button type='button' className='current-page' aria-current='page'>
+                1
+              </button>
+              <button type='button'>2</button>
+              <button type='button'>3</button>
+              <span>…</span>
+              <button type='button'>25</button>
+              <button type='button' aria-label='Next page'>
+                ›
+              </button>
+            </div>
+          </section>
+
+          <section className='admin-dashboard-panel'>
+            <div className='admin-panel-heading'>
+              <h2>Player Statistics</h2>
+              <select
+                aria-label='Player statistics group'
+                value={playerGroup}
+                onChange={(event) => setPlayerGroup(event.target.value)}
+              >
+                <option>Top Players</option>
+                <option>Most Games Played</option>
+                <option>Highest Win Rate</option>
+              </select>
+            </div>
+            <div className='admin-table-scroll'>
+              <table className='admin-dashboard-table admin-player-table'>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Username</th>
+                    <th>Games Won</th>
+                    <th>Win Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPlayers.map((player) => (
+                    <tr key={player.rank}>
+                      <td>{player.rank}</td>
+                      <td>{player.username}</td>
+                      <td>{player.wins}</td>
+                      <td>{player.rate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className='admin-dashboard-panel'>
+            <div className='admin-panel-heading'>
+              <h2>Game Monitoring</h2>
+              <select
+                aria-label='Game monitoring group'
+                value={gameGroup}
+                onChange={(event) => setGameGroup(event.target.value)}
+              >
+                <option>Active Games</option>
+                <option>All Games</option>
+                <option>Completed Games</option>
+              </select>
+            </div>
+            <div className='admin-table-scroll'>
+              <table className='admin-dashboard-table'>
+                <thead>
+                  <tr>
+                    <th>Table ID</th>
+                    <th>Players</th>
+                    <th>Status</th>
+                    <th>Start Time</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {games.map((game) => (
+                    <tr key={game.id}>
+                      <td>{game.id}</td>
+                      <td>{game.players}</td>
+                      <td>
+                        <span
+                          className={`admin-status-dot status-${game.status
+                            .toLowerCase()
+                            .replace(' ', '-')}`}
+                          aria-hidden='true'
+                        />
+                        {game.status}
+                      </td>
+                      <td>{game.time}</td>
+                      <td>
+                        <button
+                          type='button'
+                          className='admin-view-button'
+                          aria-label={`View game ${game.id}`}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className='admin-dashboard-panel admin-engagement-panel'>
+            <div className='admin-panel-heading'>
+              <h2>Ad Engagement</h2>
+              <select
+                aria-label='Ad engagement period'
+                value={engagementPeriod}
+                onChange={(event) => setEngagementPeriod(event.target.value)}
+              >
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+                <option>Last 90 Days</option>
+              </select>
+            </div>
+            <div className='admin-engagement-content'>
+              <div className='admin-chart' aria-label='Impressions 152, clicks 87, conversions 28'>
+                <div className='admin-chart-grid'>
+                  <span>200</span>
+                  <span>150</span>
+                  <span>100</span>
+                  <span>50</span>
+                  <span>0</span>
+                  <div className='admin-chart-bars'>
+                    <div className='admin-chart-bar bar-impressions'>
+                      <span>Impressions</span>
+                    </div>
+                    <div className='admin-chart-bar bar-clicks'>
+                      <span>Clicks</span>
+                    </div>
+                    <div className='admin-chart-bar bar-conversions'>
+                      <span>Conversions</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <dl className='admin-engagement-stats'>
+                <div>
+                  <dt>Impressions</dt>
+                  <dd>152</dd>
+                </div>
+                <div>
+                  <dt>Clicks</dt>
+                  <dd>87</dd>
+                </div>
+                <div>
+                  <dt>Conversions</dt>
+                  <dd>28</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+          </div>
+        </div>
+      </main>
+
+      <aside className='admin-advertisement' aria-label='Advertisement'>
+        <div className='admin-ad-art' aria-hidden='true'>
+          <span />
+          <span />
+        </div>
+        <strong>ADVERTISEMENT</strong>
+        <div className='admin-ad-lines' aria-hidden='true'>
+          <span />
+          <span />
+          <span />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+export default AdminDashboard;

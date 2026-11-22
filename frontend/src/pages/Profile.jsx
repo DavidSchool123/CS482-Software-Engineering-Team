@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import AdminDashboard from './AdminDashboard';
 import './Profile.css';
 
 const sidebarItems = [
@@ -263,6 +264,10 @@ function Profile() {
     }
   }
 
+  if (user?.isAdmin) {
+    return <AdminDashboard />;
+  }
+
   return (
     <div className='profile-page'>
       <ProfileSidebar pathname={location.pathname} />
@@ -410,9 +415,10 @@ function Profile() {
   );
 }
 
-function EditProfile() {
+function EditProfile({ embedded = false, pathnameOverride }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const pathname = pathnameOverride ?? location.pathname;
 
   const [confirmation, setConfirmation] = useState(null);
   const [feedback, setFeedback] = useState('');
@@ -535,6 +541,9 @@ function EditProfile() {
         }
 
         setUser(data);
+
+        console.log('User data:', data);
+        console.log('Is admin:', data.isAdmin);
       } catch (error) {
         setFeedback(error.message);
       } finally {
@@ -545,11 +554,17 @@ function EditProfile() {
     fetchUser();
   }, []);
 
-  return (
-    <div className='profile-page edit-profile-page'>
-      <ProfileSidebar pathname={location.pathname} />
+  const MainElement = embedded ? 'div' : 'main';
 
-      <main className='profile-main edit-profile-main'>
+  return (
+    <div
+      className={
+        embedded ? 'admin-edit-profile-embed' : 'profile-page edit-profile-page'
+      }
+    >
+      {!embedded && <ProfileSidebar pathname={pathname} />}
+
+      <MainElement className='profile-main edit-profile-main'>
         <section className='profile-panel edit-profile-panel'>
           <h1>Edit Profile</h1>
           <p className='edit-profile-intro'>
@@ -681,7 +696,7 @@ function EditProfile() {
             </button>
           </section>
         </section>
-      </main>
+      </MainElement>
 
       {confirmation && (
         <div

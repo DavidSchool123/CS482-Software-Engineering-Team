@@ -42,6 +42,12 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
 
+  isAdmin: {
+    type: Boolean,
+    default: false,
+    required: true,
+  },
+
   resetPasswordToken: {
     type: String,
     default: null,
@@ -104,7 +110,7 @@ async function readAll() {
 // Get a user's profile by their ID
 async function getProfile(userId) {
   const user = await User.findById(userId).select(
-    '_id username email friends avatar userType chipBalance',
+    '_id username email friends avatar userType chipBalance isAdmin',
   );
 
   if (!user) {
@@ -119,6 +125,7 @@ async function getProfile(userId) {
     avatar: user.avatar || '',
     userType: user.userType,
     chipBalance: user.chipBalance,
+    isAdmin: user.isAdmin,
   };
 }
 
@@ -393,7 +400,7 @@ async function deductChips(userId, amount, session) {
   if (!Number.isInteger(amount) || amount < 0) {
     throw new Error('Invalid chip amount');
   }
-  
+
   return await User.findOneAndUpdate(
     {
       _id: userId,
