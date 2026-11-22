@@ -138,7 +138,7 @@ async function readAll() {
 // Get a user's profile by their ID
 async function getProfile(userId) {
   const user = await User.findById(userId).select(
-    '_id username email friends avatar userType chipBalance stats',
+    '_id username email friends avatar userType chipBalance isAdmin stats',
   );
 
   if (!user) {
@@ -153,6 +153,7 @@ async function getProfile(userId) {
     avatar: user.avatar || '',
     userType: user.userType,
     chipBalance: user.chipBalance,
+    isAdmin: user.isAdmin,
     stats: user.stats || {
       wins: 0,
       losses: 0,
