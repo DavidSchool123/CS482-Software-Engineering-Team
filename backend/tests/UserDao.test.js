@@ -25,6 +25,13 @@ describe('UserDao account and profile operations', () => {
       email: 'alice@example.com',
       friends: ['friend1', 'friend2'],
       avatar: 'avatar-data',
+      stats: {
+        wins: 5,
+        losses: 3,
+        gamesPlayed: 8,
+        totalChipsWon: 2500,
+        netWinnings: 1200,
+      },
     };
 
     const select = jest.fn().mockResolvedValue(user);
@@ -32,12 +39,23 @@ describe('UserDao account and profile operations', () => {
 
     const result = await User.getProfile('user123');
 
+    expect(select).toHaveBeenCalledWith(
+          '_id username email friends avatar userType chipBalance stats',
+        );
+
     expect(result).toEqual({
       _id: 'user123',
       username: 'alice',
       email: 'alice@example.com',
       friendCount: 2,
       avatar: 'avatar-data',
+      stats: {
+        wins: 5,
+        losses: 3,
+        gamesPlayed: 8,
+        totalChipsWon: 2500,
+        netWinnings: 1200,
+      },
     });
   });
 
@@ -68,6 +86,33 @@ describe('UserDao account and profile operations', () => {
     );
     expect(result).toEqual(updated);
   });
+
+
+test('getProfile defaults statistics to zero when stats are missing', async () => {
+  const user = {
+    _id: 'user123',
+    username: 'alice',
+    email: 'alice@example.com',
+    friends: [],
+    avatar: '',
+    userType: 'registered',
+    chipBalance: 1000,
+  };
+
+  const select = jest.fn().mockResolvedValue(user);
+  jest.spyOn(User, 'findById').mockReturnValue({ select });
+
+  const result = await User.getProfile('user123');
+
+  expect(result.stats).toEqual({
+    wins: 0,
+    losses: 0,
+    gamesPlayed: 0,
+    totalChipsWon: 0,
+    netWinnings: 0,
+  });
+});
+
 
   test('creditChips returns settled chips to the account', async () => {
     const updatedUser = { _id: 'user123', chipBalance: 1_100 };

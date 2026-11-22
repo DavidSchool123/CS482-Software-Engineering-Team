@@ -10,12 +10,36 @@ const sidebarItems = [
   { label: 'Achievements', to: '/profile/achievements' },
 ];
 
-const stats = [
-  { type: 'trophy', value: '', label: 'Games Won' },
-  { type: 'chart', value: '', label: 'Games Played' },
-  { type: 'star', value: '', label: 'Win Rate' },
-  { type: 'coin', value: '', label: 'Total Chips Won' },
-];
+function getStats(user) {
+  const data = user?.stats || {};
+
+  const wins = data.wins || 0;
+  const losses = data.losses || 0;
+  const gamesPlayed = data.gamesPlayed || 0;
+  const totalChipsWon = data.totalChipsWon || 0;
+  const netWinnings = data.netWinnings || 0;
+
+  const winRate = gamesPlayed > 0
+    ? ((wins / gamesPlayed) * 100).toFixed(1)
+    : '0.0';
+
+  return [
+    { type: 'trophy', value: wins, label: 'Games Won' },
+    { type: 'chart', value: losses, label: 'Games Lost' },
+    { type: 'star', value: gamesPlayed, label: 'Games Played' },
+    { type: 'people', value: `${winRate}%`, label: 'Win Rate' },
+    {
+      type: 'coin',
+      value: totalChipsWon.toLocaleString(),
+      label: 'Total Chips Won',
+    },
+    {
+      type: 'spade',
+      value: `${netWinnings > 0 ? '+' : ''}${netWinnings.toLocaleString()}`,
+      label: 'Net Winnings',
+    },
+  ];
+}
 
 const achievements = [
   {
@@ -380,7 +404,7 @@ function Profile() {
           <h2>Stats</h2>
 
           <div className='stats-grid'>
-            {stats.map((stat) => (
+            {getStats(user).map((stat) => (
               <div className='stat-box' key={stat.label}>
                 <div className='stat-icon'>
                   <StatIcon type={stat.type} />

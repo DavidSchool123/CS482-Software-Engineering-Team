@@ -315,7 +315,7 @@ async function getUsers(req, res) {
 
 async function getProfile(userId) {
   const user = await UserDao.findById(userId).select(
-    '_id username email friends avatar userType chipBalance',
+    '_id username email friends avatar userType chipBalance stats',
   );
 
   if (!user) {
@@ -330,6 +330,13 @@ async function getProfile(userId) {
     avatar: user.avatar || '',
     userType: user.userType,
     chipBalance: user.chipBalance,
+    stats: user.stats || {
+      wins: 0,
+      losses: 0,
+      gamesPlayed: 0,
+      totalChipsWon: 0,
+      netWinnings: 0,
+    },
   };
 }
 

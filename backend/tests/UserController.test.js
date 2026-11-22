@@ -655,7 +655,7 @@ describe('Additional session and profile tests', () => {
 
     expect(userDao.findById).toHaveBeenCalledWith(userId);
     expect(selectMock).toHaveBeenCalledWith(
-      '_id username email friends avatar userType chipBalance'
+      '_id username email friends avatar userType chipBalance stats'
     );
 
     expect(profile).toEqual({
@@ -666,6 +666,13 @@ describe('Additional session and profile tests', () => {
       avatar: '',
       userType: 'registered',
       chipBalance: 1000,
+      "stats": Object {
+               "gamesPlayed": 0,
+               "losses": 0,
+               "netWinnings": 0,
+               "totalChipsWon": 0,
+               "wins": 0,
+             },
     });
   });
 

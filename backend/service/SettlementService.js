@@ -1,3 +1,4 @@
+const UserDao = require('../model/UserDao');
 
 const { evaluateSevenCardHand, getHandName } = require('./HandEvaluationService');
 
@@ -87,6 +88,38 @@ async function settleHand(game, table, winnerIds, session) {
       HandName: handName
     };
   });
+
+  // Update statistics for every human player in the completed game.
+  const winnerSet = new Set(winnerIds.map(String));
+  const payoutByPlayer = new Map(
+    payouts.map(payout => [
+      String(payout.playerId),
+      payout.amount,
+    ])
+  );
+
+  for (const player of game.Players) {
+    const playerId = String(player.PlayerId);
+
+    // Bots do not have registered user accounts.
+    if (!require('mongoose').isValidObjectId(playerId)) {
+      continue;
+    }
+
+    const payout = payoutByPlayer.get(playerId) || 0;
+    const contribution = player.TotalContribution || 0;
+
+    await UserDao.updateGameStats(
+      playerId,
+      {
+        wins: winnerSet.has(playerId) ? 1 : 0,
+        losses: winnerSet.has(playerId) ? 0 : 1,
+        totalChipsWon: payout,
+        netWinnings: payout - contribution,
+      },
+      session,
+    );
+  }
 
   // P53: Start the countdown when the hand finishes.
   const completedAt = new Date();

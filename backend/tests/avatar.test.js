@@ -70,7 +70,7 @@ describe('Profile avatar API', () => {
     expect(UserDao.findById).toHaveBeenCalledWith(userId);
 
     expect(selectMock).toHaveBeenCalledWith(
-      '_id username email friends avatar userType chipBalance'
+      '_id username email friends avatar userType chipBalance stats'
     );
 
     expect(response.status).toBe(200);

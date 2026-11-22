@@ -85,6 +85,34 @@ const userSchema = new mongoose.Schema({
       },
     },
   ],
+
+  stats: {
+    wins: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    losses: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    gamesPlayed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalChipsWon: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    netWinnings: {
+      type: Number,
+      default: 0,
+    },
+  },
+
 });
 
 // Create a unique index on the email field for registered users
@@ -110,7 +138,7 @@ async function readAll() {
 // Get a user's profile by their ID
 async function getProfile(userId) {
   const user = await User.findById(userId).select(
-    '_id username email friends avatar userType chipBalance isAdmin',
+    '_id username email friends avatar userType chipBalance stats',
   );
 
   if (!user) {
@@ -125,7 +153,13 @@ async function getProfile(userId) {
     avatar: user.avatar || '',
     userType: user.userType,
     chipBalance: user.chipBalance,
-    isAdmin: user.isAdmin,
+    stats: user.stats || {
+      wins: 0,
+      losses: 0,
+      gamesPlayed: 0,
+      totalChipsWon: 0,
+      netWinnings: 0,
+    },
   };
 }
 
@@ -438,6 +472,30 @@ async function creditChips(userId, amount, session) {
   );
 }
 
+/**
+ * Update player statistics after a completed game.
+ * Runs inside the game's transaction.
+ */
+async function updateGameStats(userId, stats, session) {
+  return User.findByIdAndUpdate(
+    userId,
+    {
+      $inc: {
+        'stats.wins': stats.wins,
+        'stats.losses': stats.losses,
+        'stats.gamesPlayed': 1,
+        'stats.totalChipsWon': stats.totalChipsWon,
+        'stats.netWinnings': stats.netWinnings,
+      },
+    },
+    {
+      new: true,
+      session,
+      runValidators: true,
+    },
+  );
+}
+
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
 User.getProfile = getProfile;
@@ -460,5 +518,6 @@ User.findUserByEmail = findUserByEmail;
 User.findUserByUsername = findUserByUsername;
 User.deductChips = deductChips;
 User.creditChips = creditChips;
+User.updateGameStats = updateGameStats;
 
 module.exports = User;
