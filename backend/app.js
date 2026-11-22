@@ -59,6 +59,7 @@ const UserController = require('./controller/UserController');
 const ContactController = require('./controller/ContactController');
 const GameController = require('./controller/GameController');
 const MessageController = require('./controller/MessageController');
+const AdController = require('./controller/AdController');
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -74,22 +75,16 @@ app.get('/api/tables', TableController.getAllTables);
 app.post('/api/tables', TableController.createTable);
 
 // Join an existing table
-app.post('/api/tables/:tableId/join',  TableController.joinTable);
+app.post('/api/tables/:tableId/join', TableController.joinTable);
 
 // Leave a table
 app.post('/api/tables/:tableId/leave', TableController.leaveTable);
 
 // Heartbeat endpoint for players to indicate they are still present at the table
-app.post(
-  '/api/tables/:tableId/heartbeat',
-  TableController.heartbeat
-);
+app.post('/api/tables/:tableId/heartbeat', TableController.heartbeat);
 
 // Retrieve a table by ID for spectator viewing.
-app.get(
-  '/api/tables/id/:tableId',
-  TableController.getTableForSpectating
-);
+app.get('/api/tables/id/:tableId', TableController.getTableForSpectating);
 
 //read table by joincode
 app.get('/api/tables/:joinCode', TableController.findTableByCode);
@@ -154,5 +149,17 @@ app.post('/api/games/:gameId/action', GameController.performBettingAction);
 
 // Guest login endpoint
 app.post('/api/guest/login', UserController.guestLogin);
+
+// Advertisement routes
+app.get('/api/advertisements', AdController.getAllAdvertisements);
+app.get(
+  '/api/advertisements/placement/:placement',
+  AdController.getActiveAdvertisements,
+);
+app.get('/api/advertisements/:id', AdController.getAdvertisement);
+
+app.post('/api/advertisements', AdController.createAdvertisement);
+app.put('/api/advertisements/:id', AdController.updateAdvertisement);
+app.delete('/api/advertisements/:id', AdController.deleteAdvertisement);
 
 module.exports = app;
