@@ -1,5 +1,6 @@
 import { bestFiveIndices } from '../utils/BestFiveCards';
 
+import PlayerTips from '../components/PlayerTips';
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -2035,8 +2036,8 @@ function Table() {
 
           </div>)}
 
-
-
+          
+          {/* Betting instructions — directly below the action buttons */}
           <p className="stud-action-help">
 
             {game?.status === 'Completed'
@@ -2050,6 +2051,19 @@ function Table() {
                 : 'Cards will appear after the game starts.'}
 
           </p>
+
+          {/* P21 / P22: Context-aware player tips */}
+
+          {!isSpectator && game?.status === 'In Progress' && me && (
+            <PlayerTips
+              game={game}
+              amountToCall={amountToCall}
+              myChips={myChips}
+              isMyTurn={isMyTurn}
+              canAct={canAct}
+              raiseLimitReached={raiseLimitReached}
+            />
+          )}
 
         </section>
 
