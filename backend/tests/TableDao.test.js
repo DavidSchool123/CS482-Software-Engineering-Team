@@ -63,7 +63,7 @@ describe('TableDao - Table Operations', () => {
     expect(find).toHaveBeenCalledWith();
 
     expect(select).toHaveBeenCalledWith(
-      'Name Capacity UserIds BotCount IsPublic Level Status',
+      'Name Capacity UserIds BotCount IsPublic Level Status CurrentGameID createdAt updatedAt'
     );
 
     expect(result).toEqual(tables);

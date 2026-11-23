@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { EditProfile } from './Profile';
 import './AdminDashboard.css';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const navigationItems = [
   'Dashboard',
@@ -11,54 +12,9 @@ const navigationItems = [
   'Edit Profile',
 ];
 
-const users = [
-  {
-    username: 'Player1',
-    email: 'player1@email.com',
-    joined: 'Oct 1, 2026',
-    status: 'Active',
-  },
-  {
-    username: 'Player2',
-    email: 'player2@email.com',
-    joined: 'Sep 28, 2026',
-    status: 'Active',
-  },
-  {
-    username: 'Player3',
-    email: 'player3@email.com',
-    joined: 'Sep 25, 2026',
-    status: 'Active',
-  },
-  {
-    username: 'Player4',
-    email: 'player4@email.com',
-    joined: 'Sep 20, 2026',
-    status: 'Inactive',
-  },
-  {
-    username: 'Bot1',
-    email: 'bot1@pokerface.com',
-    joined: 'Aug 15, 2026',
-    status: 'Bot',
-  },
-];
-
-const topPlayers = [
-  { rank: 1, username: 'PokerQueen', wins: 125, rate: '62%' },
-  { rank: 2, username: 'AceKing', wins: 110, rate: '58%' },
-  { rank: 3, username: 'StudMaster', wins: 98, rate: '55%' },
-  { rank: 4, username: 'Player3', wins: 87, rate: '52%' },
-  { rank: 5, username: 'CardPro', wins: 76, rate: '50%' },
-];
-
-const games = [
-  { id: '#1023', players: '4/6', status: 'In Progress', time: '2:15 PM' },
-  { id: '#1022', players: '6/6', status: 'In Progress', time: '2:10 PM' },
-  { id: '#1021', players: '2/6', status: 'Waiting', time: '2:05 PM' },
-  { id: '#1020', players: '5/6', status: 'In Progress', time: '1:58 PM' },
-  { id: '#1019', players: '6/6', status: 'Completed', time: '1:45 PM' },
-];
+const users = [];
+const topPlayers = [];
+const games = [];
 
 const adPlacements = [
   'Lobby Right Sidebar',
@@ -67,21 +23,23 @@ const adPlacements = [
   'Homepage Bottom Banner',
 ];
 
-const metrics = [
-  { icon: 'users', value: '1,248', label: 'Registered Users' },
+const metricDefinitions = [
+  { icon: 'users', label: 'Registered Users' },
   {
     icon: 'cards',
-    value: '312',
     label: 'Active Players',
-    note: '(Last 24 hours)',
+    note: '(Currently seated)',
   },
   {
     icon: 'chips',
-    value: '5,630',
     label: 'Games Played',
-    note: '(Last 24 hours)',
+    note: '(All recorded hands)',
   },
-  { icon: 'chart', value: '87', label: 'New Sign Ups', note: '(Last 7 days)' },
+  {
+    icon: 'chart',
+    label: 'New Sign Ups',
+    note: '(Last 7 days)',
+  },
 ];
 
 function MetricIcon({ type }) {
@@ -136,22 +94,43 @@ function RegisteredUsersView({
   onSearchChange,
   currentPage,
   onPageChange,
+  onViewUser,
+  onToggleBan,
+  onToggleAdmin,
 }) {
   const searchInputRef = useRef(null);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(registeredUsers.length / 10)
+  );
+
   const pages =
-    currentPage <= 3
-      ? [1, 2, 3, 'ellipsis', 25]
-      : currentPage >= 23
-        ? [1, 'ellipsis', 23, 24, 25]
-        : [
-            1,
-            'ellipsis',
-            currentPage - 1,
-            currentPage,
-            currentPage + 1,
-            'ellipsis',
-            25,
-          ];
+    pageCount <= 5
+      ? Array.from({ length: pageCount }, (_, i) => i + 1)
+      : currentPage <= 3
+        ? [1, 2, 3, 'ellipsis', pageCount]
+        : currentPage >= pageCount - 2
+          ? [
+              1,
+              'ellipsis',
+              pageCount - 2,
+              pageCount - 1,
+              pageCount,
+            ]
+          : [
+              1,
+              'ellipsis',
+              currentPage - 1,
+              currentPage,
+              currentPage + 1,
+              'ellipsis',
+              pageCount,
+            ];
+
+  const pageUsers = registeredUsers.slice(
+    (currentPage - 1) * 10,
+    currentPage * 10
+  );
 
   return (
     <section
@@ -192,30 +171,58 @@ function RegisteredUsersView({
             </tr>
           </thead>
           <tbody>
-            {registeredUsers.map((user) => (
+            {pageUsers.map((user) => (
               <tr key={user.username}>
                 <td>{user.username}</td>
                 <td>{user.email}</td>
-                <td>{user.joined}</td>
+                <td>
+                  {user.joined
+                    ? new Date(user.joined).toLocaleDateString()
+                    : '—'}
+                </td>
+
                 <td>
                   <span
-                    className={`admin-status-dot status-${user.status.toLowerCase()}`}
+                    className={`admin-status-dot status-${
+                      user.isBanned ? 'inactive' : 'active'
+                    }`}
                     aria-hidden='true'
                   />
-                  {user.status}
+                  {user.isBanned
+                    ? 'Banned'
+                    : user.isAdmin
+                      ? 'Admin'
+                      : 'Active'}
                 </td>
                 <td>
                   <button
                     type='button'
                     className='admin-view-button'
                     aria-label={`View ${user.username}`}
+                    onClick={() => onViewUser?.(user)}
                   >
                     View
+                  </button>
+
+                  <button
+                    type='button'
+                    className='admin-view-button'
+                    onClick={() => onToggleBan?.(user)}
+                  >
+                    {user.isBanned ? 'Unban' : 'Ban'}
+                  </button>
+
+                  <button
+                    type='button'
+                    className='admin-view-button'
+                    onClick={() => onToggleAdmin?.(user)}
+                  >
+                    {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
                   </button>
                 </td>
               </tr>
             ))}
-            {registeredUsers.length === 0 && (
+            {pageUsers.length === 0 && (
               <tr>
                 <td colSpan='5' className='admin-empty-results'>
                   No users match that search.
@@ -272,7 +279,12 @@ function RegisteredUsersView({
   );
 }
 
-function PlayerStatisticsView({ group, onGroupChange }) {
+function PlayerStatisticsView({
+  group,
+  onGroupChange,
+  players = [],
+}) {
+  const selectedPlayers = players;
   return (
     <section
       className='admin-player-statistics-view'
@@ -306,12 +318,12 @@ function PlayerStatisticsView({ group, onGroupChange }) {
             </tr>
           </thead>
           <tbody>
-            {topPlayers.map((player) => (
-              <tr key={player.rank}>
-                <td>{player.rank}</td>
+            {selectedPlayers.slice(0, 5).map((player, index) => (
+              <tr key={player._id || player.rank || player.username}>
+                <td>{index + 1}</td>
                 <td>{player.username}</td>
-                <td>{player.wins}</td>
-                <td>{player.rate}</td>
+                <td>{player.wins || 0}</td>
+                <td>{Math.round((player.winRate || 0) * 100)}%</td>
               </tr>
             ))}
           </tbody>
@@ -321,7 +333,21 @@ function PlayerStatisticsView({ group, onGroupChange }) {
   );
 }
 
-function GameMonitoringView({ group, onGroupChange }) {
+function GameMonitoringView({
+  group,
+  onGroupChange,
+  games: allGames = [],
+  onViewTable,
+}) {
+  const visibleGames = allGames.filter(
+    (game) =>
+      group === 'All Games' ||
+      (
+        group === 'Active Games'
+          ? ['Waiting', 'In Progress'].includes(game.status)
+          : game.status === 'Closed'
+      )
+  );
   return (
     <section
       className='admin-game-monitoring-view'
@@ -351,15 +377,19 @@ function GameMonitoringView({ group, onGroupChange }) {
               <th>Table ID</th>
               <th>Players</th>
               <th>Status</th>
-              <th>Start Time</th>
+              <th>Table Created</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {games.map((game) => (
-              <tr key={game.id}>
-                <td>{game.id}</td>
-                <td>{game.players}</td>
+            {visibleGames.map((game) => (
+              <tr key={game._id}>
+                <td>{game.name || game._id}</td>
+
+                <td>
+                  {game.players}/{game.capacity} (+{game.bots} bots)
+                </td>
+
                 <td>
                   <span
                     className={`admin-status-dot status-${game.status
@@ -369,12 +399,19 @@ function GameMonitoringView({ group, onGroupChange }) {
                   />
                   {game.status}
                 </td>
-                <td>{game.time}</td>
+
+                <td>
+                  {game.createdAt
+                    ? new Date(game.createdAt).toLocaleString()
+                    : '—'}
+                </td>
+
                 <td>
                   <button
                     type='button'
                     className='admin-view-button'
-                    aria-label={`View game ${game.id}`}
+                    aria-label={`Observe table ${game.name || game._id}`}
+                    onClick={() => onViewTable?.(game)}
                   >
                     View
                   </button>
@@ -407,7 +444,7 @@ function AdEngagementView({ period, onPeriodChange }) {
       setLoading(true);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/advertisements`,
+        `${API_URL}/api/advertisements`,
         {
           credentials: 'include',
         },
@@ -477,8 +514,8 @@ function AdEngagementView({ period, onPeriodChange }) {
       };
 
       const url = editingAdId
-        ? `${import.meta.env.VITE_API_URL}/api/advertisements/${editingAdId}`
-        : `${import.meta.env.VITE_API_URL}/api/advertisements`;
+        ? `${API_URL}/api/advertisements${editingAdId}`
+        : `${API_URL}/api/advertisements`;
 
       const response = await fetch(url, {
         method: editingAdId ? 'PUT' : 'POST',
@@ -642,7 +679,7 @@ function AdEngagementView({ period, onPeriodChange }) {
                     onClick={async () => {
                       try {
                         const response = await fetch(
-                          `${import.meta.env.VITE_API_URL}/api/advertisements/${ad.id}`,
+                          `${API_URL}/api/advertisements/${ad.id}`,
                           {
                             method: 'DELETE',
                             credentials: 'include',
@@ -812,6 +849,283 @@ function AdEngagementView({ period, onPeriodChange }) {
   );
 }
 
+function PlayerDetailsModal({ user, onClose }) {
+  if (!user) return null;
+
+  const stats = [
+    {
+      label: 'Games Won',
+      value: user.wins || 0,
+    },
+    {
+      label: 'Games Lost',
+      value: user.losses || 0,
+    },
+    {
+      label: 'Games Played',
+      value: user.gamesPlayed || 0,
+    },
+    {
+      label: 'Win Rate',
+      value: `${((user.winRate || 0) * 100).toFixed(1)}%`,
+    },
+    {
+      label: 'Total Chips Won',
+      value: (user.totalChipsWon || 0).toLocaleString(),
+    },
+    {
+      label: 'Net Winnings',
+      value: `${(user.netWinnings || 0) > 0 ? '+' : ''}${(user.netWinnings || 0).toLocaleString()}`,
+    },
+  ];
+
+  return (
+    <div
+      className='admin-modal-overlay'
+      onClick={onClose}
+    >
+      <section
+        className='admin-player-modal'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='admin-player-modal-title'
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type='button'
+          className='admin-modal-close'
+          onClick={onClose}
+          aria-label='Close player details'
+        >
+          ×
+        </button>
+
+        <header className='admin-player-modal-header'>
+          <h2 id='admin-player-modal-title'>
+            {user.username}
+          </h2>
+
+          <p>{user.email || 'No email available'}</p>
+
+          <div className='admin-player-modal-badges'>
+            <span>
+              {user.isAdmin ? 'Administrator' : 'Player'}
+            </span>
+
+            <span className={user.isBanned ? 'banned' : 'active'}>
+              {user.isBanned ? 'Banned' : 'Active'}
+            </span>
+          </div>
+        </header>
+
+        <div className='admin-player-modal-stats'>
+          {stats.map((stat) => (
+            <article
+              className='admin-player-stat-card'
+              key={stat.label}
+            >
+              <strong>{stat.value}</strong>
+              <span>{stat.label}</span>
+            </article>
+          ))}
+        </div>
+
+        <footer className='admin-player-modal-footer'>
+          <button
+            type='button'
+            className='admin-view-button'
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function AdminTableModal({ data, onClose }) {
+  if (!data) return null;
+
+  const { table, game } = data;
+
+  return (
+    <div
+      className='admin-modal-overlay'
+      onClick={onClose}
+    >
+      <section
+        className='admin-table-modal'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='admin-table-modal-title'
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type='button'
+          className='admin-modal-close'
+          onClick={onClose}
+          aria-label='Close table observation'
+        >
+          ×
+        </button>
+
+        <header className='admin-table-modal-header'>
+          <h2 id='admin-table-modal-title'>
+            {table.name}
+          </h2>
+
+          <div className='admin-player-modal-badges'>
+            <span>
+              {table.isPublic ? 'Public Table' : 'Private Table'}
+            </span>
+
+            <span>{table.status}</span>
+          </div>
+
+          <p>
+            Table ID: {table._id}
+          </p>
+        </header>
+
+        <section className='admin-table-overview-grid'>
+          <article className='admin-table-overview-card'>
+            <strong>
+              {table.players.length}/{table.capacity}
+            </strong>
+            <span>Players</span>
+          </article>
+
+          <article className='admin-table-overview-card'>
+            <strong>{table.botCount}</strong>
+            <span>Bots</span>
+          </article>
+
+          <article className='admin-table-overview-card'>
+            <strong>{table.level}</strong>
+            <span>Table Level</span>
+          </article>
+
+          <article className='admin-table-overview-card'>
+            <strong>{game?.pot?.toLocaleString() ?? 0}</strong>
+            <span>Current Pot</span>
+          </article>
+        </section>
+
+        {game && (
+          <section className='admin-table-game-details'>
+            <h3>Current Game</h3>
+
+            <div className='admin-table-game-grid'>
+              <div>
+                <span>Status</span>
+                <strong>{game.status}</strong>
+              </div>
+
+              <div>
+                <span>Street</span>
+                <strong>{game.street}</strong>
+              </div>
+
+              <div>
+                <span>Ante</span>
+                <strong>{game.ante}</strong>
+              </div>
+
+              <div>
+                <span>Bring In</span>
+                <strong>{game.bringIn}</strong>
+              </div>
+
+              <div>
+                <span>Current Bet</span>
+                <strong>{game.currentBet}</strong>
+              </div>
+
+              <div>
+                <span>Current Turn</span>
+                <strong>
+                  {game.currentTurnUsername || '—'}
+                </strong>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className='admin-table-players-section'>
+          <h3>Players at Table</h3>
+
+          {table.players.length === 0 ? (
+            <p>No players are currently seated.</p>
+          ) : (
+            <div className='admin-table-players-list'>
+              {table.players.map((player) => (
+                <article
+                  className='admin-observed-player'
+                  key={player.playerId}
+                >
+                  <header>
+                    <div>
+                      <strong>{player.username}</strong>
+
+                      {player.hasFolded && (
+                        <span className='admin-player-folded'>
+                          Folded
+                        </span>
+                      )}
+                    </div>
+
+                    <span className='admin-player-stack'>
+                      {player.chips.toLocaleString()} chips
+                    </span>
+                  </header>
+
+                  <div className='admin-observed-player-details'>
+                    <span>
+                      Total contribution: {player.totalContribution}
+                    </span>
+
+                    <span>
+                      Current round: {player.roundContribution}
+                    </span>
+                  </div>
+
+                  {player.cards?.length > 0 && (
+                    <div className='admin-observed-cards'>
+                      <strong>Cards</strong>
+
+                      <div className='admin-observed-card-list'>
+                        {player.cards.map((card, index) => (
+                          <span
+                            className='admin-observed-card'
+                            key={`${card.rank}-${card.suit}-${index}`}
+                          >
+                            {card.rank} {card.suit}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <footer className='admin-player-modal-footer'>
+          <button
+            type='button'
+            className='admin-view-button'
+            onClick={onClose}
+          >
+            Close Observation
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('Dashboard');
   const [userSearch, setUserSearch] = useState('');
@@ -819,12 +1133,221 @@ function AdminDashboard() {
   const [playerGroup, setPlayerGroup] = useState('Top Players');
   const [gameGroup, setGameGroup] = useState('Active Games');
   const [engagementPeriod, setEngagementPeriod] = useState('Last 7 Days');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardError, setDashboardError] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [tableLoading, setTableLoading] = useState(false);
 
-  const filteredUsers = users.filter((user) =>
+  const currentUsers = dashboardData?.users || [];
+
+
+  const filteredUsers = currentUsers.filter((user) =>
     `${user.username} ${user.email}`
       .toLowerCase()
       .includes(userSearch.trim().toLowerCase()),
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${API_URL}/api/admin/dashboard`, {
+      credentials: 'include',
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            response.status === 403
+              ? 'Admin access required.'
+              : 'Failed to load dashboard data.'
+          );
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setDashboardData(data);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDashboardError(error.message);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
+  async function updateAdminUser(user, changes) {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/users/${user._id}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(changes),
+        }
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+
+        throw new Error(
+          payload.message || 'User update failed.'
+        );
+      }
+
+      const updated = await response.json();
+
+      setDashboardData((old) => ({
+        ...old,
+        users: old.users.map((item) =>
+          item._id === updated._id
+            ? { ...item, ...updated }
+            : item
+        ),
+      }));
+    } catch (error) {
+      setDashboardError(error.message);
+    }
+  }
+
+  async function viewUser(user) {
+    setDashboardError('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/users/${user._id}`,
+        {
+          credentials: 'include',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Unable to load player profile.'
+        );
+      }
+
+      const stats = data.stats || {};
+      const gamesPlayed = stats.gamesPlayed || 0;
+      const wins = stats.wins || 0;
+
+      setSelectedUser({
+        ...user,
+        ...data,
+        wins,
+        losses: stats.losses || 0,
+        gamesPlayed,
+        winRate: gamesPlayed ? wins / gamesPlayed : 0,
+        totalChipsWon: stats.totalChipsWon || 0,
+        netWinnings: stats.netWinnings || 0,
+      });
+    } catch (error) {
+      setDashboardError(error.message);
+    }
+  }
+
+  async function viewTable(game) {
+    setTableLoading(true);
+    setDashboardError('');
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/tables/${game._id}`,
+        {
+          credentials: 'include',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Unable to load table observation.'
+        );
+      }
+
+      setSelectedTable(data);
+    } catch (error) {
+      setDashboardError(error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  }
+
+  const toggleBan = (user) =>
+    updateAdminUser(user, {
+      isBanned: !user.isBanned,
+    });
+
+  const toggleAdmin = (user) =>
+    updateAdminUser(user, {
+      isAdmin: !user.isAdmin,
+    });
+
+  const metrics = dashboardData
+    ? [
+        {
+          icon: 'users',
+          value: dashboardData.metrics.registeredUsers.toLocaleString(),
+          label: 'Registered Users',
+        },
+        {
+          icon: 'cards',
+          value: dashboardData.metrics.activePlayers.toLocaleString(),
+          label: 'Active Players',
+          note: '(Currently seated)',
+        },
+        {
+          icon: 'chips',
+          value: dashboardData.metrics.gamesPlayed.toLocaleString(),
+          label: 'Games Played',
+          note: '(All recorded hands)',
+        },
+        {
+          icon: 'chart',
+          value: dashboardData.metrics.newSignups.toLocaleString(),
+          label: 'New Sign Ups',
+          note: '(Last 7 days)',
+        },
+      ]
+    : metricDefinitions.map((item) => ({
+        ...item,
+        value: '—',
+      }));
+
+  const selectedPlayers =
+    dashboardData?.playerStatistics?.[
+      playerGroup === 'Most Games Played'
+        ? 'mostGamesPlayed'
+        : playerGroup === 'Highest Win Rate'
+          ? 'highestWinRate'
+          : 'topPlayers'
+    ] || [];
+
+  const visibleGames = (
+    dashboardData?.games || []
+  ).filter(
+    (game) =>
+      gameGroup === 'All Games' ||
+      (
+        gameGroup === 'Active Games'
+          ? ['Waiting', 'In Progress'].includes(game.status)
+          : game.status === 'Closed'
+      )
+  );
+
+
 
   return (
     <div className='admin-dashboard-page'>
@@ -847,6 +1370,12 @@ function AdminDashboard() {
       </aside>
 
       <main className='admin-dashboard-content'>
+        {dashboardError && (
+          <p role='alert' className='admin-error-message'>
+            {dashboardError}
+          </p>
+        )}
+
         {activeSection === 'Edit Profile' && (
           <EditProfile embedded pathnameOverride='/profile/edit' />
         )}
@@ -861,6 +1390,9 @@ function AdminDashboard() {
             }}
             currentPage={usersPage}
             onPageChange={setUsersPage}
+            onViewUser={viewUser}
+            onToggleBan={toggleBan}
+            onToggleAdmin={toggleAdmin}
           />
         )}
 
@@ -868,11 +1400,17 @@ function AdminDashboard() {
           <PlayerStatisticsView
             group={playerGroup}
             onGroupChange={setPlayerGroup}
+            players={selectedPlayers}
           />
         )}
 
         {activeSection === 'Game Monitoring' && (
-          <GameMonitoringView group={gameGroup} onGroupChange={setGameGroup} />
+          <GameMonitoringView
+            group={gameGroup}
+            onGroupChange={setGameGroup}
+            games={dashboardData?.games || []}
+            onViewTable={viewTable}
+          />
         )}
 
         {activeSection === 'Ad Engagement' && (
@@ -942,25 +1480,53 @@ function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user) => (
+                    {filteredUsers.slice(0, 5).map((user) => (
                       <tr key={user.username}>
                         <td>{user.username}</td>
                         <td>{user.email}</td>
-                        <td>{user.joined}</td>
+                        <td>
+                          {user.joined
+                            ? new Date(user.joined).toLocaleDateString()
+                            : '—'}
+                        </td>
                         <td>
                           <span
-                            className={`admin-status-dot status-${user.status.toLowerCase()}`}
+                            className={`admin-status-dot status-${
+                              user.isBanned ? 'inactive' : 'active'
+                            }`}
                             aria-hidden='true'
                           />
+
+                          {user.isBanned
+                            ? 'Banned'
+                            : user.isAdmin
+                              ? 'Admin'
+                              : 'Active'}
                           {user.status}
                         </td>
                         <td>
                           <button
                             type='button'
                             className='admin-view-button'
-                            aria-label={`View ${user.username}`}
+                            onClick={() => viewUser(user)}
                           >
                             View
+                          </button>
+
+                          <button
+                            type='button'
+                            className='admin-view-button'
+                            onClick={() => toggleBan(user)}
+                          >
+                            {user.isBanned ? 'Unban' : 'Ban'}
+                          </button>
+
+                          <button
+                            type='button'
+                            className='admin-view-button'
+                            onClick={() => toggleAdmin(user)}
+                          >
+                            {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
                           </button>
                         </td>
                       </tr>
@@ -1020,12 +1586,12 @@ function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topPlayers.map((player) => (
-                      <tr key={player.rank}>
-                        <td>{player.rank}</td>
+                    {selectedPlayers.slice(0, 5).map((player, index) => (
+                      <tr key={player._id || player.username}>
+                        <td>{index + 1}</td>
                         <td>{player.username}</td>
-                        <td>{player.wins}</td>
-                        <td>{player.rate}</td>
+                        <td>{player.wins || 0}</td>
+                        <td>{Math.round((player.winRate || 0) * 100)}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1053,15 +1619,19 @@ function AdminDashboard() {
                       <th>Table ID</th>
                       <th>Players</th>
                       <th>Status</th>
-                      <th>Start Time</th>
+                      <th>Table Created</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {games.map((game) => (
-                      <tr key={game.id}>
-                        <td>{game.id}</td>
-                        <td>{game.players}</td>
+                    {visibleGames.map((game) => (
+                      <tr key={game._id}>
+                        <td>{game.name || game._id}</td>
+
+                        <td>
+                          {game.players}/{game.capacity} (+{game.bots} bots)
+                        </td>
+
                         <td>
                           <span
                             className={`admin-status-dot status-${game.status
@@ -1071,12 +1641,19 @@ function AdminDashboard() {
                           />
                           {game.status}
                         </td>
-                        <td>{game.time}</td>
+
+                        <td>
+                          {game.createdAt
+                            ? new Date(game.createdAt).toLocaleString()
+                            : '—'}
+                        </td>
+
                         <td>
                           <button
                             type='button'
                             className='admin-view-button'
-                            aria-label={`View game ${game.id}`}
+                            aria-label={`Observe table ${game.name || game._id}`}
+                            onClick={() => viewTable(game)}
                           >
                             View
                           </button>
@@ -1144,6 +1721,28 @@ function AdminDashboard() {
           </div>
         </div>
       </main>
+
+    {tableLoading && (
+      <div className='admin-modal-overlay'>
+        <section className='admin-table-modal' role='status'>
+          <p>Loading table observation...</p>
+        </section>
+      </div>
+    )}
+
+    {selectedTable && (
+      <AdminTableModal
+        data={selectedTable}
+        onClose={() => setSelectedTable(null)}
+      />
+    )}
+
+    {selectedUser && (
+      <PlayerDetailsModal
+        user={selectedUser}
+        onClose={() => setSelectedUser(null)}
+      />
+    )}
 
     </div>
   );

@@ -5,8 +5,25 @@ describe('UserDao account and profile operations', () => {
     jest.restoreAllMocks();
   });
 
-  test('readAll retrieves user IDs and usernames', async () => {
-    const users = [{ _id: '1', username: 'alice' }];
+  test('readAll retrieves users with admin dashboard fields', async () => {
+    const users = [
+      {
+        _id: '1',
+        username: 'alice',
+        email: 'alice@example.com',
+        userType: 'registered',
+        isAdmin: false,
+        isBanned: false,
+        stats: {
+          wins: 3,
+          losses: 2,
+          gamesPlayed: 5,
+          totalChipsWon: 1500,
+          netWinnings: 300,
+        },
+        createdAt: new Date('2026-01-01'),
+      },
+    ];
 
     const select = jest.fn().mockResolvedValue(users);
     jest.spyOn(User, 'find').mockReturnValue({ select });
@@ -14,7 +31,11 @@ describe('UserDao account and profile operations', () => {
     const result = await User.readAll();
 
     expect(User.find).toHaveBeenCalledWith();
-    expect(select).toHaveBeenCalledWith('_id username');
+
+    expect(select).toHaveBeenCalledWith(
+      '_id username email userType isAdmin isBanned stats createdAt'
+    );
+
     expect(result).toEqual(users);
   });
 
@@ -229,4 +250,65 @@ test('getProfile defaults statistics to zero when stats are missing', async () =
       },
     });
   });
+
+  test('setAdminStatus promotes or demotes a user', async () => {
+    const updatedUser = {
+      _id: 'user123',
+      username: 'alice',
+      email: 'alice@example.com',
+      isAdmin: true,
+      isBanned: false,
+    };
+
+    const select = jest.fn().mockResolvedValue(updatedUser);
+
+    jest.spyOn(User, 'findByIdAndUpdate').mockReturnValue({
+      select,
+    });
+
+    const result = await User.setAdminStatus('user123', true);
+
+    expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
+      'user123',
+      { isAdmin: true },
+      { new: true, runValidators: true }
+    );
+
+    expect(select).toHaveBeenCalledWith(
+      '_id username email isAdmin isBanned'
+    );
+
+    expect(result).toEqual(updatedUser);
+  });
+
+  test('setBanStatus bans or unbans a user', async () => {
+    const updatedUser = {
+      _id: 'user123',
+      username: 'alice',
+      email: 'alice@example.com',
+      isAdmin: false,
+      isBanned: true,
+    };
+
+    const select = jest.fn().mockResolvedValue(updatedUser);
+
+    jest.spyOn(User, 'findByIdAndUpdate').mockReturnValue({
+      select,
+    });
+
+    const result = await User.setBanStatus('user123', true);
+
+    expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
+      'user123',
+      { isBanned: true },
+      { new: true, runValidators: true }
+    );
+
+    expect(select).toHaveBeenCalledWith(
+      '_id username email isAdmin isBanned'
+    );
+
+    expect(result).toEqual(updatedUser);
+  });
+
 });

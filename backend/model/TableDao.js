@@ -128,7 +128,9 @@ const TableModel = mongoose.model('Table', tableSchema);
 // Retrieve all tables
 exports.findAll = async function() {
   return await TableModel.find()
-    .select('Name Capacity UserIds BotCount IsPublic Level Status');
+    .select(
+      'Name Capacity UserIds BotCount IsPublic Level Status CurrentGameID createdAt updatedAt'
+    );
 };
 
 exports.findPublicTables = async function() {

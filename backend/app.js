@@ -54,6 +54,32 @@ const sessionMiddleware = session(sessionConfig);
 app.locals.sessionMiddleware = sessionMiddleware;
 app.use(sessionMiddleware);
 
+// Enforce bans on existing sessions as well as at login time.
+const UserDao = require('./model/UserDao');
+
+app.use(async (req, res, next) =>  {
+  const userId = req.session?.userId;
+
+  if (!userId) return next();
+
+  try {
+    const user = await UserDao.findById(userId).select('isBanned');
+
+    if (user?.isBanned) {
+      req.session.destroy(() => {});
+      res.clearCookie('connect.sid');
+
+      return res.status(403).json({
+        message: 'This account has been banned.',
+      });
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+});
+
 const TableController = require('./controller/TableController');
 const UserController = require('./controller/UserController');
 const ContactController = require('./controller/ContactController');
@@ -97,6 +123,26 @@ app.get('/api/users/search', UserController.searchUsers);
 app.get('/api/users', UserController.getUsers);
 app.get('/api/users/:userId', UserController.getProfile);
 app.put('/api/users/:userId/avatar', UserController.updateAvatar);
+
+app.get(
+  '/api/admin/dashboard',
+  UserController.getAdminDashboard,
+);
+
+app.get(
+  '/api/admin/tables/:tableId',
+  UserController.getAdminTable,
+);
+
+app.patch(
+  '/api/admin/users/:userId',
+  UserController.adminUpdateUser,
+);
+
+app.get(
+  '/api/admin/users/:userId',
+  UserController.getAdminUserDetails,
+);
 
 // Send a friend request
 app.post('/api/friends/request', UserController.sendFriendRequest);

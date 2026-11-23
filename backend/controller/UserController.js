@@ -1,4 +1,6 @@
 const UserDao = require('../model/UserDao');
+const TableDao = require('../model/TableDao');
+const GameDao = require('../model/GameDao');
 const passUtil = require('../util/PasswordUtil.js');
 const crypto = require('node:crypto');
 const MessageEvents = require('../service/MessageEvents');
@@ -128,6 +130,12 @@ async function login(req, res) {
   if (user == null) {
     return res.status(401).json({
       message: 'Invalid username/email or password.',
+    });
+  }
+
+  if (user.isBanned) {
+    return res.status(403).json({
+      message: 'This account has been banned.',
     });
   }
 
@@ -309,6 +317,373 @@ async function getUsers(req, res) {
 
     return res.status(500).json({
       message: 'Failed to retrieve users.',
+    });
+  }
+}
+
+async function getAdminDashboard(req, res) {
+  try {
+    if (!(await adminCheck(req))) {
+      return res.status(403).json({
+        message: 'Admin access required.',
+      });
+    }
+
+    const [users, tables] = await Promise.all([
+      UserDao.readAll(),
+      TableDao.findAll(),
+    ]);
+
+    const Game = GameDao.GameModel;
+
+    const gameCounts = await Game.aggregate([
+      {
+        $group: {
+          _id: '$Status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const gameStatusCounts = Object.fromEntries(
+      gameCounts.map((item) => [item._id, item.count])
+    );
+
+    const now = Date.now();
+
+    const activeTables = tables.filter((table) =>
+      ['Waiting', 'In Progress'].includes(table.Status)
+    );
+
+    const recentUsers = users.filter(
+      (user) =>
+        user.createdAt &&
+        now - new Date(user.createdAt).getTime() <=
+          7 * 86400000
+    );
+
+    const players = users.map((user) => {
+      const stats = user.stats || {};
+      const gamesPlayed = stats.gamesPlayed || 0;
+      const wins = stats.wins || 0;
+      const losses = stats.losses || 0;
+
+      return {
+        _id: user._id,
+        username: user.username,
+        email: user.email || '',
+        userType: user.userType,
+        isAdmin: !!user.isAdmin,
+        isBanned: !!user.isBanned,
+        joined: user.createdAt || null,
+
+        // Current player statistics
+        wins,
+        losses,
+        gamesPlayed,
+        winRate: gamesPlayed ? wins / gamesPlayed : 0,
+        totalChipsWon: stats.totalChipsWon || 0,
+        netWinnings: stats.netWinnings || 0,
+      };
+    });
+
+    const playerSort = (key) =>
+      [...players].sort(
+        (a, b) => (b[key] || 0) - (a[key] || 0)
+      );
+
+    const monitoredTables = tables.map((table) => ({
+      _id: table._id,
+      name: table.Name,
+      players: table.UserIds?.length || 0,
+      bots: table.BotCount || 0,
+      capacity: table.Capacity,
+      status: table.Status,
+      createdAt: table.createdAt || null,
+      gameId: table.CurrentGameID || null,
+    }));
+
+    return res.status(200).json({
+      metrics: {
+        registeredUsers: users.length,
+
+        activePlayers: activeTables.reduce(
+          (sum, table) =>
+            sum + (table.UserIds?.length || 0),
+          0
+        ),
+
+        gamesPlayed: Object.values(gameStatusCounts)
+          .reduce((sum, count) => sum + count, 0),
+
+        newSignups: recentUsers.length,
+      },
+
+      users: players,
+
+      playerStatistics: {
+        topPlayers: playerSort('wins'),
+        mostGamesPlayed: playerSort('gamesPlayed'),
+
+        highestWinRate: [...players].sort(
+          (a, b) => b.winRate - a.winRate
+        ),
+      },
+
+      games: monitoredTables,
+      gameStatusCounts,
+    });
+  } catch (error) {
+    console.error('Admin dashboard data error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load admin dashboard data.',
+    });
+  }
+}
+
+async function getAdminTable(req, res) {
+  try {
+    if (!(await adminCheck(req))) {
+      return res.status(403).json({
+        message: 'Admin access required.',
+      });
+    }
+
+    const { tableId } = req.params;
+
+    const table = await TableDao.findById(tableId);
+
+    if (!table) {
+      return res.status(404).json({
+        message: 'Table not found.',
+      });
+    }
+
+    let game = null;
+
+    if (table.CurrentGameID) {
+      game = await GameDao.findById(table.CurrentGameID);
+    }
+
+    // Resolve player IDs to usernames where possible.
+    const tablePlayerIds = (table.UserIds || []).map(
+      (id) => id.toString()
+    );
+
+    const gamePlayerIds = (game?.Players || []).map(
+      (player) => player.PlayerId
+    );
+
+    const allPlayerIds = [
+      ...new Set([...tablePlayerIds, ...gamePlayerIds]),
+    ];
+
+    const playerNames = {};
+
+    await Promise.all(
+      allPlayerIds.map(async (playerId) => {
+        try {
+          const user = await UserDao.findById(playerId)
+            .select('username');
+
+          if (user) {
+            playerNames[playerId] = user.username;
+          }
+        } catch {
+          // Guests and bots may not have MongoDB user records.
+        }
+      })
+    );
+
+    const stacks = table.PlayerStacks || [];
+
+    const players = (game?.Players || []).map((player) => {
+      const stack = stacks.find(
+        (item) => item.PlayerId === player.PlayerId
+      );
+
+      return {
+        playerId: player.PlayerId,
+        username:
+          playerNames[player.PlayerId] ||
+          player.PlayerId,
+        chips: stack?.Chips ?? 0,
+        cards: player.Cards || [],
+        hasFolded: !!player.HasFolded,
+        totalContribution: player.TotalContribution || 0,
+        roundContribution: player.RoundContribution || 0,
+        hasActed: !!player.HasActed,
+      };
+    });
+
+    // Include seated players who aren't in the current game document.
+    for (const playerId of tablePlayerIds) {
+      if (
+        !players.some(
+          (player) => player.playerId === playerId
+        )
+      ) {
+        const stack = stacks.find(
+          (item) => item.PlayerId === playerId
+        );
+
+        players.push({
+          playerId,
+          username: playerNames[playerId] || playerId,
+          chips: stack?.Chips ?? 0,
+          cards: [],
+          hasFolded: false,
+          totalContribution: 0,
+          roundContribution: 0,
+          hasActed: false,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      table: {
+        _id: table._id,
+        name: table.Name,
+        capacity: table.Capacity,
+        status: table.Status,
+        isPublic: table.IsPublic,
+        level: table.Level,
+        botCount: table.BotCount,
+        createdAt: table.createdAt,
+        players,
+      },
+
+      game: game
+        ? {
+            _id: game._id,
+            status: game.Status,
+            street: game.Street,
+            pot: game.Pot,
+            ante: game.Ante,
+            bringIn: game.BringIn,
+            currentBet: game.CurrentBet,
+            currentTurnPlayerId: game.CurrentTurnPlayerId,
+            currentTurnUsername:
+              playerNames[game.CurrentTurnPlayerId] ||
+              game.CurrentTurnPlayerId,
+            winnerIds: game.WinnerIds || [],
+            completedAt: game.CompletedAt,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error('Admin table observation error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load table details.',
+    });
+  }
+}
+
+async function getAdminUserDetails(req, res) {
+  try {
+    if (!(await adminCheck(req))) {
+      return res.status(403).json({
+        message: 'Admin access required.',
+      });
+    }
+
+    const user = await UserDao.getProfile(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('Admin user details error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load user details.',
+    });
+  }
+}
+
+async function adminUpdateUser(req, res) {
+  try {
+    if (!(await adminCheck(req))) {
+      return res.status(403).json({
+        message: 'Admin access required.',
+      });
+    }
+
+    const body = req.body || {};
+    const allowedFields = ['isAdmin', 'isBanned'];
+    const fields = Object.keys(body);
+
+    if (
+      fields.length === 0 ||
+      fields.some((field) => !allowedFields.includes(field)) ||
+      fields.some((field) => typeof body[field] !== 'boolean')
+    ) {
+      return res.status(400).json({
+        message: 'Provide a valid admin or ban status update.',
+      });
+    }
+
+
+    const { userId } = req.params;
+    const actingAdminId = req.session.userId;
+
+    const target = await UserDao.findById(userId);
+
+    if (!target) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    if (
+      target._id.toString() === actingAdminId &&
+      (
+        body.isAdmin === false ||
+        body.isBanned === true
+      )
+    ) {
+      return res.status(400).json({
+        message: 'You cannot remove your own admin role or ban yourself.',
+      });
+    }
+
+    if (typeof body.isAdmin === 'boolean') {
+      await UserDao.setAdminStatus(
+        userId,
+        body.isAdmin
+      );
+    }
+
+    if (typeof body.isBanned === 'boolean') {
+      await UserDao.setBanStatus(
+        userId,
+        body.isBanned
+      );
+    }
+
+    const updated = await UserDao.findById(userId).select(
+      '_id username email isAdmin isBanned userType stats createdAt'
+    );
+
+    if (body.isBanned === true) {
+      MessageEvents.publish({
+        type: 'user-logged-out',
+        userId: userId.toString(),
+      });
+    }
+
+    return res.status(200).json(updated);
+  } catch (error) {
+    console.error('Admin user update error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to update user.',
     });
   }
 }
@@ -633,4 +1008,8 @@ module.exports = {
   guestLogin,
   getCurrentUser,
   getLeaderboard,
+  getAdminDashboard,
+  adminUpdateUser,
+  getAdminTable,
+  getAdminUserDetails,
 };

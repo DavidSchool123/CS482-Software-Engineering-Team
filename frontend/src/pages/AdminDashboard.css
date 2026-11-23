@@ -1284,3 +1284,281 @@
     padding: 18px;
   }
 }
+
+/* =========================================
+   Admin observation and player detail modals
+   ========================================= */
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+.admin-player-modal,
+.admin-table-modal {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  background: #171b25;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.admin-table-modal {
+  width: min(900px, 100%);
+}
+
+.admin-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.admin-modal-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.admin-player-modal-header,
+.admin-table-modal-header {
+  padding-right: 38px;
+  margin-bottom: 24px;
+}
+
+.admin-player-modal-header h2,
+.admin-table-modal-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+
+.admin-player-modal-header p,
+.admin-table-modal-header p {
+  color: #aab2c3;
+  overflow-wrap: anywhere;
+}
+
+.admin-player-modal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.admin-player-modal-badges > span {
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+}
+
+.admin-player-modal-badges .banned {
+  background: rgba(220, 70, 70, 0.18);
+  color: #ff8d8d;
+}
+
+.admin-player-modal-badges .active {
+  background: rgba(60, 190, 120, 0.16);
+  color: #79dfa5;
+}
+
+.admin-player-modal-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-player-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-player-stat-card strong {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-player-stat-card span {
+  color: #aab2c3;
+  font-size: 0.85rem;
+}
+
+.admin-player-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.admin-table-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-table-overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.admin-table-overview-card strong {
+  font-size: 1.3rem;
+}
+
+.admin-table-overview-card span {
+  color: #aab2c3;
+  font-size: 0.85rem;
+}
+
+.admin-table-game-details,
+.admin-table-players-section {
+  margin-top: 24px;
+}
+
+.admin-table-game-details h3,
+.admin-table-players-section h3 {
+  margin-bottom: 14px;
+}
+
+.admin-table-game-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-table-game-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+
+.admin-table-game-grid span {
+  color: #aab2c3;
+  font-size: 0.85rem;
+}
+
+.admin-table-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-observed-player {
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-observed-player > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-player-folded {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(220, 70, 70, 0.15);
+  color: #ff8d8d;
+  font-size: 0.75rem;
+}
+
+.admin-player-stack {
+  color: #79dfa5;
+  font-weight: 600;
+}
+
+.admin-observed-player-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  color: #aab2c3;
+  font-size: 0.85rem;
+}
+
+.admin-observed-cards {
+  margin-top: 14px;
+}
+
+.admin-observed-cards > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.admin-observed-card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-observed-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  color: #171b25;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .admin-modal-overlay {
+    padding: 12px;
+  }
+
+  .admin-player-modal,
+  .admin-table-modal {
+    padding: 20px;
+  }
+
+  .admin-player-modal-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-table-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-table-game-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

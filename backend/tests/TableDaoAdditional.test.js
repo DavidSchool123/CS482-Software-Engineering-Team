@@ -66,7 +66,7 @@ describe('Additional TableDao tests', () => {
 
     expect(mockFind).toHaveBeenCalledWith();
     expect(mockSelect).toHaveBeenCalledWith(
-      'Name Capacity UserIds BotCount IsPublic Level Status',
+      'Name Capacity UserIds BotCount IsPublic Level Status CurrentGameID createdAt updatedAt'
     );
     expect(result).toEqual(tables);
   });

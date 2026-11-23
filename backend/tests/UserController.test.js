@@ -222,32 +222,60 @@ test('Logout User', async () => {
   });
 });
 
-test('Admin Security Check passes', () => {
-  const req = {
-    session: {
-      user: { _id: 'a1', permission: 1 },
-    },
-  };
+describe('Admin Security Check', () => {
+  test('passes when the session user is an admin', async () => {
+    userDao.findById.mockResolvedValue({
+      _id: 'admin123',
+      isAdmin: true,
+    });
 
-  expect(controller.adminCheck(req)).toBeTruthy();
-});
+    const req = {
+      session: {
+        userId: 'admin123',
+      },
+    };
 
-test('Admin Security Check fails', async () => {
-  const req = {
-    session: {
-      user: { _id: 'c1', permission: 2 },
-    },
-  };
+    expect(await controller.adminCheck(req)).toBe(true);
 
-  expect(await controller.adminCheck(req)).toBeFalsy();
-});
+    expect(userDao.findById).toHaveBeenCalledWith('admin123');
+  });
 
-test('Admin Security Check unlogged user', async () => {
-  const req = {
-    session: { user: undefined },
-  };
+  test('fails when the session user is not an admin', async () => {
+    userDao.findById.mockResolvedValue({
+      _id: 'player123',
+      isAdmin: false,
+    });
 
-  expect(await controller.adminCheck(req)).toBeFalsy();
+    const req = {
+      session: {
+        userId: 'player123',
+      },
+    };
+
+    expect(await controller.adminCheck(req)).toBe(false);
+  });
+
+  test('fails when the session user does not exist', async () => {
+    userDao.findById.mockResolvedValue(null);
+
+    const req = {
+      session: {
+        userId: 'missing123',
+      },
+    };
+
+    expect(await controller.adminCheck(req)).toBe(false);
+  });
+
+  test('fails when the user is not logged in', async () => {
+    const req = {
+      session: {},
+    };
+
+    expect(await controller.adminCheck(req)).toBe(false);
+
+    expect(userDao.findById).not.toHaveBeenCalled();
+  });
 });
 
 describe('Update User Account', () => {
@@ -674,7 +702,40 @@ describe('Additional session and profile tests', () => {
         wins: 0,
       },
     });
+
+
   });
+
+  test('Rejects login when user is banned', async () => {
+        userDao.findUserByLogin.mockResolvedValue({
+          _id: 'banned123',
+          username: 'banneduser',
+          isBanned: true,
+          password: 'hashedPassword',
+        });
+
+        const req = {
+          body: {
+            txt_login: 'banneduser',
+            txt_pass: 'password',
+          },
+          session: {},
+        };
+
+        const res = mockResponse();
+
+        await controller.login(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+
+        expect(res.json).toHaveBeenCalledWith({
+          message: 'This account has been banned.',
+        });
+
+        expect(passUtil.comparePassword).not.toHaveBeenCalled();
+
+        expect(req.session.userId).toBeUndefined();
+      });
 
   test('Returns null for a missing profile', async () => {
     const selectMock = jest.fn().mockResolvedValue(null);

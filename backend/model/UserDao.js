@@ -113,7 +113,13 @@ const userSchema = new mongoose.Schema({
     },
   },
 
-});
+  isBanned: {
+    type: Boolean,
+    default: false,
+    required: true,
+  },
+
+}, { timestamps: true });
 
 // Create a unique index on the email field for registered users
 userSchema.index(
@@ -132,7 +138,25 @@ const User = mongoose.model('User', userSchema);
 
 // Retrieve all users
 async function readAll() {
-  return await User.find().select('_id username');
+  return await User.find().select(
+    '_id username email userType isAdmin isBanned stats createdAt'
+  );
+}
+
+async function setAdminStatus(userId, isAdmin) {
+  return User.findByIdAndUpdate(
+    userId,
+    { isAdmin },
+    { new: true, runValidators: true }
+  ).select('_id username email isAdmin isBanned');
+}
+
+async function setBanStatus(userId, isBanned) {
+  return User.findByIdAndUpdate(
+    userId,
+    { isBanned },
+    { new: true, runValidators: true }
+  ).select('_id username email isAdmin isBanned');
 }
 
 // Get a user's profile by their ID
@@ -593,5 +617,7 @@ User.deductChips = deductChips;
 User.creditChips = creditChips;
 User.updateGameStats = updateGameStats;
 User.getLeaderboard = getLeaderboard;
+User.setAdminStatus = setAdminStatus;
+User.setBanStatus = setBanStatus;
 
 module.exports = User;
