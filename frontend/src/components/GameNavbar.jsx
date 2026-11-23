@@ -46,6 +46,7 @@ function GameNavbar() {
         <NavLink to="/lobby">Lobby</NavLink>
         <NavLink to="/profile">Profile</NavLink>
         <NavLink to="/friends">Friends</NavLink>
+        <NavLink to='/leaderboard'>Leaderboard</NavLink>
         <NavLink to="/messages">Messages</NavLink>
         <NavLink to="/tutorial" state={{ gameNavbar: true }}>
           How to Play

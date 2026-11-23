@@ -14,6 +14,8 @@ import Contact from './pages/Contact';
 import Profile, { EditProfile } from './pages/Profile';
 import PokerTable from './pages/PokerTable';
 import Tutorial from './pages/Tutorial';
+import Leaderboard from './pages/Leaderboard';
+
 
 import './App.css';
 
@@ -42,6 +44,8 @@ function App() {
         <Route path='/profile/edit' element={<EditProfile />} />
 
         <Route path='/friends' element={<Friends />} />
+
+        <Route path='/leaderboard' element={<Leaderboard />} />
 
         <Route path='/tutorial' element={<Tutorial />} />
 

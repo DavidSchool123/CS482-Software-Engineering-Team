@@ -572,6 +572,44 @@ async function getCurrentUser(req, res) {
   }
 }
 
+async function getLeaderboard(req, res) {
+    try {
+        const userId = req.session?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                message: 'You must be logged in to view the leaderboard.'
+            });
+        }
+
+        const sortBy = req.query.sortBy === 'netWinnings'
+            ? 'netWinnings'
+            : 'winRate';
+
+        const offset = Math.max(
+            0,
+            parseInt(req.query.offset, 10) || 0
+        );
+
+        const limit = 50;
+
+        const result = await UserDao.getLeaderboard(
+            userId,
+            sortBy,
+            offset,
+            limit
+        );
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error retrieving leaderboard:', error);
+
+        return res.status(500).json({
+            message: 'Unable to retrieve leaderboard.'
+        });
+    }
+}
+
 module.exports = {
   userCreateUpdate,
   userDelete,
@@ -594,4 +632,5 @@ module.exports = {
   removeFriend,
   guestLogin,
   getCurrentUser,
+  getLeaderboard,
 };

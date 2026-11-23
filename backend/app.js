@@ -138,6 +138,8 @@ app.delete('/api/accounts/me', UserController.userDelete);
 app.post('/api/accounts/forgotPassword', UserController.forgotPassword);
 app.post('/api/accounts/resetPassword', UserController.resetPassword);
 
+app.get('/api/leaderboard', UserController.getLeaderboard);
+
 // Start a new Seven-Card Stud game
 app.post('/api/tables/:tableId/start', GameController.startGame);
 

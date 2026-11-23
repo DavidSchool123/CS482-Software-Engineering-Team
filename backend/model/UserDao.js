@@ -497,6 +497,78 @@ async function updateGameStats(userId, stats, session) {
   );
 }
 
+async function getLeaderboard(userId, sortBy = 'winRate', offset = 0, limit = 50) {
+    const currentUser = await User.findById(userId).select('_id friends');
+
+    if (!currentUser) {
+        throw new Error('User not found');
+    }
+
+    const players = await User.find({
+        'stats.gamesPlayed': { $gt: 0 }
+    }).select('_id username avatar stats');
+
+    function getWinRate(player) {
+        const wins = player.stats?.wins || 0;
+        const gamesPlayed = player.stats?.gamesPlayed || 0;
+
+        return gamesPlayed === 0 ? 0 : wins / gamesPlayed;
+    }
+
+    players.sort((a, b) => {
+        if (sortBy === 'netWinnings') {
+            const netDifference =
+                (b.stats?.netWinnings || 0) - (a.stats?.netWinnings || 0);
+
+            if (netDifference !== 0) return netDifference;
+        } else {
+            const winRateA = getWinRate(a);
+            const winRateB = getWinRate(b);
+
+            if (winRateA !== winRateB) {
+                return winRateB - winRateA;
+            }
+        }
+
+        // Tie-breakers
+        const winDifference =
+            (b.stats?.wins || 0) - (a.stats?.wins || 0);
+
+        if (winDifference !== 0) return winDifference;
+
+        return (b.stats?.netWinnings || 0) - (a.stats?.netWinnings || 0);
+    });
+
+    const rankedPlayers = players.map((player, index) => ({
+        rank: index + 1,
+        _id: player._id,
+        username: player.username,
+        avatar: player.avatar,
+        wins: player.stats?.wins || 0,
+        losses: player.stats?.losses || 0,
+        gamesPlayed: player.stats?.gamesPlayed || 0,
+        winRate: getWinRate(player),
+        netWinnings: player.stats?.netWinnings || 0
+    }));
+
+    const friendIds = currentUser.friends.map(id => id.toString());
+
+    const myRank =
+        rankedPlayers.find(player => player._id.toString() === userId.toString())
+        || null;
+
+    const friends = rankedPlayers.filter(player =>
+        friendIds.includes(player._id.toString())
+    );
+
+    return {
+        leaderboard: rankedPlayers.slice(offset, offset + limit),
+        totalPlayers: rankedPlayers.length,
+        myRank,
+        friends
+    };
+}
+
 // Attach DAO methods while preserving the User model export
 User.readAll = readAll;
 User.getProfile = getProfile;
@@ -520,5 +592,6 @@ User.findUserByUsername = findUserByUsername;
 User.deductChips = deductChips;
 User.creditChips = creditChips;
 User.updateGameStats = updateGameStats;
+User.getLeaderboard = getLeaderboard;
 
 module.exports = User;
