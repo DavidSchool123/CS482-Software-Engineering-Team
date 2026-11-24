@@ -792,15 +792,26 @@ describe('Admin Dashboard Controller', () => {
         ],
       };
 
-      UserDao.findById
-        .mockResolvedValueOnce({
-          _id: 'admin123',
-          isAdmin: true,
-        })
-        .mockResolvedValueOnce({
-          _id: 'player456',
-          username: 'alice',
-        });
+      UserDao.findById.mockReset();
+
+      UserDao.findById.mockImplementation((id) => {
+        if (id === 'admin123') {
+          return Promise.resolve({
+            _id: 'admin123',
+            isAdmin: true,
+          });
+        }
+        if (id === 'player456') {
+          return {
+            select: jest.fn().mockResolvedValue({
+              _id: 'player456',
+              username: 'alice',
+            }),
+          };
+        }
+
+        return Promise.resolve(null);
+      });
 
       TableDao.findById.mockResolvedValue(table);
       GameDao.findById.mockResolvedValue(game);

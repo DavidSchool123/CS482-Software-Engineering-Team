@@ -299,7 +299,7 @@ async function adminCheck(req) {
 
   const user = await UserDao.findById(userId);
 
-  return user && user.isAdmin === true;
+  return user?.isAdmin === true;
 }
 
 async function getUsers(req, res) {
