@@ -25,6 +25,7 @@ function LightbulbIcon() {
 
 export default function PlayerTips({
   game,
+  potSize,
   amountToCall,
   myChips,
   isMyTurn,
@@ -46,13 +47,14 @@ export default function PlayerTips({
     try {
       localStorage.setItem(TIPS_STORAGE_KEY, String(nextValue));
     } catch {
-      // Toggle still works when storage is unavailable.
+      // The toggle still works when storage is unavailable.
     }
   }
 
   const tip = tipsEnabled
     ? getStrategicTip({
         game,
+        potSize,
         amountToCall,
         myChips,
         isMyTurn,

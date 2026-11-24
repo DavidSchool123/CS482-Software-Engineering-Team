@@ -2057,6 +2057,7 @@ function Table() {
           {!isSpectator && game?.status === 'In Progress' && me && (
             <PlayerTips
               game={game}
+              potSize={game.pot}
               amountToCall={amountToCall}
               myChips={myChips}
               isMyTurn={isMyTurn}
